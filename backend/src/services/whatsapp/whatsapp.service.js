@@ -168,7 +168,15 @@ class WhatsAppService {
     const seenNumbers = new Set();
 
     recipients.forEach((recipient) => {
-      const normalizedNumber = recipient.phoneNumber.replace(/[\s\-\(\)]/g, '');
+      // Normalize phone number: remove spaces, dashes, parentheses, ensure + prefix
+      let normalizedNumber = recipient.phoneNumber.replace(/[\s\-\(\)]/g, '');
+      // Ensure phone number has + prefix for international format
+      if (normalizedNumber && !normalizedNumber.startsWith('+')) {
+        normalizedNumber = '+' + normalizedNumber;
+      }
+      // Remove duplicate + if exists
+      normalizedNumber = normalizedNumber.replace(/\+\+/, '+');
+
       if (!seenNumbers.has(normalizedNumber)) {
         seenNumbers.add(normalizedNumber);
         uniqueRecipients.push({
@@ -244,30 +252,44 @@ class WhatsAppService {
    * @returns {Object} - Processing result
    */
   async handleWebhook(webhookData) {
-    console.log("Whatsapp Webhook Call");
-    const { From, Body, MessageSid } = webhookData;
+    const { From, To, Body, MessageSid, MessageType, SmsStatus, MessageStatus } = webhookData;
 
-    // Extract phone number (remove whatsapp: prefix and normalize)
-    let rawPhone = From.replace('whatsapp:', '');
-    // Normalize: remove all non-digit characters except +
+    // Log everything for debugging
+    logger.info('[WhatsApp Webhook] ===== FULL WEBHOOK DATA =====');
+    logger.info('[WhatsApp Webhook] Full data:', JSON.stringify(webhookData, null, 2));
+
+    // Determine if this is an incoming message (reply) or status callback
+    const isIncomingMessage = Body && From && From !== this.phoneNumber;
+
+    // If it's a status callback (no body, or from our own number), ignore it
+    if (!Body || From === this.phoneNumber || From === 'whatsapp:+14155238886') {
+      logger.info('[WhatsApp Webhook] Ignoring status callback or non-reply message');
+      return {
+        success: true,
+        message: 'Status callback ignored',
+      };
+    }
+
+    // Extract phone number from the sender (From field)
+    let rawPhone = From.replace('whatsapp:', '').replace('whatsapp:', '');
     const normalizedPhone = rawPhone.replace(/[^\d+]/g, '');
-    // Create search pattern (with and without +)
     const phoneWithoutPlus = normalizedPhone.replace('+', '');
     const phoneWithPlus = normalizedPhone.startsWith('+') ? normalizedPhone : '+' + normalizedPhone;
 
-    logger.info(`[WhatsApp Webhook] Received reply from ${normalizedPhone}`, {
+    logger.info(`[WhatsApp Webhook] Processing reply from ${normalizedPhone}`, {
       messageSid: MessageSid,
       body: Body,
       rawFrom: From,
+      searchPatterns: { phoneWithPlus, phoneWithoutPlus },
     });
 
-    // Find the latest message from this phone number (any company)
-    // Try multiple phone number formats
+    // Find the latest message sent TO this phone number
     const latestMessage = await WhatsAppMessage.findOne({
       $or: [
         { phoneNumber: phoneWithPlus },
         { phoneNumber: phoneWithoutPlus },
         { phoneNumber: { $regex: phoneWithoutPlus, $options: 'i' } },
+        { phoneNumber: { $regex: phoneWithoutPlus.slice(-10), $options: 'i' } }, // Last 10 digits
       ],
       status: { $in: ['sent', 'delivered'] },
       isActive: null,
@@ -276,6 +298,14 @@ class WhatsAppService {
     if (!latestMessage) {
       logger.warn(`[WhatsApp Webhook] No pending message found for ${normalizedPhone}`, {
         searchPatterns: { phoneWithPlus, phoneWithoutPlus },
+        dbQuery: {
+          $or: [
+            { phoneNumber: phoneWithPlus },
+            { phoneNumber: phoneWithoutPlus },
+          ],
+          status: { $in: ['sent', 'delivered'] },
+          isActive: null,
+        },
       });
       return {
         success: false,
@@ -289,6 +319,11 @@ class WhatsAppService {
     const oneHour = 60 * 60 * 1000;
     const isWithinOneHour = timeSinceSent <= oneHour;
 
+    logger.info(`[WhatsApp Webhook] Found message ${latestMessage._id}`, {
+      timeSinceSent: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
+      isWithinOneHour,
+    });
+
     // Update message record
     latestMessage.status = 'replied';
     latestMessage.repliedAt = new Date();
@@ -296,6 +331,12 @@ class WhatsAppService {
     latestMessage.isActive = isWithinOneHour;
 
     await latestMessage.save();
+
+    logger.info(`[WhatsApp Webhook] Message updated successfully`, {
+      messageId: latestMessage._id,
+      status: 'replied',
+      isActive: isWithinOneHour,
+    });
 
     // If replied within 1 hour, update SIM status to active
     if (isWithinOneHour && latestMessage.simId) {
