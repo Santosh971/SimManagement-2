@@ -4817,3 +4817,11 @@
 [2026-04-22T11:30:00.613Z] INFO: [WhatsApp Cron] Processing inactive messages...
 [2026-04-22T11:30:00.684Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
 [2026-04-22T11:30:00.685Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T11:35:00.812Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T11:35:00.842Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T11:35:01.043Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T11:35:01.045Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T11:40:00.974Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T11:40:00.977Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T11:40:01.177Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T11:40:01.178Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
