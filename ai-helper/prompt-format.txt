@@ -1,0 +1,45 @@
+# PROMPT FORMAT TEMPLATE
+
+## STANDARD FORMAT
+```
+Context: [project-name]
+Task: [specific task description]
+```
+
+## EXAMPLES
+
+### API Creation
+```
+Context: sim-saas
+Task: Create REST API for SIM management with CRUD operations
+```
+
+### Database Schema
+```
+Context: sim-saas
+Task: Create MongoDB schema for recharge tracking
+```
+
+### Bug Fix
+```
+Context: sim-saas
+Task: Fix authentication middleware role check issue
+```
+
+### Cron Job
+```
+Context: sim-saas
+Task: Create daily cron for recharge reminder notifications
+```
+
+### Integration
+```
+Context: sim-saas
+Task: Integrate SIM module with notification system
+```
+
+## FORMAT RULES
+- Always specify context first
+- Task must be specific and actionable
+- Include relevant constraints if needed
+- Reference related modules when integrating

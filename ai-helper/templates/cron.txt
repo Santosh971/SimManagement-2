@@ -1,0 +1,321 @@
+# CRON JOB TEMPLATE
+
+## NODE-CRON SETUP
+
+### Basic Cron Structure
+```javascript
+const cron = require('node-cron');
+const logger = require('../utils/logger');
+
+class CronService {
+  constructor() {
+    this.jobs = new Map();
+  }
+
+  // Schedule a new job
+  schedule(name, expression, callback) {
+    if (this.jobs.has(name)) {
+      logger.warn(`Job ${name} already exists, replacing...`);
+      this.stop(name);
+    }
+
+    const job = cron.schedule(expression, callback, {
+      scheduled: true,
+      timezone: 'Asia/Kolkata'
+    });
+
+    this.jobs.set(name, job);
+    logger.info(`Job ${name} scheduled: ${expression}`);
+
+    return job;
+  }
+
+  // Stop a job
+  stop(name) {
+    const job = this.jobs.get(name);
+    if (job) {
+      job.stop();
+      this.jobs.delete(name);
+      logger.info(`Job ${name} stopped`);
+    }
+  }
+
+  // Start a stopped job
+  start(name) {
+    const job = this.jobs.get(name);
+    if (job) {
+      job.start();
+      logger.info(`Job ${name} started`);
+    }
+  }
+
+  // List all jobs
+  list() {
+    return Array.from(this.jobs.keys());
+  }
+}
+
+module.exports = new CronService();
+```
+
+### Cron Expressions Reference
+```
+┌────────────── second (0-59)
+│ ┌──────────── minute (0-59)
+│ │ ┌────────── hour (0-23)
+│ │ │ ┌──────── day of month (1-31)
+│ │ │ │ ┌────── month (1-12)
+│ │ │ │ │ ┌──── day of week (0-7, 0 and 7 are Sunday)
+│ │ │ │ │ │
+* * * * * *
+
+Examples:
+0 0 * * *       - Daily at midnight
+0 9 * * 1       - Every Monday at 9 AM
+0 */6 * * *     - Every 6 hours
+0 0 1 * *       - First day of every month
+0 9-17 * * *    - Every hour between 9 AM and 5 PM
+*/15 * * * *    - Every 15 minutes
+```
+
+## SIM SAAS CRON JOBS
+
+### 1. Recharge Reminder Job
+```javascript
+// jobs/rechargeReminder.job.js
+const CronService = require('../services/cron.service');
+const NotificationService = require('../services/notification/notification.service');
+const Sim = require('../models/sim/sim.model');
+const Recharge = require('../models/recharge/recharge.model');
+const logger = require('../utils/logger');
+
+const scheduleRechargeReminders = () => {
+  // Run daily at 9 AM
+  CronService.schedule('recharge-reminder', '0 9 * * *', async () => {
+    try {
+      logger.info('Starting recharge reminder job');
+
+      // Find SIMs with recharge due in next 3 days
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+      const upcomingRecharges = await Recharge.find({
+        nextRechargeDate: {
+          $gte: new Date(),
+          $lte: threeDaysFromNow
+        },
+        reminderSent: false
+      }).populate('simId companyId');
+
+      for (const recharge of upcomingRecharges) {
+        await NotificationService.sendRechargeReminder(recharge);
+        recharge.reminderSent = true;
+        await recharge.save();
+      }
+
+      logger.info(`Sent ${upcomingRecharges.length} recharge reminders`);
+    } catch (error) {
+      logger.error('Recharge reminder job failed:', error);
+    }
+  });
+};
+
+module.exports = { scheduleRechargeReminders };
+```
+
+### 2. Inactive SIM Alert Job
+```javascript
+// jobs/inactiveSim.job.js
+const CronService = require('../services/cron.service');
+const NotificationService = require('../services/notification/notification.service');
+const Sim = require('../models/sim/sim.model');
+const logger = require('../utils/logger');
+
+const scheduleInactiveSimAlerts = () => {
+  // Run daily at 10 AM
+  CronService.schedule('inactive-sim', '0 10 * * *', async () => {
+    try {
+      logger.info('Starting inactive SIM alert job');
+
+      // Find SIMs inactive for 7+ days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const inactiveSims = await Sim.find({
+        status: 'active',
+        lastActiveDate: { $lt: sevenDaysAgo }
+      }).populate('companyId');
+
+      for (const sim of inactiveSims) {
+        await NotificationService.sendInactiveAlert(sim);
+      }
+
+      logger.info(`Sent ${inactiveSims.length} inactive SIM alerts`);
+    } catch (error) {
+      logger.error('Inactive SIM alert job failed:', error);
+    }
+  });
+};
+
+module.exports = { scheduleInactiveSimAlerts };
+```
+
+### 3. Subscription Expiry Job
+```javascript
+// jobs/subscriptionExpiry.job.js
+const CronService = require('../services/cron.service');
+const Company = require('../models/company/company.model');
+const NotificationService = require('../services/notification/notification.service');
+const logger = require('../utils/logger');
+
+const scheduleSubscriptionExpiryCheck = () => {
+  // Run daily at 8 AM
+  CronService.schedule('subscription-expiry', '0 8 * * *', async () => {
+    try {
+      logger.info('Starting subscription expiry check job');
+
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Find companies with subscription expiring in 7, 3, 1 days
+      const expiringSoon = await Company.find({
+        subscriptionEndDate: {
+          $lte: tomorrow,
+          $gt: new Date()
+        },
+        expiryNotified: false
+      });
+
+      for (const company of expiringSoon) {
+        await NotificationService.sendSubscriptionExpiryNotice(company);
+        company.expiryNotified = true;
+        await company.save();
+      }
+
+      // Deactivate expired subscriptions
+      await Company.updateMany(
+        { subscriptionEndDate: { $lt: new Date() }, isActive: true },
+        { isActive: false }
+      );
+
+      logger.info(`Processed ${expiringSoon.length} expiring subscriptions`);
+    } catch (error) {
+      logger.error('Subscription expiry job failed:', error);
+    }
+  });
+};
+
+module.exports = { scheduleSubscriptionExpiryCheck };
+```
+
+### 4. Data Cleanup Job
+```javascript
+// jobs/dataCleanup.job.js
+const CronService = require('../services/cron.service');
+const Notification = require('../models/notification/notification.model');
+const logger = require('../utils/logger');
+
+const scheduleDataCleanup = () => {
+  // Run weekly on Sunday at 2 AM
+  CronService.schedule('data-cleanup', '0 2 * * 0', async () => {
+    try {
+      logger.info('Starting data cleanup job');
+
+      // Delete notifications older than 90 days
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const result = await Notification.deleteMany({
+        createdAt: { $lt: ninetyDaysAgo },
+        isRead: true
+      });
+
+      logger.info(`Cleaned up ${result.deletedCount} old notifications`);
+    } catch (error) {
+      logger.error('Data cleanup job failed:', error);
+    }
+  });
+};
+
+module.exports = { scheduleDataCleanup };
+```
+
+### 5. Report Generation Job
+```javascript
+// jobs/reportGeneration.job.js
+const CronService = require('../services/cron.service');
+const ReportService = require('../services/report/report.service');
+const Company = require('../models/company/company.model');
+const logger = require('../utils/logger');
+
+const scheduleMonthlyReports = () => {
+  // Run on 1st of every month at 6 AM
+  CronService.schedule('monthly-report', '0 6 1 * *', async () => {
+    try {
+      logger.info('Starting monthly report generation job');
+
+      const activeCompanies = await Company.find({ isActive: true });
+
+      for (const company of activeCompanies) {
+        await ReportService.generateMonthlyReport(company._id);
+      }
+
+      logger.info(`Generated reports for ${activeCompanies.length} companies`);
+    } catch (error) {
+      logger.error('Monthly report job failed:', error);
+    }
+  });
+};
+
+module.exports = { scheduleMonthlyReports };
+```
+
+## INITIALIZE ALL JOBS
+```javascript
+// jobs/index.js
+const { scheduleRechargeReminders } = require('./rechargeReminder.job');
+const { scheduleInactiveSimAlerts } = require('./inactiveSim.job');
+const { scheduleSubscriptionExpiryCheck } = require('./subscriptionExpiry.job');
+const { scheduleDataCleanup } = require('./dataCleanup.job');
+const { scheduleMonthlyReports } = require('./reportGeneration.job');
+const logger = require('../utils/logger');
+
+const initJobs = () => {
+  logger.info('Initializing cron jobs...');
+
+  scheduleRechargeReminders();
+  scheduleInactiveSimAlerts();
+  scheduleSubscriptionExpiryCheck();
+  scheduleDataCleanup();
+  scheduleMonthlyReports();
+
+  logger.info('All cron jobs initialized');
+};
+
+module.exports = { initJobs };
+```
+
+## USAGE IN APP
+```javascript
+// server.js
+const express = require('express');
+const { initJobs } = require('./jobs');
+
+const app = express();
+
+// ... middleware and routes setup ...
+
+// Initialize cron jobs after database connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+
+    // Initialize cron jobs
+    initJobs();
+
+    app.listen(process.env.PORT, () => {
+      console.log(`Server running on port ${process.env.PORT}`);
+    });
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
+```

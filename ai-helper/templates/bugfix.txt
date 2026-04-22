@@ -1,0 +1,221 @@
+# BUG FIX TEMPLATE
+
+## BUG REPORT FORMAT
+```markdown
+## Bug Description
+[Clear description of the bug]
+
+## Steps to Reproduce
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+## Expected Behavior
+[What should happen]
+
+## Actual Behavior
+[What actually happens]
+
+## Environment
+- Node Version:
+- MongoDB Version:
+- OS:
+
+## Error Logs
+```
+[Error stack trace]
+```
+
+## Priority
+- [ ] Critical (System down)
+- [ ] High (Feature broken)
+- [ ] Medium (Works but needs fix)
+- [ ] Low (Minor issue)
+```
+
+## FIX APPROACH
+
+### 1. Identify Root Cause
+```javascript
+// Common bug patterns:
+
+// ❌ Missing await
+async function broken() {
+  const result = someAsyncFunction(); // Missing await
+  return result.data; // Will be undefined
+}
+
+// ✅ Fixed
+async function fixed() {
+  const result = await someAsyncFunction();
+  return result.data;
+}
+```
+
+### 2. Data Type Issues
+```javascript
+// ❌ Type mismatch
+const user = await User.findById(userId);
+if (user.status === 'active') { } // status might be undefined
+
+// ✅ Fixed with null check
+const user = await User.findById(userId);
+if (user && user.status === 'active') { }
+```
+
+### 3. Async/Await Error Handling
+```javascript
+// ❌ Unhandled promise rejection
+async function broken() {
+  const data = await fetchData();
+  return data;
+}
+
+// ✅ Fixed with try-catch
+async function fixed() {
+  try {
+    const data = await fetchData();
+    return data;
+  } catch (error) {
+    logger.error('Fetch failed:', error);
+    throw new AppError('Failed to fetch data', 500);
+  }
+}
+```
+
+### 4. MongoDB Query Issues
+```javascript
+// ❌ N+1 query problem
+const sims = await Sim.find({ companyId });
+for (let sim of sims) {
+  sim.recharges = await Recharge.find({ simId: sim._id });
+}
+
+// ✅ Fixed with aggregation
+const sims = await Sim.aggregate([
+  { $match: { companyId } },
+  {
+    $lookup: {
+      from: 'recharges',
+      localField: '_id',
+      foreignField: 'simId',
+      as: 'recharges'
+    }
+  }
+]);
+```
+
+### 5. Memory Leaks
+```javascript
+// ❌ Unclosed connections
+async function broken() {
+  const connection = await createConnection();
+  const data = await connection.query();
+  return data; // Connection not closed
+}
+
+// ✅ Fixed with proper cleanup
+async function fixed() {
+  const connection = await createConnection();
+  try {
+    const data = await connection.query();
+    return data;
+  } finally {
+    await connection.close();
+  }
+}
+```
+
+### 6. Race Conditions
+```javascript
+// ❌ Concurrent modification
+async function broken(simId, amount) {
+  const sim = await Sim.findById(simId);
+  sim.balance += amount;
+  await sim.save(); // May overwrite concurrent updates
+}
+
+// ✅ Fixed with atomic update
+async function fixed(simId, amount) {
+  await Sim.findByIdAndUpdate(
+    simId,
+    { $inc: { balance: amount } },
+    { new: true }
+  );
+}
+```
+
+### 7. Input Validation
+```javascript
+// ❌ No validation
+async function broken(data) {
+  const user = new User(data);
+  await user.save();
+}
+
+// ✅ Fixed with validation
+const Joi = require('joi');
+
+const schema = Joi.object({
+  email: Joi.string().email().required(),
+  name: Joi.string().min(2).max(50).required(),
+  phone: Joi.string().pattern(/^[0-9]{10}$/)
+});
+
+async function fixed(data) {
+  const { error, value } = schema.validate(data);
+  if (error) throw new ValidationError(error.details);
+
+  const user = new User(value);
+  await user.save();
+}
+```
+
+### 8. Security Issues
+```javascript
+// ❌ SQL/NoSQL Injection vulnerable
+async function broken(email) {
+  return await User.find({ email });
+}
+
+// ✅ Fixed with sanitization
+const sanitize = (input) => {
+  if (typeof input !== 'string') return input;
+  return input.replace(/[^\w\s@.-]/g, '');
+};
+
+async function fixed(email) {
+  const sanitizedEmail = sanitize(email);
+  return await User.find({ email: sanitizedEmail });
+}
+```
+
+## TESTING FIX
+```javascript
+describe('Bug Fix Tests', () => {
+  it('should handle edge case', async () => {
+    // Arrange
+    const input = { /* test data */ };
+
+    // Act
+    const result = await fixedFunction(input);
+
+    // Assert
+    expect(result).toBeDefined();
+    expect(result.status).toBe('success');
+  });
+
+  it('should throw error for invalid input', async () => {
+    await expect(brokenFunction(invalidInput))
+      .rejects.toThrow(ValidationError);
+  });
+});
+```
+
+## DEPLOYMENT CHECKLIST
+- [ ] Code reviewed
+- [ ] Tests passing
+- [ ] No regression
+- [ ] Documentation updated
+- [ ] Migration tested
+- [ ] Rollback plan ready

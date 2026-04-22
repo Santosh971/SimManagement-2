@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls:*)",
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 60 tail -f \"C:\\\\Users\\\\SANTOSH\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-SANTOSH-OneDrive-Desktop-sim-management-3\\\\7f9f4d39-b2af-49ee-b0ce-f4a9fd5779e7\\\\tasks\\\\a2b9285a07a2526c1.output\")",
+      "WebSearch",
+      "Bash(npm start:*)",
+      "Bash(curl -s http://localhost:5000/api/status/health)",
+      "Bash(curl -s http://localhost:5000/)",
+      "Bash(curl:*)",
+      "Bash(dir \"C:\\\\Users\\\\SANTOSH\\\\OneDrive\\\\Desktop\\\\Sim Management\\\\sim-management-5\\\\test_template.xlsx\")",
+      "Bash(python -m json.tool)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5000)",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)"
+    ]
+  }
+}

@@ -1,0 +1,433 @@
+# SIM MANAGEMENT SAAS - PROJECT CONTEXT
+
+## PROJECT OVERVIEW
+```
+Project: SIM Management SaaS
+Type: Multi-tenant SaaS
+Version: 1.0.0
+Status: Development
+```
+
+## SAAS WORKFLOW
+1. Admin creates client account
+2. Client logs into web dashboard
+3. Client adds SIM cards and recharge details
+4. System stores data securely in cloud database
+5. Mobile app (if enabled) syncs call logs
+6. Dashboard displays reports, alerts, and analytics
+7. Subscription plan controls features and limits
+
+## TECH STACK
+
+### Backend
+- Runtime: Node.js 18+
+- Framework: Express.js
+- Database: MongoDB
+- Authentication: JWT
+- Validation: Joi / Express Validator
+- File Processing: Multer, XLSX
+
+### Frontend
+- Framework: React 18
+- Styling: Tailwind CSS
+- State: Context API / Redux
+- Routing: React Router v6
+- HTTP: Axios
+- Charts: Chart.js / Recharts
+
+### Infrastructure
+- Deployment: Docker + Kubernetes ready
+- CI/CD: GitHub Actions
+- Monitoring: Winston + Morgan
+
+## MODULES
+
+### 1. Authentication Module
+- Super Admin login
+- Admin login
+- User login
+- Password reset
+- Email verification
+- Session management
+- Role-based access control
+
+### 2. Company Management Module
+- Company CRUD
+- Company settings
+- Company admins
+- Subscription assignment
+- Usage analytics
+
+### 3. Subscription System Module
+- Plan definitions
+- Feature limits
+- Billing cycle
+- Plan upgrade/downgrade
+- Trial management
+
+### 4. SIM Management Module
+- Manual SIM entry
+- Excel bulk import
+- SIM assignment to users
+- Status tracking (Active/Inactive)
+- SIM details management
+- SIM history
+
+### 5. Recharge & Billing Module
+- Manual recharge entry
+- API-ready structure
+- Recharge history
+- Next recharge calculation
+- Reminder system
+- Billing history upload
+- Expense tracking
+
+### 6. Call Logs Tracking Module
+- Incoming/Outgoing/Missed calls
+- Call duration tracking
+- Mobile app sync API
+- Call analytics
+- Number masking
+
+### 7. WhatsApp/Telegram Status Module
+- Manual status toggle
+- Mobile-based detection (future)
+- Last active tracking
+- Status history
+
+### 8. Notifications & Alerts Module
+- Recharge due alerts
+- Inactive SIM alerts
+- Email notifications
+- SMS notifications (Twilio ready)
+- In-app notifications
+- Alert preferences
+
+### 9. Dashboard & Reports Module
+- SIM usage dashboard
+- Monthly expense report
+- Call analytics
+- Export reports (CSV/Excel)
+- Real-time metrics
+- Company overview
+
+### 10. Mobile Integration Module
+- Call log sync API
+- Background sync
+- Device binding
+- Push notifications
+- Offline support
+
+## DATABASE SCHEMA
+
+### Users Collection
+```javascript
+{
+  _id: ObjectId,
+  email: String (unique, indexed),
+  password: String (hashed),
+  name: String,
+  role: String (super_admin|admin|user),
+  companyId: ObjectId (ref: companies, null for super_admin),
+  phone: String,
+  isActive: Boolean,
+  lastLogin: Date,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Companies Collection
+```javascript
+{
+  _id: ObjectId,
+  name: String,
+  email: String (unique, indexed),
+  phone: String,
+  address: String,
+  subscriptionId: ObjectId (ref: subscriptions),
+  subscriptionStartDate: Date,
+  subscriptionEndDate: Date,
+  isActive: Boolean,
+  settings: Object,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### SIMs Collection
+```javascript
+{
+  _id: ObjectId,
+  companyId: ObjectId (ref: companies, indexed),
+  simNumber: String (unique, indexed),
+  operator: String,
+  mobileNumber: String,
+  assignedTo: ObjectId (ref: users),
+  status: String (active|inactive),
+  activationDate: Date,
+  notes: String,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### Recharges Collection
+```javascript
+{
+  _id: ObjectId,
+  companyId: ObjectId (ref: companies, indexed),
+  simId: ObjectId (ref: sims),
+  amount: Number,
+  rechargeDate: Date,
+  nextRechargeDate: Date,
+  plan: String,
+  validity: Number,
+  status: String (pending|completed|failed),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+### CallLogs Collection
+```javascript
+{
+  _id: ObjectId,
+  companyId: ObjectId (ref: companies, indexed),
+  simId: ObjectId (ref: sims),
+  phoneNumber: String,
+  callType: String (incoming|outgoing|missed),
+  duration: Number,
+  timestamp: Date,
+  syncedFrom: String (web|mobile),
+  createdAt: Date
+}
+```
+
+### Notifications Collection
+```javascript
+{
+  _id: ObjectId,
+  companyId: ObjectId (ref: companies, indexed),
+  userId: ObjectId (ref: users),
+  type: String (recharge_due|inactive_sim|system),
+  title: String,
+  message: String,
+  isRead: Boolean,
+  sentVia: [String] (email|sms|in_app),
+  createdAt: Date
+}
+```
+
+### Subscriptions Collection
+```javascript
+{
+  _id: ObjectId,
+  name: String,
+  description: String,
+  price: Number,
+  billingCycle: String (monthly|yearly),
+  features: Object,
+  limits: {
+    maxSims: Number,
+    maxUsers: Number,
+    maxRecharges: Number,
+    callLogSync: Boolean,
+    whatsappStatus: Boolean,
+    reports: Boolean
+  },
+  isActive: Boolean,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+## BUSINESS RULES
+
+### Role Hierarchy
+1. Super Admin
+   - Platform owner
+   - Creates companies
+   - Creates Admins
+   - Assigns subscription plans
+   - Views all data
+   - System configuration
+
+2. Admin (Company Level)
+   - Manages company SIMs
+   - Manages company recharges
+   - Manages company users
+   - Views company reports
+   - Configures company settings
+
+3. User
+   - Views assigned SIMs
+   - Updates SIM status
+   - Syncs call logs (mobile)
+
+### Data Isolation
+- All company data filtered by companyId
+- Super Admin bypasses company filter
+- Indexed queries for performance
+
+### Subscription Limits
+- Max SIMs per plan
+- Max users per plan
+- Feature toggles per plan
+- Grace period for expired plans
+
+### Reminder System
+- Recharge reminders: 3 days before expiry
+- Inactive SIM alerts: 7 days inactive
+- Daily cron job execution
+- Notification history tracking
+
+## API STRUCTURE
+
+### Authentication Routes
+```
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/refresh-token
+POST   /api/auth/forgot-password
+POST   /api/auth/reset-password
+POST   /api/auth/verify-email
+```
+
+### Company Routes (Super Admin)
+```
+GET    /api/companies
+POST   /api/companies
+GET    /api/companies/:id
+PUT    /api/companies/:id
+DELETE /api/companies/:id
+GET    /api/companies/:id/stats
+```
+
+### SIM Routes
+```
+GET    /api/sims
+POST   /api/sims
+POST   /api/sims/import
+GET    /api/sims/:id
+PUT    /api/sims/:id
+DELETE /api/sims/:id
+PUT    /api/sims/:id/status
+GET    /api/sims/export
+```
+
+### Recharge Routes
+```
+GET    /api/recharges
+POST   /api/recharges
+GET    /api/recharges/:id
+PUT    /api/recharges/:id
+DELETE /api/recharges/:id
+GET    /api/recharges/upcoming
+GET    /api/recharges/history/:simId
+```
+
+### Call Log Routes
+```
+GET    /api/call-logs
+POST   /api/call-logs/sync
+GET    /api/call-logs/analytics
+GET    /api/call-logs/export
+```
+
+### Notification Routes
+```
+GET    /api/notifications
+PUT    /api/notifications/:id/read
+PUT    /api/notifications/read-all
+GET    /api/notifications/preferences
+PUT    /api/notifications/preferences
+```
+
+### Dashboard Routes
+```
+GET    /api/dashboard/overview
+GET    /api/dashboard/sim-stats
+GET    /api/dashboard/recharge-stats
+GET    /api/dashboard/call-stats
+GET    /api/dashboard/reports/monthly
+GET    /api/dashboard/reports/export
+```
+
+### Subscription Routes
+```
+GET    /api/subscriptions
+POST   /api/subscriptions (Super Admin)
+GET    /api/subscriptions/:id
+PUT    /api/subscriptions/:id
+DELETE /api/subscriptions/:id
+```
+
+### WhatsApp/Telegram Routes
+```
+GET    /api/status
+PUT    /api/status/:simId
+GET    /api/status/history/:simId
+```
+
+## PROJECT STATUS
+
+### Completed
+- None
+
+### In Progress
+- Project setup
+- AI Helper system
+
+### Pending
+- All modules (backend)
+- All modules (frontend)
+- Testing
+- Documentation
+
+### Bugs
+- None logged
+
+## DEVELOPMENT PHASES
+
+### Phase 1: Core Setup
+1. Project structure
+2. Database connection
+3. Authentication module
+4. Role middleware
+
+### Phase 2: Management Modules
+5. Company management
+6. Subscription system
+7. SIM management
+8. Recharge system
+
+### Phase 3: Integration Modules
+9. Call logs
+10. WhatsApp/Telegram status
+11. Notifications
+12. Reminder cron
+
+### Phase 4: Dashboard & Reports
+13. Dashboard APIs
+14. Reports generation
+15. Export functionality
+
+### Phase 5: Frontend
+16. Auth pages
+17. Dashboard layout
+18. All module pages
+19. Integration
+
+### Phase 6: Testing & Deployment
+20. Unit tests
+21. Integration tests
+22. API documentation
+23. Deployment scripts
+
+## CONSTRAINTS
+- Manual-first approach, automation-ready
+- No mobile app in Phase 1 (API ready)
+- Email notifications only (SMS future)
+- MVP focus, premium UI

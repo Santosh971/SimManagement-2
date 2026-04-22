@@ -1,0 +1,220 @@
+# DATABASE SCHEMA TEMPLATE
+
+## MONGOOSE MODEL TEMPLATE
+```javascript
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
+
+const ModuleSchema = new Schema({
+  // Company isolation (required for multi-tenant)
+  companyId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true,
+    index: true
+  },
+
+  // Core fields
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    maxlength: [100, 'Name cannot exceed 100 characters']
+  },
+
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email']
+  },
+
+  phone: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^\+?[\d\s-]{10,}$/.test(v);
+      },
+      message: 'Invalid phone number'
+    }
+  },
+
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'pending'],
+    default: 'active'
+  },
+
+  // Reference fields
+  referenceId: {
+    type: Schema.Types.ObjectId,
+    ref: 'RelatedModel',
+    default: null
+  },
+
+  // Embedded objects
+  metadata: {
+    key1: { type: String },
+    key2: { type: Number }
+  },
+
+  // Arrays
+  tags: [{
+    type: String,
+    trim: true
+  }],
+
+  // Boolean flags
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+
+  // Timestamps
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Indexes for performance
+ModuleSchema.index({ companyId: 1, name: 1 });
+ModuleSchema.index({ companyId: 1, status: 1 });
+ModuleSchema.index({ createdAt: -1 });
+
+// Compound indexes for common queries
+ModuleSchema.index({ companyId: 1, email: 1 }, { unique: true });
+
+// Text index for search
+ModuleSchema.index({ name: 'text', email: 'text' });
+
+// Pre-save hook
+ModuleSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+// Static methods
+ModuleSchema.statics.findByCompany = function(companyId, options = {}) {
+  const query = { companyId, isActive: true };
+  if (options.status) query.status = options.status;
+  return this.find(query);
+};
+
+// Instance methods
+ModuleSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.__v;
+  return obj;
+};
+
+// Virtuals
+ModuleSchema.virtual('displayName').get(function() {
+  return `${this.name} (${this.email})`;
+});
+
+module.exports = mongoose.model('Module', ModuleSchema);
+```
+
+## INDEXING STRATEGY
+
+### Single Field Indexes
+```javascript
+// For equality queries
+schema.index({ email: 1 });
+schema.index({ phone: 1 });
+schema.index({ status: 1 });
+
+// For sorting
+schema.index({ createdAt: -1 });
+schema.index({ updatedAt: -1 });
+```
+
+### Compound Indexes
+```javascript
+// For filtered queries with sorting
+schema.index({ companyId: 1, status: 1, createdAt: -1 });
+
+// For unique constraints within company
+schema.index({ companyId: 1, email: 1 }, { unique: true });
+
+// For range queries
+schema.index({ companyId: 1, createdAt: 1 });
+```
+
+### Text Indexes
+```javascript
+// For full-text search
+schema.index({ name: 'text', description: 'text', email: 'text' });
+```
+
+### TTL Indexes
+```javascript
+// For auto-expiration (e.g., tokens)
+schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+```
+
+## RELATIONSHIPS
+
+### One-to-Many
+```javascript
+// Parent model
+const Parent = new Schema({
+  name: String
+  // Children referenced in child model
+});
+
+// Child model
+const Child = new Schema({
+  parentId: { type: Schema.Types.ObjectId, ref: 'Parent' },
+  name: String
+});
+```
+
+### Many-to-Many
+```javascript
+const Schema1 = new Schema({
+  relatedIds: [{ type: Schema.Types.ObjectId, ref: 'Schema2' }]
+});
+```
+
+### Embedded Documents
+```javascript
+const AddressSchema = new Schema({
+  street: String,
+  city: String,
+  zipCode: String
+});
+
+const UserSchema = new Schema({
+  name: String,
+  addresses: [AddressSchema]  // Embedded
+});
+```
+
+## MIGRATION PATTERN
+```javascript
+// migrations/001_initial.js
+module.exports = {
+  up: async (db) => {
+    await db.createCollection('modules');
+    await db.collection('modules').createIndex({ email: 1 }, { unique: true });
+  },
+
+  down: async (db) => {
+    await db.collection('modules').drop();
+  }
+};
+```

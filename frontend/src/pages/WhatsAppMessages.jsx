@@ -1,0 +1,328 @@
+import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { FiMessageCircle, FiSend, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi'
+import toast from 'react-hot-toast'
+import SendMessageModal from '../components/whatsapp/SendMessageModal'
+import {
+  PageContainer,
+  PageHeader,
+  Card,
+  CardBody,
+  Badge,
+  Button,
+  Table,
+  Spinner,
+  Grid,
+} from '../components/ui'
+
+export default function WhatsAppMessages() {
+  const { user, api } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [messages, setMessages] = useState([])
+  const [stats, setStats] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [filters, setFilters] = useState({
+    status: '',
+    phoneNumber: '',
+    page: 1,
+    limit: 20,
+  })
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20 })
+
+  useEffect(() => {
+    fetchData()
+  }, [filters.page])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: filters.page,
+        limit: filters.limit,
+        ...(filters.status && { status: filters.status }),
+        ...(filters.phoneNumber && { phoneNumber: filters.phoneNumber }),
+      })
+
+      const [messagesRes, statsRes] = await Promise.all([
+        api.get(`/whatsapp/messages?${params}`),
+        api.get('/whatsapp/stats'),
+      ])
+
+      setMessages(messagesRes.data.data || [])
+      setPagination({
+        total: messagesRes.data.pagination?.total || 0,
+        page: messagesRes.data.pagination?.page || 1,
+        limit: messagesRes.data.pagination?.limit || 20,
+      })
+      setStats(statsRes.data.data)
+    } catch (error) {
+      console.error('Failed to fetch messages:', error)
+      toast.error('Failed to load messages')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      sent: { bg: '#dbeafe', color: '#2563eb', icon: FiSend },
+      delivered: { bg: '#fef3c7', color: '#d97706', icon: FiCheck },
+      replied: { bg: '#dcfce7', color: '#16a34a', icon: FiCheck },
+      failed: { bg: '#fef2f2', color: '#dc2626', icon: FiX },
+      inactive: { bg: '#f3f4f6', color: '#4b5563', icon: FiAlertCircle },
+    }
+    return statusConfig[status] || statusConfig.sent
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const columns = [
+    {
+      key: 'phoneNumber',
+      header: 'Phone Number',
+      render: (row) => (
+        <span style={{ fontWeight: '500' }}>{row.phoneNumber}</span>
+      ),
+    },
+    {
+      key: 'recipient',
+      header: 'Recipient',
+      render: (row) => (
+        <div style={{ fontSize: '13px' }}>
+          {row.simId && typeof row.simId === 'object' && (
+            <div>
+              <div style={{ fontWeight: '500' }}>{row.simId.mobileNumber}</div>
+              <div style={{ color: '#6b7280' }}>SIM • {row.simId.operator}</div>
+            </div>
+          )}
+          {row.userId && typeof row.userId === 'object' && (
+            <div>
+              <div style={{ fontWeight: '500' }}>{row.userId.name}</div>
+              <div style={{ color: '#6b7280' }}>User • {row.userId.email}</div>
+            </div>
+          )}
+          {!row.simId && !row.userId && <span style={{ color: '#6b7280' }}>-</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'message',
+      header: 'Message',
+      render: (row) => (
+        <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.message}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => {
+        const config = getStatusBadge(row.status)
+        const Icon = config.icon
+        return (
+          <Badge variant="default" style={{ backgroundColor: config.bg, color: config.color }}>
+            <Icon style={{ width: '14px', height: '14px', marginRight: '4px' }} />
+            {row.status}
+          </Badge>
+        )
+      },
+    },
+    {
+      key: 'sentAt',
+      header: 'Sent At',
+      render: (row) => formatDate(row.sentAt),
+    },
+    {
+      key: 'repliedAt',
+      header: 'Reply At',
+      render: (row) => (row.repliedAt ? formatDate(row.repliedAt) : <span style={{ color: '#9ca3af' }}>-</span>),
+    },
+    {
+      key: 'isActive',
+      header: 'Active',
+      render: (row) => {
+        if (row.isActive === true) {
+          return <Badge variant="success">Yes</Badge>
+        } else if (row.isActive === false) {
+          return <Badge variant="danger">No</Badge>
+        }
+        return <Badge variant="warning">Pending</Badge>
+      },
+    },
+  ]
+
+  if (loading && messages.length === 0) {
+    return (
+      <PageContainer>
+        <Spinner size="lg" />
+      </PageContainer>
+    )
+  }
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="WhatsApp Messages"
+        description="Send and track WhatsApp messages to SIMs and users"
+        action={
+          <Button icon={FiSend} onClick={() => setShowModal(true)}>
+            Send Message
+          </Button>
+        }
+      />
+
+      {/* Stats Cards */}
+      {stats && (
+        <Grid cols={5} gap={16} style={{ marginBottom: '24px' }}>
+          <Card>
+            <CardBody style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#2563eb' }}>
+                {stats.total || 0}
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Total</div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#16a34a' }}>
+                {stats.replied || 0}
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Replied</div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#d97706' }}>
+                {stats.sent || 0}
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Sent</div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#6b7280' }}>
+                {stats.inactive || 0}
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Inactive</div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: '#dc2626' }}>
+                {stats.failed || 0}
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Failed</div>
+            </CardBody>
+          </Card>
+        </Grid>
+      )}
+
+      {/* Filters */}
+      <Card style={{ marginBottom: '24px' }}>
+        <CardBody>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                Status
+              </label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
+                style={{
+                  padding: '10px 14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  minWidth: '140px',
+                  outline: 'none',
+                }}
+              >
+                <option value="">All Status</option>
+                <option value="sent">Sent</option>
+                <option value="delivered">Delivered</option>
+                <option value="replied">Replied</option>
+                <option value="inactive">Inactive</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                Phone Number
+              </label>
+              <input
+                type="text"
+                placeholder="Search by phone..."
+                value={filters.phoneNumber}
+                onChange={(e) => setFilters({ ...filters, phoneNumber: e.target.value })}
+                style={{
+                  padding: '10px 14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  minWidth: '180px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+            <Button onClick={() => fetchData()} icon={FiRefreshCw}>
+              Refresh
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Messages Table */}
+      <Card>
+        <CardBody style={{ padding: 0 }}>
+          <Table
+            columns={columns}
+            data={messages}
+            emptyMessage="No messages found"
+          />
+        </CardBody>
+      </Card>
+
+      {/* Pagination */}
+      {pagination.total > pagination.limit && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', gap: '8px' }}>
+          <Button
+            variant="secondary"
+            disabled={pagination.page === 1}
+            onClick={() => setFilters({ ...filters, page: pagination.page - 1 })}
+          >
+            Previous
+          </Button>
+          <span style={{ padding: '10px 16px', color: '#6b7280' }}>
+            Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}
+          </span>
+          <Button
+            variant="secondary"
+            disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
+            onClick={() => setFilters({ ...filters, page: pagination.page + 1 })}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Send Message Modal */}
+      <SendMessageModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSuccess={() => {
+          fetchData()
+        }}
+      />
+    </PageContainer>
+  )
+}

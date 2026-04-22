@@ -1,0 +1,222 @@
+Call-logs Api response
+
+I've analyzed the entire codebase and saved the API documentation to memory. Here's a comprehensive guide for testing the Call Logs and OTP APIs in Postman:
+
+  ---
+  📋 API Summary
+
+  Base URL
+
+  http://localhost:5000/api
+
+  ---
+  🔐 OTP Authentication APIs (Public - No Auth Required)
+
+  1. Send OTP
+
+  POST /auth/send-otp
+
+  Request Body:
+  {
+    "mobileNumber": "9876543210"
+  }
+
+  Success Response (200):
+  {
+    "success": true,
+    "message": "OTP sent successfully",
+    "otp": "123456",    // Only in development mode
+    "expiresAt": "2026-04-10T10:35:00.000Z"
+  }
+
+  ---
+  2. Verify OTP & Login
+
+  POST /auth/verify-otp
+
+  Request Body:
+  {
+    "mobileNumber": "9876543210",
+    "otp": "123456"
+  }
+
+  Success Response (200):
+  {
+    "success": true,
+    "message": "Login successful",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "68012b3f1234567890abcdef",
+      "name": "User 3210",
+      "mobileNumber": "9876543210",
+      "email": "9876543210@mobile.user",
+      "role": "user",
+      "companyId": null,
+      "mobileVerified": true
+    }
+  }
+
+  ---
+  3. Resend OTP
+
+  POST /auth/resend-otp
+
+  Request Body:
+  {
+    "mobileNumber": "9876543210"
+  }
+
+  ---
+  📞 Call Logs APIs
+
+  1. Device Sync (Public - No JWT Required)
+
+  POST /call-logs/device-sync
+
+  Request Body:
+  {
+    "mobileNumber": "9876543210",
+    "callLogs": [
+      {
+        "phoneNumber": "9123456789",
+        "callType": "incoming",
+        "duration": 120,
+        "timestamp": "2026-04-10T08:30:00.000Z",
+        "contactName": "John Doe"
+      },
+      {
+        "phoneNumber": "9876543211",
+        "callType": "outgoing",
+        "duration": 300,
+        "timestamp": "2026-04-10T09:00:00.000Z"
+      },
+      {
+        "phoneNumber": "9876543212",
+        "callType": "missed",
+        "duration": 0,
+        "timestamp": "2026-04-10T10:15:00.000Z"
+      }
+    ]
+  }
+
+  Success Response (200):
+  {
+    "success": true,
+    "message": "Call logs synced successfully",
+    "data": { "synced": 3 }
+  }
+
+
+  ▎ ⚠️ Note: The SIM must be registered first. Returns 404 if SIM not found.
+
+  ---
+  2. Sync Call Logs (Authenticated)
+
+  POST /call-logs/sync
+  Authorization: Bearer <jwt_token>
+
+  Request Body:
+  {
+    "simId": "68012b3f1234567890abcdef",
+    "callLogs": [
+      {
+        "phoneNumber": "9123456789",
+        "callType": "incoming",
+        "duration": 120,
+        "timestamp": "2026-04-10T08:30:00.000Z",
+        "contactName": "John Doe"
+      }
+    ]
+  }
+
+  ---
+  3. Get All Call Logs (Authenticated)
+
+  GET /call-logs?page=1&limit=20&callType=incoming
+  Authorization: Bearer <jwt_token>
+
+  Query Parameters:
+
+  ┌─────────────┬─────────────────────────────────┐
+  │  Parameter  │           Description           │
+  ├─────────────┼─────────────────────────────────┤
+  │ page        │ Page number (default: 1)        │
+  ├─────────────┼─────────────────────────────────┤
+  │ limit       │ Items per page (max: 100)       │
+  ├─────────────┼─────────────────────────────────┤
+  │ simId       │ Filter by SIM ID                │
+  ├─────────────┼─────────────────────────────────┤
+  │ callType    │ incoming / outgoing / missed    │
+  ├─────────────┼─────────────────────────────────┤
+  │ phoneNumber │ Partial phone number search     │
+  ├─────────────┼─────────────────────────────────┤
+  │ startDate   │ ISO8601 date                    │
+  ├─────────────┼─────────────────────────────────┤
+  │ endDate     │ ISO8601 date                    │
+  ├─────────────┼─────────────────────────────────┤
+  │ sortBy      │ timestamp / duration / callType │
+  ├─────────────┼─────────────────────────────────┤
+  │ sortOrder   │ asc / desc                      │
+  └─────────────┴─────────────────────────────────┘
+
+  ---
+  4. Get Call Stats (Authenticated)
+
+  GET /call-logs/stats
+  Authorization: Bearer <jwt_token>
+
+  Response includes:
+  - byType - Stats grouped by call type
+  - totalCalls - Total call count
+  - uniqueNumbers - Unique phone numbers
+  - dailyCounts - Daily call counts (30 days)
+  - topContacts - Top 10 contacts by call count
+
+  ---
+  5. Get Call Log by ID (Authenticated)
+
+  GET /call-logs/:id
+  Authorization: Bearer <jwt_token>
+
+  ---
+  6. Export Call Logs (Authenticated)
+
+  GET /call-logs/export
+  Authorization: Bearer <jwt_token>
+  Returns an Excel file (.xlsx)
+
+  ---
+  7. Flag Call Log (Authenticated)
+
+  PATCH /call-logs/:id/flag
+  Authorization: Bearer <jwt_token>
+
+  Request Body:
+  {
+    "flagged": true,
+    "reason": "Suspicious call pattern"
+  }
+
+  ---
+  🧪  Postman Testing Flow
+
+  OTP Login Flow:
+  1. POST /auth/send-otp → Get OTP (in dev mode, OTP is returned in response)
+  2. POST /auth/verify-otp → Verify OTP, receive JWT token
+  3. Save the token from response for authenticated requests
+
+  Call Logs Flow:
+  1. Register a SIM first (via POST /sims with auth)
+  2. POST /call-logs/device-sync → Sync from mobile without auth
+  3. GET /call-logs → Retrieve with auth token
+
+  I've saved the complete API documentation to memory at api-reference.md for future reference.
+✻ Worked for 3m 20s
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> 
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ? for shortcuts
+
+

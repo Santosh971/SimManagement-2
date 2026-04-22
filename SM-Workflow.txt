@@ -1,0 +1,346 @@
+
+  ---
+  SIM Management SaaS - Complete Workflow                                                                               
+  Current Issue                                                                                                         
+  You only have a Super Admin. The system needs proper initialization and user flow.
+
+  ---
+  Step-by-Step Workflow
+
+  PHASE 1: System Initialization
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                     SYSTEM STARTUP FLOW                          │
+  └─────────────────────────────────────────────────────────────────┘
+
+  1. Start Backend Server
+     └─► cd backend && npm run dev
+     └─► Server starts on port 5000
+     └─► MongoDB connection established
+     └─► Cron jobs initialized (reminders, alerts)
+
+  2. Initialize Super Admin (ONE-TIME SETUP)
+     └─► POST /api/auth/init-super-admin
+     └─► Creates default super admin:
+         • Email: admin@simmanagement.com (or env variable)
+         • Password: SuperAdmin@123 (or env variable)
+         • Role: super_admin
+         • companyId: null (platform owner)
+
+  ---
+  PHASE 2: Super Admin Workflow
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                    SUPER ADMIN DASHBOARD                         │
+  │                   (Full Platform Control)                         │
+  └─────────────────────────────────────────────────────────────────┘
+
+  Super Admin CAN:
+  ├── Manage Subscription Plans
+  │   ├── Create Plans (Starter, Professional, Enterprise)
+  │   ├── Set pricing, limits (max SIMs, max users)
+  │   └── Enable/disable features
+  │
+  ├── Manage Companies
+  │   ├── Create Companies (with subscription)
+  │   ├── View all companies
+  │   ├── Renew/extend subscriptions
+  │   └── Deactivate companies
+  │
+  ├── Manage Company Admins
+  │   ├── Create admins for each company
+  │   ├── Reset admin passwords
+  │   └── Activate/deactivate admins
+  │
+  └── View Platform Reports
+      ├── Total companies
+      ├── Active/expired subscriptions
+      └── Revenue overview
+
+  Super Admin CANNOT:
+  ├── Manage SIM cards (company-level)
+  ├── Manage recharges (company-level)
+  └── View call logs (company-level)
+
+  ---
+  PHASE 3: Company Creation Flow (Super Admin)
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                 CREATE NEW COMPANY FLOW                           │
+  └─────────────────────────────────────────────────────────────────┘
+
+  Step 1: Create Subscription Plans (if not exists)
+     POST /api/subscriptions
+     {
+       "name": "Professional",
+       "price": 999,
+       "billingCycle": "monthly",
+       "limits": {
+         "maxSims": 100,
+         "maxUsers": 10,
+         "callLogSync": true,
+         "reports": true
+       }
+     }
+
+  Step 2: Create Company
+     POST /api/companies
+     {
+       "name": "ABC Corp",
+       "email": "abc@company.com",
+       "phone": "+91-9876543210",
+       "subscriptionId": "<subscription_id>",
+       "subscriptionDuration": 30
+     }
+     └─► Creates company with subscription
+     └─► Sets subscription end date
+
+  Step 3: Create Admin for Company
+     POST /api/companies/:companyId/admins
+     {
+       "name": "John Doe",
+       "email": "john@abc.com",
+       "password": "AdminPass@123",
+       "phone": "+91-9876543211"
+     }
+     └─► Creates admin user linked to company
+     └─► Sends welcome email (if configured)
+
+  ---
+  PHASE 4: Admin Workflow (Company Level)
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                    ADMIN DASHBOARD                               │
+  │                   (Company Management)                            │
+  └─────────────────────────────────────────────────────────────────┘
+
+  Admin CAN:
+  ├── Manage SIMs
+  │   ├── Add SIM cards manually
+  │   ├── Bulk import from Excel
+  │   ├── Assign SIMs to users
+  │   ├── Activate/deactivate SIMs
+  │   └── View SIM history
+  │
+  ├── Manage Recharges
+  │   ├── Add recharge records
+  │   ├── Set recharge reminders
+  │   ├── Track expenses
+  │   └── View recharge history
+  │
+  ├── Manage Users (Company Level)
+  │   ├── Create regular users
+  │   ├── Assign SIMs to users
+  │   └── Deactivate users
+  │
+  ├── View Call Logs
+  │   ├── Sync from mobile app
+  │   ├── View analytics
+  │   └── Export reports
+  │
+  ├── Manage Notifications
+  │   ├── View alerts
+  │   └── Configure preferences
+  │
+  └── View Dashboard
+      ├── SIM statistics
+      ├── Recharge analytics
+      ├── Expense reports
+      └── Upcoming recharge alerts
+
+  ---
+  PHASE 5: User Workflow (End User)
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                      USER DASHBOARD                              │
+  │                   (Limited Access)                                │
+  └─────────────────────────────────────────────────────────────────┘
+
+  User CAN:
+  ├── View Assigned SIMs
+  │   ├── See SIM details
+  │   └── Update SIM status
+  │
+  ├── Sync Call Logs (Mobile App)
+  │   └── Upload call history
+  │
+  ├── View Personal Notifications
+  │   └── Recharge reminders
+  │
+  └── Update Profile
+      └── Change password, preferences
+
+  User CANNOT:
+  ├── Create/manage other users
+  ├── Manage company settings
+  └── View other users' SIMs
+
+  ---
+  Role-Based Access Matrix
+
+  ┌──────────────────────┬────────────────┬───────────────┬──────────┐
+  │       Feature        │  Super Admin   │     Admin     │   User   │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Manage Subscriptions │ ✅             │ ❌            │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Create Companies     │ ✅             │ ❌            │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Create Admins        │ ✅             │ ❌            │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Manage Company SIMs  │ ❌             │ ✅            │ View Own │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Manage Recharges     │ ❌             │ ✅            │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Manage Users         │ ❌             │ ✅            │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ View Reports         │ Platform       │ Company       │ ❌       │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Dashboard            │ Platform Stats │ Company Stats │ Own Data │
+  ├──────────────────────┼────────────────┼───────────────┼──────────┤
+  │ Call Logs            │ ❌             │ ✅            │ Own Data │
+  └──────────────────────┴────────────────┴───────────────┴──────────┘
+
+  ---
+  Complete User Journey
+
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │                         COMPLETE USER JOURNEY                                │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+  START
+    │
+    ├─► [Super Admin] ────────────────────────────────────────────────────────┐
+    │       │                                                                   │
+    │       ├─► Login (POST /api/auth/login)                                   │
+    │       │     └─► Email: admin@simmanagement.com                           │
+    │       │     └─► Password: SuperAdmin@123                                 │
+    │       │                                                                   │
+    │       ├─► Create Subscription Plans                                       │
+    │       │     └─► POST /api/subscriptions                                   │
+    │       │                                                                   │
+    │       ├─► Create Company                                                  │
+    │       │     └─► POST /api/companies                                       │
+    │       │                                                                   │
+    │       └─► Create Admin for Company                                        │
+    │             └─► POST /api/companies/:companyId/admins                     │
+    │                                                                           │
+    └─► [Company Admin] ──────────────────────────────────────────────────────┐
+            │                                                                  │
+            ├─► Login (POST /api/auth/login)                                    │
+            │     └─► Uses credentials from Super Admin                         │
+            │                                                                   │
+            ├─► Add SIMs                                                        │
+            │     └─► POST /api/sims                                            │
+            │                                                                   │
+            ├─► Add Recharges                                                   │
+            │     └─► POST /api/recharges                                       │
+            │                                                                   │
+            ├─► Create Users (Optional)                                         │
+            │     └─► POST /api/auth/register (with companyId)                  │
+            │                                                                   │
+            └─► View Dashboard                                                  │
+                  └─► GET /api/dashboard/overview                               │
+                                                                               │
+            └─► [User] ────────────────────────────────────────────────────────┐
+                    │                                                           │
+                    ├─► Login                                                   │
+                    │     └─► POST /api/auth/login                               │
+                    │                                                           │
+                    ├─► View Assigned SIMs                                      │
+                    │     └─► GET /api/sims?assignedTo=me                        │
+                    │                                                           │
+                    └─► Sync Call Logs (Mobile)                                 │
+                          └─► POST /api/call-logs/sync                          │
+
+  ---
+  API Endpoints by Role
+
+  Public Endpoints (No Auth)
+
+  POST /api/auth/register          # Register new user (admin creates users)
+  POST /api/auth/login             # Login
+  POST /api/auth/forgot-password   # Request password reset
+  POST /api/auth/reset-password/:token  # Reset password
+  POST /api/auth/init-super-admin  # Initialize super admin (one-time)
+
+  Super Admin Only
+
+  POST   /api/subscriptions         # Create subscription plan
+  PUT    /api/subscriptions/:id     # Update subscription plan
+  DELETE /api/subscriptions/:id     # Delete subscription plan
+
+  POST   /api/companies             # Create company
+  GET    /api/companies             # List all companies
+  PUT    /api/companies/:id         # Update company
+  DELETE /api/companies/:id         # Deactivate company
+  POST   /api/companies/:id/renew-subscription  # Renew subscription
+
+  POST   /api/companies/:companyId/admins  # Create company admin
+  GET    /api/companies/:companyId/admins  # List company admins
+  PUT    /api/admins/:adminId              # Update admin
+  DELETE /api/admins/:adminId              # Deactivate admin
+
+  Admin & User Endpoints
+
+  GET    /api/auth/profile         # Get own profile
+  PUT    /api/auth/profile         # Update own profile
+  POST   /api/auth/change-password # Change password
+
+  GET    /api/sims                 # List SIMs (filtered by company)
+  POST   /api/sims                 # Create SIM (admin only)
+  PUT    /api/sims/:id             # Update SIM
+  DELETE /api/sims/:id             # Delete SIM
+
+  GET    /api/recharges            # List recharges
+  POST   /api/recharges            # Create recharge
+  PUT    /api/recharges/:id        # Update recharge
+
+  GET    /api/call-logs            # List call logs
+  POST   /api/call-logs/sync       # Sync call logs (mobile)
+
+  GET    /api/notifications        # List notifications
+  PUT    /api/notifications/:id/read  # Mark as read
+
+  GET    /api/dashboard/overview   # Dashboard stats
+
+  ---
+  Database Initialization Order
+
+  1. Start MongoDB
+     └─► mongod or mongodb://localhost:27017
+
+  2. Start Backend
+     └─► cd backend && npm run dev
+
+  3. Initialize Super Admin (ONE-TIME)
+     └─► POST /api/auth/init-super-admin
+
+  4. Create Subscription Plans (Super Admin)
+     └─► POST /api/subscriptions (repeat for each plan)
+
+  5. Create Companies (Super Admin)
+     └─► POST /api/companies
+
+  6. Create Admins (Super Admin)
+     └─► POST /api/companies/:companyId/admins
+
+  7. Admin Login & Management
+     └─► Admin can now manage their company's SIMs, recharges, users
+
+  ---
+  What You Need To Do Now
+
+  1. Initialize Super Admin - Call POST /api/auth/init-super-admin
+  2. Create Subscription Plans - Create Starter/Professional/Enterprise plans
+  3. Create a Test Company - Link to a subscription
+  4. Create Admin for Company - So you can test the admin workflow
+  5. Test Admin Login - Login as company admin and manage SIMs
+
+  Would you like me to help you with any of these steps or create seed data scripts?
+
+✻ Cooked for 2m 13s
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (meta+m to cycle)

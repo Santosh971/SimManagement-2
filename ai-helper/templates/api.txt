@@ -1,0 +1,215 @@
+# API CREATION TEMPLATE
+
+## STRUCTURE
+```
+/controllers/
+  /module/
+    module.controller.js
+/services/
+  /module/
+    module.service.js
+/models/
+  /module/
+    module.model.js
+/routes/
+  /module/
+    module.routes.js
+    module.validation.js
+```
+
+## CONTROLLER TEMPLATE
+```javascript
+const ModuleService = require('../../services/module/module.service');
+const { successResponse, errorResponse } = require('../../utils/response');
+
+class ModuleController {
+  async create(req, res) {
+    try {
+      const data = await ModuleService.create(req.body, req.user);
+      return successResponse(res, data, 'Created successfully');
+    } catch (error) {
+      return errorResponse(res, error.message);
+    }
+  }
+
+  async getAll(req, res) {
+    try {
+      const data = await ModuleService.getAll(req.query, req.user);
+      return successResponse(res, data);
+    } catch (error) {
+      return errorResponse(res, error.message);
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const data = await ModuleService.getById(req.params.id, req.user);
+      return successResponse(res, data);
+    } catch (error) {
+      return errorResponse(res, error.message);
+    }
+  }
+
+  async update(req, res) {
+    try {
+      const data = await ModuleService.update(req.params.id, req.body, req.user);
+      return successResponse(res, data, 'Updated successfully');
+    } catch (error) {
+      return errorResponse(res, error.message);
+    }
+  }
+
+  async delete(req, res) {
+    try {
+      await ModuleService.delete(req.params.id, req.user);
+      return successResponse(res, null, 'Deleted successfully');
+    } catch (error) {
+      return errorResponse(res, error.message);
+    }
+  }
+}
+
+module.exports = new ModuleController();
+```
+
+## SERVICE TEMPLATE
+```javascript
+const Module = require('../../models/module/module.model');
+const { AppError } = require('../../utils/errors');
+
+class ModuleService {
+  async create(data, user) {
+    // Add companyId for data isolation
+    if (user.role !== 'super_admin') {
+      data.companyId = user.companyId;
+    }
+
+    const module = new Module(data);
+    return await module.save();
+  }
+
+  async getAll(query, user) {
+    const { page = 1, limit = 10, search } = query;
+    const filter = {};
+
+    // Data isolation
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+    const data = await Module.find(filter)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await Module.countDocuments(filter);
+
+    return { data, total, page, limit };
+  }
+
+  async getById(id, user) {
+    const filter = { _id: id };
+
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    }
+
+    const module = await Module.findOne(filter);
+    if (!module) {
+      throw new AppError('Not found', 404);
+    }
+
+    return module;
+  }
+
+  async update(id, data, user) {
+    const filter = { _id: id };
+
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    }
+
+    const module = await Module.findOneAndUpdate(filter, data, { new: true });
+    if (!module) {
+      throw new AppError('Not found', 404);
+    }
+
+    return module;
+  }
+
+  async delete(id, user) {
+    const filter = { _id: id };
+
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    }
+
+    const module = await Module.findOneAndDelete(filter);
+    if (!module) {
+      throw new AppError('Not found', 404);
+    }
+
+    return true;
+  }
+}
+
+module.exports = new ModuleService();
+```
+
+## VALIDATION TEMPLATE
+```javascript
+const { body, query, param } = require('express-validator');
+
+const createValidation = [
+  body('name').notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email required'),
+  body('phone').optional().isMobilePhone(),
+];
+
+const updateValidation = [
+  param('id').isMongoId().withMessage('Invalid ID'),
+  body('name').optional().notEmpty(),
+  body('email').optional().isEmail(),
+];
+
+const queryValidation = [
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('search').optional().isString(),
+];
+
+module.exports = {
+  createValidation,
+  updateValidation,
+  queryValidation
+};
+```
+
+## ROUTES TEMPLATE
+```javascript
+const express = require('express');
+const router = express.Router();
+const ModuleController = require('../../controllers/module/module.controller');
+const { authenticate, authorize } = require('../../middleware/auth');
+const { createValidation, updateValidation, queryValidation } = require('./module.validation');
+const validate = require('../../middleware/validate');
+
+// All routes require authentication
+router.use(authenticate);
+
+// Routes
+router.post('/', createValidation, validate, ModuleController.create);
+router.get('/', queryValidation, validate, ModuleController.getAll);
+router.get('/:id', ModuleController.getById);
+router.put('/:id', updateValidation, validate, ModuleController.update);
+router.delete('/:id', authorize(['super_admin', 'admin']), ModuleController.delete);
+
+module.exports = router;
+```

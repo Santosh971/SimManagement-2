@@ -1,0 +1,356 @@
+
+● SIM Management SaaS - Testing Workflow
+
+  🚀 How to Start the Project                                                                                           
+  1. Start Backend (Port 5000)                                                                                          
+  cd backend
+  npm install
+  npm run dev
+
+  2. Start Frontend (Port 3000)
+
+  cd frontend
+  npm install
+  npm run dev
+
+  ---
+  👤 User Workflow
+
+  Step 1: Registration & Login
+
+  1. Open browser → http://localhost:3000
+  2. Register → Create new account
+    - Fill: Name, Email, Password (min 8 chars)
+    - Company info is auto-created
+  3. Login → Use your credentials
+  4. Dashboard → See overview stats
+
+  ---
+  Step 2: SIM Management
+
+  Navigate: Sidebar → SIMs
+
+  ┌──────────────────────────┬─────────────────────────────────────────────────────────────────────────────┐
+  │          Action          │                                 How to Test                                 │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Add SIM                  │ Click "Add SIM" → Fill form (SIM number, mobile, operator, circle) → Submit │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ View SIMs                │ See list with operator badges and status                                    │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Edit SIM                 │ Click edit icon → Update details                                            │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Delete SIM               │ Click trash icon → Confirm deletion                                         │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Toggle WhatsApp/Telegram │ Use toggle switches in table                                                │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Filter/Search            │ Use search bar, status dropdown, operator dropdown                          │
+  ├──────────────────────────┼─────────────────────────────────────────────────────────────────────────────┤
+  │ Export                   │ Click "Export" button for Excel download                                    │
+  └──────────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Step 3: Recharge Management
+
+  Navigate: Sidebar → Recharges
+
+  ┌────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐
+  │       Action       │                                    How to Test                                    │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Add Recharge       │ Click "Add Recharge" → Select SIM → Enter amount, validity, plan details → Submit │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ View Recharges     │ See list with SIM, amount, plan, date                                             │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Upcoming Recharges │ Yellow alert box shows recharges due in 7 days                                    │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Overdue Recharges  │ Red alert box shows overdue SIMs                                                  │
+  ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤
+  │ Filter             │ Use date range and status filters                                                 │
+  └────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Step 4: Call Logs
+
+  Navigate: Sidebar → Call Logs
+
+  ┌────────────────┬──────────────────────────────────────────┐
+  │     Action     │               How to Test                │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ View Logs      │ See incoming/outgoing/missed calls       │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Search         │ Enter phone number to search             │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Filter by Type │ Select incoming/outgoing/missed          │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Filter by SIM  │ Select specific SIM from dropdown        │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Date Filter    │ Use start/end date inputs                │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Flag Calls     │ Click "Flag" button for suspicious calls │
+  ├────────────────┼──────────────────────────────────────────┤
+  │ Export         │ Click "Export" for Excel download        │
+  └────────────────┴──────────────────────────────────────────┘
+
+  📱 Mobile API Integration:
+  POST /api/call-logs/sync
+  Headers: Authorization: Bearer <token>
+  Body: { callLogs: [...] }
+
+  ---
+  Step 5: Notifications
+
+  Navigate: Sidebar → Notifications
+
+  ┌───────────────┬─────────────────────────────────┐
+  │    Action     │           How to Test           │
+  ├───────────────┼─────────────────────────────────┤
+  │ View All      │ See all notifications           │
+  ├───────────────┼─────────────────────────────────┤
+  │ Filter        │ Click "unread" or "read" tab    │
+  ├───────────────┼─────────────────────────────────┤
+  │ Mark as Read  │ Click checkmark icon            │
+  ├───────────────┼─────────────────────────────────┤
+  │ Mark All Read │ Click "Mark All as Read" button │
+  ├───────────────┼─────────────────────────────────┤
+  │ Delete        │ Click trash icon                │
+  └───────────────┴─────────────────────────────────┘
+
+  Notification Types:
+  - 🔔 Recharge due reminders
+  - ⚠️ Inactive SIM alerts
+  - ⏰ Subscription expiry warnings
+
+  ---
+  Step 6: Reports
+
+  Navigate: Sidebar → Reports
+
+  ┌────────────────────┬──────────────────────────────────────────────────────────────────────────┐
+  │       Action       │                               How to Test                                │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Select Report Type │ Click on SIM Report, Recharge Report, Call Log Report, or Company Report │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Set Filters        │ Use date range, status, operator filters                                 │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Apply Filters      │ Click "Apply" button                                                     │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ View Summary       │ See stats cards with totals                                              │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Export CSV         │ Click "CSV" button                                                       │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Export Excel       │ Click "Excel" button                                                     │
+  └────────────────────┴──────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Step 7: Settings
+
+  Navigate: Sidebar → Settings
+
+  ┌───────────────┬───────────────────────────────────┐
+  │      Tab      │              Actions              │
+  ├───────────────┼───────────────────────────────────┤
+  │ Profile       │ Update name, phone number         │
+  ├───────────────┼───────────────────────────────────┤
+  │ Security      │ Change password                   │
+  ├───────────────┼───────────────────────────────────┤
+  │ Notifications │ Toggle email/in-app notifications │
+  ├───────────────┼───────────────────────────────────┤
+  │ Preferences   │ Set timezone, language            │
+  └───────────────┴───────────────────────────────────┘
+
+  ---
+  🔐 Super Admin Workflow
+
+  Step 1: Login as Super Admin
+
+  Use credentials created during initial setup or seed data.
+
+  ---
+  Step 2: Manage Companies
+
+  Navigate: Sidebar → Companies
+
+  ┌──────────────────────┬───────────────────────────────────────────────────────────────┐
+  │        Action        │                          How to Test                          │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Add Company          │ Click "Add Company" → Fill name, email, subscription → Submit │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ View Companies       │ See list with subscription status                             │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Expand Row           │ Click chevron to see company admins                           │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Add Admin            │ Click user icon → Fill admin details                          │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Edit Company         │ Click edit icon                                               │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Delete Company       │ Click trash icon (deactivates all admins)                     │
+  ├──────────────────────┼───────────────────────────────────────────────────────────────┤
+  │ Reset Admin Password │ Click refresh icon on admin                                   │
+  └──────────────────────┴───────────────────────────────────────────────────────────────┘
+
+  ---
+  Step 3: Manage Subscriptions
+
+  Navigate: Sidebar → Subscriptions
+
+  ┌────────────────────────┬──────────────────────────────────────────────────────────────────┐
+  │         Action         │                           How to Test                            │
+  ├────────────────────────┼──────────────────────────────────────────────────────────────────┤
+  │ Add Plan               │ Click "Add Plan" → Fill name, pricing, limits, features → Submit │
+  ├────────────────────────┼──────────────────────────────────────────────────────────────────┤
+  │ Edit Plan              │ Click edit icon on plan card                                     │
+  ├────────────────────────┼──────────────────────────────────────────────────────────────────┤
+  │ Toggle Active/Inactive │ Click "Deactivate" or "Activate" button                          │
+  └────────────────────────┴──────────────────────────────────────────────────────────────────┘
+
+  ---
+  🧪  API Testing (Postman/cURL)
+
+  Authentication
+
+  # Register
+  POST /api/auth/register
+  Body: { "name": "Test User", "email": "test@example.com", "password": "password123", "companyName": "Test Company" }
+
+  # Login
+  POST /api/auth/login
+  Body: { "email": "test@example.com", "password": "password123" }
+
+  # Get Profile
+  GET /api/auth/me
+  Headers: Authorization: Bearer <token>
+
+  SIMs
+
+  # Create SIM
+  POST /api/sims
+  Headers: Authorization: Bearer <token>
+  Body: { "simNumber": "8991901234567890123", "mobileNumber": "9876543210", "operator": "Jio", "circle": "Maharashtra" }
+
+  # Get All SIMs
+  GET /api/sims
+  Headers: Authorization: Bearer <token>
+
+  # Update SIM
+  PUT /api/sims/:id
+  Headers: Authorization: Bearer <token>
+  Body: { "status": "active" }
+
+  # Toggle WhatsApp/Telegram
+  PATCH /api/sims/:id/messaging
+  Body: { "platform": "whatsapp", "enabled": true }
+
+  Recharges
+
+  # Create Recharge
+  POST /api/recharges
+  Body: { "simId": "<sim_id>", "amount": 299, "validity": 28, "paymentMethod": "upi" }
+
+  # Get Upcoming Recharges
+  GET /api/recharges/upcoming?days=7
+
+  # Get Overdue Recharges
+  GET /api/recharges/overdue
+
+  Call Logs (Mobile Integration)
+
+  # Sync Call Logs from Mobile
+  POST /api/call-logs/sync
+  Headers: Authorization: Bearer <mobile_token>
+  Body: {
+    "callLogs": [
+      { "phoneNumber": "9876543210", "callType": "outgoing", "duration": 120, "timestamp": "2024-01-15T10:30:00Z" }
+    ]
+  }
+
+  ---
+  📊 Database Models Summary
+
+  ┌──────────────┬──────────────────────────────────────────────────────────────────────────────┐
+  │    Model     │                                  Key Fields                                  │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ User         │ name, email, password, role, companyId                                       │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Company      │ name, email, subscriptionId, isActive                                        │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Subscription │ name, price, limits, features, trialDays                                     │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ SIM          │ simNumber, mobileNumber, operator, status, whatsappEnabled, telegramEnabled  │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Recharge     │ simId, amount, validity, plan, paymentMethod, rechargeDate, nextRechargeDate │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ CallLog      │ phoneNumber, callType, duration, simId, timestamp, isFlagged                 │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Notification │ title, message, type, priority, isRead, userId                               │
+  ├──────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Payment      │ orderId, paymentId, amount, status, subscriptionId                           │
+  └──────────────┴──────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  ✅ Key Features Checklist
+
+  Regular User
+
+  - Register/Login
+  - View Dashboard stats
+  - Add/Edit/Delete SIMs
+  - Toggle WhatsApp/Telegram status
+  - Add recharges
+  - View call logs
+  - Flag suspicious calls
+  - View notifications
+  - Export reports
+  - Update profile settings
+
+  Super Admin
+
+  - All regular user features
+  - Manage companies
+  - Add/Edit company admins
+  - Reset admin passwords
+  - Create/Edit subscription plans
+  - View company reports
+
+  ---
+  🔄 Cron Jobs (Automatic)
+
+  The system automatically runs these scheduled tasks:
+
+  ┌───────────────────────────┬────────────────┬────────────────────────────────────────────────┐
+  │            Job            │    Schedule    │                    Purpose                     │
+  ├───────────────────────────┼────────────────┼────────────────────────────────────────────────┤
+  │ Recharge Reminders        │ Daily at 9 AM  │ Send notifications for recharges due in 3 days │
+  ├───────────────────────────┼────────────────┼────────────────────────────────────────────────┤
+  │ Overdue Alerts            │ Daily at 10 AM │ Alert admins about overdue recharges           │
+  ├───────────────────────────┼────────────────┼────────────────────────────────────────────────┤
+  │ Subscription Expiry       │ Daily at 11 AM │ Warn about subscriptions expiring in 7 days    │
+  ├───────────────────────────┼────────────────┼────────────────────────────────────────────────┤
+  │ Cleanup Old Notifications │ Weekly         │ Remove notifications older than 30 days        │
+  └───────────────────────────┴────────────────┴────────────────────────────────────────────────┘
+
+  ---
+  🐛 Common Issues & Solutions
+
+  ┌────────────────────┬────────────────────────────────────────────────────┐
+  │       Issue        │                      Solution                      │
+  ├────────────────────┼────────────────────────────────────────────────────┤
+  │ Login fails        │ Check if MongoDB is running, verify credentials    │
+  ├────────────────────┼────────────────────────────────────────────────────┤
+  │ No data showing    │ Check API response in browser console              │
+  ├────────────────────┼────────────────────────────────────────────────────┤
+  │ Export not working │ Ensure xlsx package is installed in backend        │
+  ├────────────────────┼────────────────────────────────────────────────────┤
+  │ CORS error         │ Verify backend CORS settings allow frontend origin │
+  ├────────────────────┼────────────────────────────────────────────────────┤
+  │ Token expired      │ Re-login to get fresh token                        │
+  └────────────────────┴────────────────────────────────────────────────────┘
+
+  ---
+  This workflow covers all the features of the SIM Management SaaS system. Start from registration and work through each
+   module to fully test the application!
+
+✻ Worked for 53s
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> start both servers and test it
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (meta+m to cycle)
