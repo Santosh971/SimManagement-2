@@ -14,6 +14,18 @@ const {
 // =============================================
 
 /**
+ * Test Webhook Endpoint (for debugging)
+ * GET /api/whatsapp/webhook-test
+ */
+router.get('/webhook-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'WhatsApp webhook endpoint is accessible',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/**
  * Twilio Webhook Endpoint
  * POST /api/whatsapp/webhook
  * This endpoint receives incoming WhatsApp messages from Twilio

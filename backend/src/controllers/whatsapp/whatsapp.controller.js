@@ -68,10 +68,16 @@ class WhatsAppController {
    */
   async handleWebhook(req, res, next) {
     try {
-      // Log incoming webhook
-      logger.info('[WhatsApp Webhook] Received webhook', {
+      // Log incoming webhook with full details
+      logger.info('[WhatsApp Webhook] Received webhook request', {
         from: req.body.From,
         messageSid: req.body.MessageSid,
+        body: req.body.Body,
+        allFields: Object.keys(req.body),
+        headers: {
+          'x-twilio-signature': req.headers['x-twilio-signature'],
+          'content-type': req.headers['content-type'],
+        },
       });
 
       // Validate Twilio signature (optional, for production)
@@ -102,16 +108,24 @@ class WhatsAppController {
         });
       }
 
+      logger.info('[WhatsApp Webhook] Webhook processed', {
+        success: result.success,
+        message: result.message,
+        messageId: result.messageId,
+      });
+
       // Always return 200 to Twilio
       return res.status(200).json(result);
     } catch (error) {
       logger.error('[WhatsApp Webhook] Error processing webhook', {
         error: error.message,
+        stack: error.stack,
       });
       // Return 200 to prevent Twilio retries
       return res.status(200).json({
         success: false,
         message: 'Error processing webhook',
+        error: error.message,
       });
     }
   }

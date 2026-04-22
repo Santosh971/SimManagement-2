@@ -246,26 +246,40 @@ class WhatsAppService {
   async handleWebhook(webhookData) {
     const { From, Body, MessageSid } = webhookData;
 
-    // Extract phone number (remove whatsapp: prefix)
-    const phoneNumber = From.replace('whatsapp:', '').replace('+', '');
+    // Extract phone number (remove whatsapp: prefix and normalize)
+    let rawPhone = From.replace('whatsapp:', '');
+    // Normalize: remove all non-digit characters except +
+    const normalizedPhone = rawPhone.replace(/[^\d+]/g, '');
+    // Create search pattern (with and without +)
+    const phoneWithoutPlus = normalizedPhone.replace('+', '');
+    const phoneWithPlus = normalizedPhone.startsWith('+') ? normalizedPhone : '+' + normalizedPhone;
 
-    logger.info(`[WhatsApp Webhook] Received reply from ${phoneNumber}`, {
+    logger.info(`[WhatsApp Webhook] Received reply from ${normalizedPhone}`, {
       messageSid: MessageSid,
       body: Body,
+      rawFrom: From,
     });
 
     // Find the latest message from this phone number (any company)
+    // Try multiple phone number formats
     const latestMessage = await WhatsAppMessage.findOne({
-      phoneNumber: { $regex: phoneNumber.replace('+', ''), $options: 'i' },
+      $or: [
+        { phoneNumber: phoneWithPlus },
+        { phoneNumber: phoneWithoutPlus },
+        { phoneNumber: { $regex: phoneWithoutPlus, $options: 'i' } },
+      ],
       status: { $in: ['sent', 'delivered'] },
       isActive: null,
     }).sort({ sentAt: -1 });
 
     if (!latestMessage) {
-      logger.warn(`[WhatsApp Webhook] No pending message found for ${phoneNumber}`);
+      logger.warn(`[WhatsApp Webhook] No pending message found for ${normalizedPhone}`, {
+        searchPatterns: { phoneWithPlus, phoneWithoutPlus },
+      });
       return {
         success: false,
         message: 'No pending message found for this phone number',
+        phoneNumber: normalizedPhone,
       };
     }
 
