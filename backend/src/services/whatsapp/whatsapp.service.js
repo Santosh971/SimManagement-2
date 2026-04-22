@@ -21,6 +21,8 @@ class WhatsAppService {
     this.accountSid = process.env.TWILIO_ACCOUNT_SID;
     this.authToken = process.env.TWILIO_AUTH_TOKEN;
     this.phoneNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+    // Status callback URL (optional - for delivery status updates)
+    this.statusCallback = process.env.TWILIO_STATUS_CALLBACK || '';
 
     // Initialize Twilio client if credentials are available
     if (this.accountSid && this.authToken && twilio) {
@@ -61,11 +63,19 @@ class WhatsAppService {
     }
 
     try {
-      const result = await this.client.messages.create({
+      // Build message payload
+      const messagePayload = {
         from: this.phoneNumber,
         to: formattedNumber,
         body: message,
-      });
+      };
+
+      // Only add statusCallback if it's a valid URL
+      if (this.statusCallback && this.statusCallback.startsWith('http')) {
+        messagePayload.statusCallback = this.statusCallback;
+      }
+
+      const result = await this.client.messages.create(messagePayload);
 
       logger.info(`[WhatsApp] Message sent to ${formattedNumber}`, {
         sid: result.sid,
