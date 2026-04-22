@@ -4855,3 +4855,35 @@
 [2026-04-22T11:54:10.754Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
 [2026-04-22T11:54:10.755Z] INFO: All cron jobs initialized
 [2026-04-22T11:54:10.989Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-22T11:55:00.308Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T11:55:00.310Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T11:55:00.395Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T11:55:00.396Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:00:00.527Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:00:00.539Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:00:00.833Z] INFO: [WhatsApp Cron] Processed 1 messages, updated 0 SIMs
+[2026-04-22T12:00:00.834Z] INFO: WhatsApp inactive check completed: 1 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:05:00.620Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:05:00.634Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:05:00.731Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:05:00.735Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:10:00.967Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:10:00.994Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:10:01.076Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:10:01.078Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:15:00.146Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:15:00.148Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:15:00.227Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:15:00.228Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:20:00.420Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:20:00.437Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:20:00.564Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:20:00.566Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:21:20.500Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-22T12:21:20.551Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-22T12:21:22.504Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-22T12:21:26.419Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-22T12:21:26.481Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-22T12:21:30.491Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-22T12:21:30.509Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-22T12:21:31.226Z] INFO: [WhatsApp] Twilio client initialized successfully

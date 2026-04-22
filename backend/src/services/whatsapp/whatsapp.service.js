@@ -244,6 +244,7 @@ class WhatsAppService {
    * @returns {Object} - Processing result
    */
   async handleWebhook(webhookData) {
+    console.log("Whatsapp Webhook Call");
     const { From, Body, MessageSid } = webhookData;
 
     // Extract phone number (remove whatsapp: prefix and normalize)
