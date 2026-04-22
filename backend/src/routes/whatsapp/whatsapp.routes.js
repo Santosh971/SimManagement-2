@@ -11,6 +11,7 @@ const {
 
 // =============================================
 // PUBLIC ROUTES (No Authentication Required)
+// MUST BE BEFORE authenticate middleware
 // =============================================
 
 /**
@@ -29,11 +30,13 @@ router.get('/webhook-test', (req, res) => {
  * Twilio Webhook Endpoint
  * POST /api/whatsapp/webhook
  * This endpoint receives incoming WhatsApp messages from Twilio
+ * PUBLIC - No authentication required
  */
 router.post('/webhook', whatsAppController.handleWebhook);
 
 // =============================================
 // PROTECTED ROUTES (Authentication Required)
+// All routes below require authentication
 // =============================================
 router.use(authenticate);
 

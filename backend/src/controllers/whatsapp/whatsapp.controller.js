@@ -68,24 +68,13 @@ class WhatsAppController {
    */
   async handleWebhook(req, res, next) {
     try {
-      // Log incoming webhook with full details
-      logger.info('[WhatsApp Webhook] Received webhook request', {
-        from: req.body.From,
-        messageSid: req.body.MessageSid,
-        body: req.body.Body,
-        allFields: Object.keys(req.body),
-        headers: {
-          'x-twilio-signature': req.headers['x-twilio-signature'],
-          'content-type': req.headers['content-type'],
-        },
-      });
-
-      // Validate Twilio signature (optional, for production)
-      // const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      // const signature = req.headers['x-twilio-signature'];
-      // if (!whatsAppService.validateWebhookSignature(url, req.body, signature)) {
-      //   return res.status(403).json({ success: false, message: 'Invalid signature' });
-      // }
+      // Log ALL incoming data for debugging
+      logger.info('[WhatsApp Webhook] ===== INCOMING WEBHOOK =====');
+      logger.info('[WhatsApp Webhook] Request body:', JSON.stringify(req.body, null, 2));
+      logger.info('[WhatsApp Webhook] From:', req.body.From);
+      logger.info('[WhatsApp Webhook] To:', req.body.To);
+      logger.info('[WhatsApp Webhook] Body:', req.body.Body);
+      logger.info('[WhatsApp Webhook] MessageSid:', req.body.MessageSid);
 
       // Process webhook
       const result = await whatsAppService.handleWebhook(req.body);
@@ -108,19 +97,13 @@ class WhatsAppController {
         });
       }
 
-      logger.info('[WhatsApp Webhook] Webhook processed', {
-        success: result.success,
-        message: result.message,
-        messageId: result.messageId,
-      });
+      logger.info('[WhatsApp Webhook] Result:', JSON.stringify(result, null, 2));
 
       // Always return 200 to Twilio
       return res.status(200).json(result);
     } catch (error) {
-      logger.error('[WhatsApp Webhook] Error processing webhook', {
-        error: error.message,
-        stack: error.stack,
-      });
+      logger.error('[WhatsApp Webhook] Error:', error.message);
+      logger.error('[WhatsApp Webhook] Stack:', error.stack);
       // Return 200 to prevent Twilio retries
       return res.status(200).json({
         success: false,
