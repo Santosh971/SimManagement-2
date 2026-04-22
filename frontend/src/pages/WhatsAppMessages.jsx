@@ -13,6 +13,7 @@ import {
   Table,
   Spinner,
   Grid,
+  Pagination,
 } from '../components/ui'
 
 export default function WhatsAppMessages() {
@@ -24,21 +25,29 @@ export default function WhatsAppMessages() {
   const [filters, setFilters] = useState({
     status: '',
     phoneNumber: '',
-    page: 1,
-    limit: 20,
   })
-  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20 })
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10 })
 
+  // FIXED: Fetch data when page or filters change
   useEffect(() => {
     fetchData()
-  }, [filters.page])
+  }, [pagination.page])
+
+  // FIXED: Reset to page 1 when filters change
+  useEffect(() => {
+    if (pagination.page === 1) {
+      fetchData()
+    } else {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    }
+  }, [filters.status, filters.phoneNumber])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
-        page: filters.page,
-        limit: filters.limit,
+        page: pagination.page,
+        limit: pagination.limit,
         ...(filters.status && { status: filters.status }),
         ...(filters.phoneNumber && { phoneNumber: filters.phoneNumber }),
       })
@@ -49,11 +58,11 @@ export default function WhatsAppMessages() {
       ])
 
       setMessages(messagesRes.data.data || [])
-      setPagination({
+      setPagination((prev) => ({
+        ...prev,
         total: messagesRes.data.pagination?.total || 0,
         page: messagesRes.data.pagination?.page || 1,
-        limit: messagesRes.data.pagination?.limit || 20,
-      })
+      }))
       setStats(statsRes.data.data)
     } catch (error) {
       console.error('Failed to fetch messages:', error)
@@ -61,6 +70,12 @@ export default function WhatsAppMessages() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // FIXED: Refresh handler - resets to page 1 and fetches fresh data
+  const handleRefresh = () => {
+    setPagination((prev) => ({ ...prev, page: 1 }))
+    fetchData()
   }
 
   const getStatusBadge = (status) => {
@@ -237,7 +252,7 @@ export default function WhatsAppMessages() {
               </label>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 style={{
                   padding: '10px 14px',
                   border: '1px solid #d1d5db',
@@ -274,8 +289,9 @@ export default function WhatsAppMessages() {
                 }}
               />
             </div>
-            <Button onClick={() => fetchData()} icon={FiRefreshCw}>
-              Refresh
+            {/* FIXED: Refresh button with loading state */}
+            <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
         </CardBody>
@@ -294,25 +310,12 @@ export default function WhatsAppMessages() {
 
       {/* Pagination */}
       {pagination.total > pagination.limit && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', gap: '8px' }}>
-          <Button
-            variant="secondary"
-            disabled={pagination.page === 1}
-            onClick={() => setFilters({ ...filters, page: pagination.page - 1 })}
-          >
-            Previous
-          </Button>
-          <span style={{ padding: '10px 16px', color: '#6b7280' }}>
-            Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}
-          </span>
-          <Button
-            variant="secondary"
-            disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
-            onClick={() => setFilters({ ...filters, page: pagination.page + 1 })}
-          >
-            Next
-          </Button>
-        </div>
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={Math.ceil(pagination.total / pagination.limit)}
+          total={pagination.total}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+        />
       )}
 
       {/* Send Message Modal */}
