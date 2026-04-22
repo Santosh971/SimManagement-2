@@ -21,7 +21,7 @@ const AuditLogSchema = new Schema({
     required: [true, 'Module is required'],
     trim: true,
     uppercase: true,
-    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS'],
+    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP'],
     index: true,
   },
 
@@ -44,7 +44,7 @@ const AuditLogSchema = new Schema({
   // Role of the user at the time of action
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'user', 'anonymous'],
+    enum: ['super_admin', 'admin', 'user', 'anonymous', 'system'],
     required: false, // [AUDIT LOG FIX] - Allow null for anonymous actions
   },
 

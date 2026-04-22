@@ -4925,3 +4925,33 @@
 [2026-04-22T12:33:16.385Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
 [2026-04-22T12:33:16.392Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
 [2026-04-22T12:33:16.410Z] INFO: All cron jobs initialized
+[2026-04-22T12:35:00.457Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:35:00.465Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:35:00.535Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:35:00.536Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T12:39:20.124Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-22T12:39:20.143Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-22T12:39:20.757Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-22T12:39:22.819Z] INFO: Initializing cron jobs...
+[2026-04-22T12:39:22.909Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-22T12:39:22.911Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-22T12:39:22.913Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-22T12:39:22.915Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-22T12:39:22.919Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-22T12:39:22.921Z] INFO: All cron jobs initialized
+[2026-04-22T12:39:22.985Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-22T12:39:25.939Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-22T12:39:25.958Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-22T12:39:26.840Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-22T12:39:28.749Z] INFO: Initializing cron jobs...
+[2026-04-22T12:39:28.771Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-22T12:39:28.773Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-22T12:39:28.774Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-22T12:39:28.775Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-22T12:39:28.777Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-22T12:39:28.778Z] INFO: All cron jobs initialized
+[2026-04-22T12:39:28.994Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-22T12:40:00.119Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T12:40:00.168Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T12:40:00.355Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T12:40:00.357Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
