@@ -4695,3 +4695,7 @@
 [2026-04-22T10:10:00.509Z] INFO: [WhatsApp Cron] Processing inactive messages...
 [2026-04-22T10:10:00.570Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
 [2026-04-22T10:10:00.571Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-22T10:15:00.615Z] INFO: Starting WhatsApp inactive check job
+[2026-04-22T10:15:00.617Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-22T10:15:00.688Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-22T10:15:00.689Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
