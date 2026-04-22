@@ -40,22 +40,44 @@ connectDB().then(() => {
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
-  origin: [
-    'https://simtracker.b100x.in',
-    'https://sim-management-rho.vercel.app',
-    'http://localhost:3001',
-    'http://localhost:3000',
-    'http://localhost:5000',
-    'http://localhost:8081',
-    'http://localhost:19000',
-    'http://localhost:19001',
-    'http://localhost:19002',
-    'http://localhost:19006',
-    process.env.FRONTEND_URL,
-  ].filter(Boolean),
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      'https://simtracker.b100x.in',
+      'https://sim-management-rho.vercel.app',
+      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://localhost:8081',
+      'http://localhost:19000',
+      'http://localhost:19001',
+      'http://localhost:19002',
+      'http://localhost:19006',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean);
+
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow any origin for now (you can restrict this in production)
+    return callback(null, true);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
