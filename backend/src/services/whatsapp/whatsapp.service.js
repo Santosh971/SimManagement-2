@@ -104,12 +104,12 @@ class WhatsAppService {
 
   /**
    * Send bulk WhatsApp messages
-   * @param {Object} data - { simIds, userIds, message }
+   * @param {Object} data - { simIds, userIds, message, updateSimStatus }
    * @param {Object} user - Current authenticated user
    * @returns {Object} - Results with sent/failed counts
    */
   async sendBulkMessages(data, user) {
-    const { simIds = [], userIds = [], message } = data;
+    const { simIds = [], userIds = [], message, updateSimStatus = false } = data;
     const companyId = user.companyId;
     const results = {
       sent: 0,
@@ -204,6 +204,7 @@ class WhatsAppService {
           batchId,
           createdBy: user._id,
           errorMessage: sendResult.error || null,
+          updateSimStatus,
         });
 
         await messageRecord.save();
@@ -317,6 +318,7 @@ class WhatsAppService {
     logger.info(`[WhatsApp Webhook] Found message ${latestMessage._id}`, {
       timeSinceSent: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       isWithinOneHour,
+      updateSimStatus: latestMessage.updateSimStatus,
     });
 
     // Update message record
@@ -333,38 +335,60 @@ class WhatsAppService {
       isActive: isWithinOneHour,
     });
 
-    // If replied within 1 hour, update SIM status to active
-    if (isWithinOneHour && latestMessage.simId) {
+    // Update SIM status only if updateSimStatus flag is enabled
+    if (latestMessage.simId && latestMessage.updateSimStatus) {
       try {
         const sim = await Sim.findById(latestMessage.simId);
-        if (sim && sim.status !== 'active') {
-          const previousStatus = sim.status;
-          sim.status = 'active';
-          sim.lastActiveDate = new Date();
-          await sim.save();
+        if (sim) {
+          // Always update last active timestamp
+          sim.whatsappLastActive = new Date();
 
-          logger.info(`[WhatsApp Webhook] Updated SIM ${sim.mobileNumber} to active`, {
-            simId: sim._id,
-          });
+          // If replied within 1 hour, mark SIM as active
+          if (isWithinOneHour && sim.status !== 'active') {
+            const previousStatus = sim.status;
+            sim.status = 'active';
+            sim.lastActiveDate = new Date();
 
-          // Create audit log for SIM activation via WhatsApp reply
-          await auditLogService.logAction({
-            action: 'WHATSAPP_SIM_ACTIVE',
-            module: 'WHATSAPP',
-            description: `SIM ${sim.mobileNumber} marked ACTIVE via WhatsApp reply (within 1 hour)`,
-            companyId: sim.companyId,
-            entityId: sim._id,
-            entityType: 'SIM',
-            metadata: {
-              simMobileNumber: sim.mobileNumber,
-              previousStatus,
-              messageId: latestMessage._id,
-              responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
-            },
-          });
+            await sim.save();
+
+            logger.info(`[WhatsApp Webhook] SIM ${sim.mobileNumber} marked ACTIVE (updateSimStatus enabled)`);
+
+            // Create audit log
+            await auditLogService.logAction({
+              action: 'WHATSAPP_SIM_ACTIVE',
+              module: 'WHATSAPP',
+              description: `SIM ${sim.mobileNumber} marked ACTIVE via WhatsApp reply (within 1 hour)`,
+              companyId: sim.companyId,
+              entityId: sim._id,
+              entityType: 'SIM',
+              metadata: {
+                simMobileNumber: sim.mobileNumber,
+                previousStatus,
+                messageId: latestMessage._id,
+                responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
+              },
+            });
+          } else {
+            await sim.save();
+            logger.info(`[WhatsApp Webhook] Updated SIM ${sim.mobileNumber} last active timestamp`);
+          }
         }
       } catch (error) {
-        logger.error('[WhatsApp Webhook] Error updating SIM status', {
+        logger.error('[WhatsApp Webhook] Error updating SIM', {
+          error: error.message,
+        });
+      }
+    } else if (latestMessage.simId) {
+      // Just update last active timestamp
+      try {
+        const sim = await Sim.findById(latestMessage.simId);
+        if (sim) {
+          sim.whatsappLastActive = new Date();
+          await sim.save();
+          logger.info(`[WhatsApp Webhook] Updated SIM ${sim.mobileNumber} last active timestamp`);
+        }
+      } catch (error) {
+        logger.error('[WhatsApp Webhook] Error updating SIM last active', {
           error: error.message,
         });
       }
@@ -383,6 +407,7 @@ class WhatsAppService {
   /**
    * Process messages that have not received reply within 1 hour
    * Called by cron job
+   * Updates message status and SIM status if updateSimStatus flag is enabled
    */
   async processInactiveMessages() {
     logger.info('[WhatsApp Cron] Processing inactive messages...');
@@ -406,8 +431,10 @@ class WhatsAppService {
       await message.save();
       updatedCount++;
 
-      // Update SIM status to inactive if exists
-      if (message.simId) {
+      logger.info(`[WhatsApp Cron] Message ${message._id} marked inactive (no reply within 1 hour)`);
+
+      // Update SIM status only if updateSimStatus flag is enabled
+      if (message.simId && message.updateSimStatus) {
         try {
           const sim = await Sim.findById(message.simId);
           if (sim && sim.status === 'active') {
@@ -430,9 +457,7 @@ class WhatsAppService {
               },
             });
 
-            logger.info(`[WhatsApp Cron] SIM ${sim.mobileNumber} marked inactive`, {
-              simId: sim._id,
-            });
+            logger.info(`[WhatsApp Cron] SIM ${sim.mobileNumber} marked INACTIVE (updateSimStatus enabled)`);
           }
         } catch (error) {
           logger.error(`[WhatsApp Cron] Error updating SIM ${message.simId}`, {

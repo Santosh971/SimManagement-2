@@ -70,12 +70,12 @@ class TelegramService {
 
   /**
    * Send Telegram messages to multiple SIMs
-   * @param {Object} data - { simIds, message }
+   * @param {Object} data - { simIds, message, updateSimStatus }
    * @param {Object} user - Current authenticated user
    * @returns {Object} - Results with sent/failed counts
    */
   async sendToSIMs(data, user) {
-    const { simIds = [], message } = data;
+    const { simIds = [], message, updateSimStatus = false } = data;
     const companyId = user.companyId;
     const results = {
       sent: 0,
@@ -131,6 +131,7 @@ class TelegramService {
           batchId,
           createdBy: user._id,
           errorMessage: sendResult.error || null,
+          updateSimStatus,
         });
 
         await messageRecord.save();
@@ -377,6 +378,7 @@ class TelegramService {
       messageId: latestMessage._id,
       timeSinceSent: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       isWithinOneHour,
+      updateSimStatus: latestMessage.updateSimStatus,
     });
 
     // Update message record
@@ -387,17 +389,18 @@ class TelegramService {
 
     await latestMessage.save();
 
-    // If replied within 1 hour, mark SIM as active
-    if (isWithinOneHour) {
+    // Update SIM's Telegram last active timestamp
+    sim.telegramLastActive = new Date();
+
+    // Update SIM status only if updateSimStatus flag is enabled
+    if (latestMessage.updateSimStatus && isWithinOneHour && sim.status !== 'active') {
       const previousStatus = sim.status;
-      if (sim.status !== 'active') {
-        sim.status = 'active';
-        sim.lastActiveDate = new Date();
-      }
-      sim.telegramLastActive = new Date();
+      sim.status = 'active';
+      sim.lastActiveDate = new Date();
+
       await sim.save();
 
-      // Create audit log for SIM activation via reply
+      // Create audit log for SIM activation
       await auditLogService.logAction({
         action: 'TELEGRAM_SIM_ACTIVE',
         module: 'TELEGRAM',
@@ -415,38 +418,28 @@ class TelegramService {
         },
       });
 
+      logger.info(`[Telegram] SIM ${sim.mobileNumber} marked ACTIVE (updateSimStatus enabled)`);
+    } else {
+      await sim.save();
+    }
+
+    if (isWithinOneHour) {
       // Send confirmation to user
       await this.sendTelegramMessage(chatId,
         `✅ <b>Thank you for your response!</b>\n\n` +
-        `Your SIM <b>${sim.mobileNumber}</b> has been marked as active.`
+        `Your reply for SIM <b>${sim.mobileNumber}</b> has been recorded.`
       );
 
-      logger.info(`[Telegram] SIM ${sim.mobileNumber} marked active via reply`, {
+      logger.info(`[Telegram] Reply received for SIM ${sim.mobileNumber}`, {
         simId: sim._id,
+        responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       });
     } else {
-      // Reply too late - create audit log
-      await auditLogService.logAction({
-        action: 'TELEGRAM_WEBHOOK_REPLY',
-        module: 'TELEGRAM',
-        description: `SIM ${sim.mobileNumber} reply received too late (${Math.round(timeSinceSent / 1000 / 60)} minutes)`,
-        companyId: sim.companyId,
-        entityId: sim._id,
-        entityType: 'SIM',
-        metadata: {
-          simMobileNumber: sim.mobileNumber,
-          chatId: String(chatId),
-          replyMessage: text.substring(0, 200),
-          responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
-          messageId: latestMessage._id,
-        },
-      });
-
       // Reply too late
       await this.sendTelegramMessage(chatId,
         `⚠️ <b>Response Too Late</b>\n\n` +
         `Your reply was received more than 1 hour after the check message.\n` +
-        `Your SIM <b>${sim.mobileNumber}</b> may have been marked inactive.\n\n` +
+        `Your reply for SIM <b>${sim.mobileNumber}</b> has been recorded.\n\n` +
         `Please contact your administrator if you need assistance.`
       );
 
@@ -481,6 +474,7 @@ class TelegramService {
   /**
    * Process messages that have not received reply within 1 hour
    * Called by cron job
+   * Updates message status and SIM status if updateSimStatus flag is enabled
    */
   async processInactiveMessages() {
     logger.info('[Telegram Cron] Processing inactive messages...');
@@ -492,7 +486,7 @@ class TelegramService {
       status: { $in: ['sent', 'delivered'] },
       isActive: null,
       sentAt: { $lte: oneHourAgo },
-    }).populate('simId');
+    });
 
     let updatedCount = 0;
     let simUpdatedCount = 0;
@@ -504,10 +498,12 @@ class TelegramService {
       await message.save();
       updatedCount++;
 
-      // Update SIM status to inactive if exists and currently active
-      if (message.simId && message.simId.status === 'active') {
+      logger.info(`[Telegram Cron] Message ${message._id} marked inactive (no reply within 1 hour)`);
+
+      // Update SIM status only if updateSimStatus flag is enabled
+      if (message.simId && message.updateSimStatus) {
         try {
-          const sim = await Sim.findById(message.simId._id);
+          const sim = await Sim.findById(message.simId);
           if (sim && sim.status === 'active') {
             sim.status = 'inactive';
             await sim.save();
@@ -529,9 +525,7 @@ class TelegramService {
               },
             });
 
-            logger.info(`[Telegram Cron] SIM ${sim.mobileNumber} marked inactive`, {
-              simId: sim._id,
-            });
+            logger.info(`[Telegram Cron] SIM ${sim.mobileNumber} marked INACTIVE (updateSimStatus enabled)`);
           }
         } catch (error) {
           logger.error(`[Telegram Cron] Error updating SIM ${message.simId}`, {
@@ -546,6 +540,11 @@ class TelegramService {
     return {
       processed: updatedCount,
       simsUpdated: simUpdatedCount,
+    };
+  }
+
+    return {
+      processed: updatedCount,
     };
   }
 

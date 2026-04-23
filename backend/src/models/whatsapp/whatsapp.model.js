@@ -71,6 +71,11 @@ const WhatsAppMessageSchema = new Schema({
     type: Boolean,
     default: null, // null = pending, true = replied within 1 hour, false = no reply
   },
+  // Option to update SIM status based on reply
+  updateSimStatus: {
+    type: Boolean,
+    default: false,
+  },
   // Bulk message batch ID for grouping
   batchId: {
     type: String,

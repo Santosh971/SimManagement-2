@@ -14,6 +14,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('send') // 'send', 'link', or 'email'
+  const [updateSimStatus, setUpdateSimStatus] = useState(false)
 
   // Fetch eligible SIMs (with telegramChatId) and all SIMs
   useEffect(() => {
@@ -127,6 +128,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
       const response = await api.post('/telegram/send-bulk', {
         simIds: selectedIds,
         message: message.trim(),
+        updateSimStatus,
       })
 
       toast.success(`Messages sent: ${response.data.data.sent}, Skipped: ${response.data.data.skipped}, Failed: ${response.data.data.failed}`)
@@ -134,6 +136,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
       // Reset form
       setSelectedIds([])
       setMessage('')
+      setUpdateSimStatus(false)
 
       if (onSuccess) {
         onSuccess(response.data.data)
@@ -534,6 +537,41 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                 >
                   {message.length}/4096 characters
                 </div>
+              </div>
+
+              {/* Update SIM Status Option */}
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                }}
+              >
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={updateSimStatus}
+                    onChange={(e) => setUpdateSimStatus(e.target.checked)}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: '500', fontSize: '14px', color: '#111827' }}>
+                      Update SIM Status Based on Reply
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                      If enabled, SIMs will be marked as <strong>active</strong> if they reply within 1 hour, or <strong>inactive</strong> if no reply. If disabled, only message status will be tracked.
+                    </div>
+                  </div>
+                </label>
               </div>
             </>
           )}
