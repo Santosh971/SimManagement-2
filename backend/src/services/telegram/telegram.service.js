@@ -4,6 +4,7 @@ const TelegramMessage = require('../../models/telegram/telegram.model');
 const Sim = require('../../models/sim/sim.model');
 const { AppError, NotFoundError } = require('../../utils/errors');
 const logger = require('../../utils/logger');
+const auditLogService = require('../auditLog/auditLog.service');
 
 // Telegram Bot Token from environment
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -169,6 +170,37 @@ class TelegramService {
   }
 
   /**
+   * Send Telegram messages to multiple SIMs with audit logging
+   * @param {Object} data - { simIds, message }
+   * @param {Object} user - Current authenticated user
+   * @param {Object} req - Express request object (for audit log)
+   * @returns {Object} - Results with sent/failed counts
+   */
+  async sendToSIMsWithAudit(data, user, req) {
+    const results = await this.sendToSIMs(data, user);
+
+    // Create audit log
+    await auditLogService.logAction({
+      action: 'TELEGRAM_MESSAGE_SEND_BULK',
+      module: 'TELEGRAM',
+      description: `Sent bulk Telegram messages: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`,
+      performedBy: user._id,
+      role: user.role,
+      companyId: user.companyId,
+      metadata: {
+        totalSims: results.total,
+        sent: results.sent,
+        failed: results.failed,
+        skipped: results.skipped,
+        messageLength: data.message?.length || 0,
+      },
+      req,
+    });
+
+    return results;
+  }
+
+  /**
    * Handle incoming Telegram webhook
    * @param {Object} update - Telegram update object
    * @returns {Object} - Processing result
@@ -274,6 +306,22 @@ class TelegramService {
       linkedBy: userName,
     });
 
+    // Create audit log for SIM linking
+    await auditLogService.logAction({
+      action: 'TELEGRAM_SIM_LINK',
+      module: 'TELEGRAM',
+      description: `SIM ${sim.mobileNumber} linked to Telegram via bot by ${userName}`,
+      companyId: sim.companyId,
+      entityId: sim._id,
+      entityType: 'SIM',
+      metadata: {
+        simMobileNumber: sim.mobileNumber,
+        chatId: String(chatId),
+        telegramUsername: userName,
+        telegramUserId: from.id,
+      },
+    });
+
     // Send confirmation message
     await this.sendTelegramMessage(chatId,
       `✅ <b>Successfully Linked!</b>\n\n` +
@@ -341,12 +389,31 @@ class TelegramService {
 
     // If replied within 1 hour, mark SIM as active
     if (isWithinOneHour) {
+      const previousStatus = sim.status;
       if (sim.status !== 'active') {
         sim.status = 'active';
         sim.lastActiveDate = new Date();
       }
       sim.telegramLastActive = new Date();
       await sim.save();
+
+      // Create audit log for SIM activation via reply
+      await auditLogService.logAction({
+        action: 'TELEGRAM_SIM_ACTIVE',
+        module: 'TELEGRAM',
+        description: `SIM ${sim.mobileNumber} marked ACTIVE via Telegram reply (within 1 hour)`,
+        companyId: sim.companyId,
+        entityId: sim._id,
+        entityType: 'SIM',
+        metadata: {
+          simMobileNumber: sim.mobileNumber,
+          chatId: String(chatId),
+          replyMessage: text.substring(0, 200),
+          previousStatus,
+          messageId: latestMessage._id,
+          responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
+        },
+      });
 
       // Send confirmation to user
       await this.sendTelegramMessage(chatId,
@@ -358,6 +425,23 @@ class TelegramService {
         simId: sim._id,
       });
     } else {
+      // Reply too late - create audit log
+      await auditLogService.logAction({
+        action: 'TELEGRAM_WEBHOOK_REPLY',
+        module: 'TELEGRAM',
+        description: `SIM ${sim.mobileNumber} reply received too late (${Math.round(timeSinceSent / 1000 / 60)} minutes)`,
+        companyId: sim.companyId,
+        entityId: sim._id,
+        entityType: 'SIM',
+        metadata: {
+          simMobileNumber: sim.mobileNumber,
+          chatId: String(chatId),
+          replyMessage: text.substring(0, 200),
+          responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
+          messageId: latestMessage._id,
+        },
+      });
+
       // Reply too late
       await this.sendTelegramMessage(chatId,
         `⚠️ <b>Response Too Late</b>\n\n` +
@@ -428,6 +512,22 @@ class TelegramService {
             sim.status = 'inactive';
             await sim.save();
             simUpdatedCount++;
+
+            // Create audit log for SIM inactivation
+            await auditLogService.logAction({
+              action: 'TELEGRAM_SIM_INACTIVE',
+              module: 'TELEGRAM',
+              description: `SIM ${sim.mobileNumber} marked INACTIVE (no reply within 1 hour)`,
+              companyId: sim.companyId,
+              entityId: sim._id,
+              entityType: 'SIM',
+              metadata: {
+                simMobileNumber: sim.mobileNumber,
+                messageId: message._id,
+                messageSentAt: message.sentAt,
+                chatId: message.chatId,
+              },
+            });
 
             logger.info(`[Telegram Cron] SIM ${sim.mobileNumber} marked inactive`, {
               simId: sim._id,

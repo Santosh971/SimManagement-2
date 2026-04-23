@@ -21,7 +21,7 @@ const AuditLogSchema = new Schema({
     required: [true, 'Module is required'],
     trim: true,
     uppercase: true,
-    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP'],
+    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM'],
     index: true,
   },
 
@@ -65,7 +65,7 @@ const AuditLogSchema = new Schema({
   entityType: {
     type: String,
     trim: true,
-    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', null],
+    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', 'TELEGRAM_MESSAGE', null],
   },
 
   // Additional metadata (flexible key-value store)

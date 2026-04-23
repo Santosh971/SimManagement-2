@@ -4,6 +4,7 @@ const User = require('../../models/auth/user.model');
 const { AppError } = require('../../utils/errors');
 const logger = require('../../utils/logger');
 const emailService = require('../../utils/emailService');
+const auditLogService = require('../../services/auditLog/auditLog.service');
 
 class TelegramController {
   /**
@@ -48,6 +49,24 @@ class TelegramController {
       }
 
       const result = await telegramService.sendToSIMs({ simIds, message }, user);
+
+      // Create audit log
+      await auditLogService.logAction({
+        action: 'TELEGRAM_MESSAGE_SEND_BULK',
+        module: 'TELEGRAM',
+        description: `Sent bulk Telegram messages: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
+        performedBy: user._id,
+        role: user.role,
+        companyId: user.companyId,
+        metadata: {
+          totalSims: result.total,
+          sent: result.sent,
+          failed: result.failed,
+          skipped: result.skipped,
+          messageLength: message.length,
+        },
+        req,
+      });
 
       res.status(200).json({
         success: true,
@@ -179,6 +198,22 @@ class TelegramController {
       sim.telegramEnabled = false;
       await sim.save();
 
+      // Create audit log
+      await auditLogService.logAction({
+        action: 'TELEGRAM_SIM_UNLINK',
+        module: 'TELEGRAM',
+        description: `Telegram unlinked from SIM ${sim.mobileNumber}`,
+        performedBy: user._id,
+        role: user.role,
+        companyId: user.companyId,
+        entityId: sim._id,
+        entityType: 'SIM',
+        metadata: {
+          simMobileNumber: sim.mobileNumber,
+        },
+        req,
+      });
+
       res.status(200).json({
         success: true,
         message: 'Telegram unlinked from SIM',
@@ -309,6 +344,24 @@ class TelegramController {
         throw new AppError(`Failed to send email: ${emailResult.error}`, 500);
       }
 
+      // Create audit log
+      await auditLogService.logAction({
+        action: 'TELEGRAM_LINK_SEND',
+        module: 'TELEGRAM',
+        description: `Telegram link email sent for SIM ${sim.mobileNumber} to ${sim.assignedTo.email}`,
+        performedBy: user._id,
+        role: user.role,
+        companyId: user.companyId,
+        entityId: sim._id,
+        entityType: 'SIM',
+        metadata: {
+          simMobileNumber: sim.mobileNumber,
+          recipientEmail: sim.assignedTo.email,
+          recipientName: sim.assignedTo.name,
+        },
+        req,
+      });
+
       logger.info(`[Telegram] Link email sent for SIM ${sim.mobileNumber}`, {
         simId: sim._id,
         toEmail: sim.assignedTo.email,
@@ -425,6 +478,24 @@ class TelegramController {
       // Count skipped SIMs (no assigned user or no email)
       const skippedSims = sims.filter((s) => !s.assignedTo || !s.assignedTo.email);
       results.skipped = skippedSims.length;
+
+      // Create audit log
+      await auditLogService.logAction({
+        action: 'TELEGRAM_LINK_SEND_BULK',
+        module: 'TELEGRAM',
+        description: `Bulk Telegram link emails sent: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`,
+        performedBy: user._id,
+        role: user.role,
+        companyId: user.companyId,
+        metadata: {
+          totalSims: simIds.length,
+          emailsSent: results.sent,
+          emailsFailed: results.failed,
+          skipped: results.skipped,
+          details: results.details.slice(0, 20), // Limit details for storage
+        },
+        req,
+      });
 
       logger.info(`[Telegram] Bulk link emails sent`, {
         sent: results.sent,
