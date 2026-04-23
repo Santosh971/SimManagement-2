@@ -91,6 +91,11 @@ const SimSchema = new Schema({
     type: Date,
     default: null,
   },
+  telegramChatId: {
+    type: String,
+    default: null,
+    index: true,
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -111,6 +116,7 @@ SimSchema.index({ companyId: 1, status: 1 });
 SimSchema.index({ mobileNumber: 1 });
 SimSchema.index({ assignedTo: 1 });
 SimSchema.index({ createdAt: -1 });
+SimSchema.index({ telegramChatId: 1 });
 
 // Text index for search
 SimSchema.index({ mobileNumber: 'text', operator: 'text' });

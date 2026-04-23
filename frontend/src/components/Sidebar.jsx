@@ -193,6 +193,7 @@ import {
   FiX,
   FiActivity,
   FiMessageCircle,
+  FiSend,
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -219,6 +220,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Recharges', href: '/app/recharges', icon: FiCreditCard },
           { name: 'Call Logs', href: '/app/call-logs', icon: FiPhone },
           { name: 'WhatsApp', href: '/app/whatsapp', icon: FiMessageCircle },
+          { name: 'Telegram', href: '/app/telegram', icon: FiSend },
           { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },

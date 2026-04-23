@@ -168,15 +168,7 @@ class WhatsAppService {
     const seenNumbers = new Set();
 
     recipients.forEach((recipient) => {
-      // Normalize phone number: remove spaces, dashes, parentheses, ensure + prefix
-      let normalizedNumber = recipient.phoneNumber.replace(/[\s\-\(\)]/g, '');
-      // Ensure phone number has + prefix for international format
-      if (normalizedNumber && !normalizedNumber.startsWith('+')) {
-        normalizedNumber = '+' + normalizedNumber;
-      }
-      // Remove duplicate + if exists
-      normalizedNumber = normalizedNumber.replace(/\+\+/, '+');
-
+      const normalizedNumber = recipient.phoneNumber.replace(/[\s\-\(\)]/g, '');
       if (!seenNumbers.has(normalizedNumber)) {
         seenNumbers.add(normalizedNumber);
         uniqueRecipients.push({
@@ -252,7 +244,9 @@ class WhatsAppService {
    * @returns {Object} - Processing result
    */
   async handleWebhook(webhookData) {
+    console.log("Whatsapp Wehook call :", webhookData)
     const { From, To, Body, MessageSid, MessageType, SmsStatus, MessageStatus } = webhookData;
+    console.log("Webhook data : ", webhookData)
 
     // Log everything for debugging
     logger.info('[WhatsApp Webhook] ===== FULL WEBHOOK DATA =====');

@@ -61,6 +61,7 @@ class CronService {
     this.scheduleSubscriptionExpiryCheck();
     this.scheduleDataCleanup();
     this.scheduleWhatsAppInactiveCheck();
+    this.scheduleTelegramInactiveCheck();
 
     logger.info('All cron jobs initialized');
   }
@@ -199,6 +200,23 @@ class CronService {
         logger.info(`WhatsApp inactive check completed: ${result.processed} messages processed, ${result.simsUpdated} SIMs marked inactive`);
       } catch (error) {
         logger.error('WhatsApp inactive check job failed:', error);
+      }
+    });
+  }
+
+  // Telegram inactive message check - runs every 5 minutes
+  // Marks SIMs as inactive if no reply received within 1 hour
+  scheduleTelegramInactiveCheck() {
+    this.schedule('telegram-inactive-check', '*/5 * * * *', async () => {
+      try {
+        logger.info('Starting Telegram inactive check job');
+
+        const telegramService = require('../services/telegram/telegram.service');
+        const result = await telegramService.processInactiveMessages();
+
+        logger.info(`Telegram inactive check completed: ${result.processed} messages processed, ${result.simsUpdated} SIMs marked inactive`);
+      } catch (error) {
+        logger.error('Telegram inactive check job failed:', error);
       }
     });
   }

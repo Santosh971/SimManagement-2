@@ -20,6 +20,7 @@ import Users from './pages/Users'
 import AuditLogs from './pages/AuditLogs'
 import Subscription from './pages/Subscription'
 import WhatsAppMessages from './pages/WhatsAppMessages'
+import TelegramMessages from './pages/TelegramMessages'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -160,6 +161,7 @@ function App() {
               }
             />
             <Route path="whatsapp" element={<WhatsAppMessages />} />
+            <Route path="telegram" element={<TelegramMessages />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
