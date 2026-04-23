@@ -67,6 +67,28 @@ router.get('/link/:simId', simIdValidation, validate, telegramController.generat
 router.delete('/unlink/:simId', simIdValidation, validate, telegramController.unlinkSIM);
 
 /**
+ * Send Telegram link to single user via email
+ * POST /api/telegram/send-link-email
+ * Requires admin role
+ */
+router.post(
+  '/send-link-email',
+  authorize('super_admin', 'admin'),
+  telegramController.sendLinkEmail
+);
+
+/**
+ * Send Telegram links to all users (bulk email)
+ * POST /api/telegram/send-link-email-bulk
+ * Requires admin role
+ */
+router.post(
+  '/send-link-email-bulk',
+  authorize('super_admin', 'admin'),
+  telegramController.sendLinkEmailBulk
+);
+
+/**
  * Send bulk Telegram messages
  * POST /api/telegram/send-bulk
  * Requires admin role

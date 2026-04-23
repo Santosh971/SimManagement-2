@@ -5255,3 +5255,123 @@
 [2026-04-23T06:40:00.967Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
 [2026-04-23T06:40:00.969Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
 [2026-04-23T06:40:00.970Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T06:45:00.867Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T06:45:00.876Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T06:45:00.895Z] INFO: Starting Telegram inactive check job
+[2026-04-23T06:45:00.898Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T06:45:01.387Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T06:45:01.388Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T06:45:01.391Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T06:45:01.393Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T06:50:00.992Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T06:50:00.997Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T06:50:01.118Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T06:50:01.120Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T06:55:00.148Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T06:55:00.152Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T06:55:00.157Z] INFO: Starting Telegram inactive check job
+[2026-04-23T06:55:00.159Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T06:55:00.208Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T06:55:00.209Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T06:55:00.216Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T06:55:00.217Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:00:00.425Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:00:00.427Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:00:00.442Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:00:00.443Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:00:05.972Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:00:05.973Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:00:05.994Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:00:05.995Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:05:00.508Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:05:00.511Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:05:00.516Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:05:00.518Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:05:00.528Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:05:00.529Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:05:00.533Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:05:00.534Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:10:00.484Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:10:00.491Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:10:00.495Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:10:00.497Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:10:00.505Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:10:00.506Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:10:00.512Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:10:00.513Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:15:00.497Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:15:00.499Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:15:00.501Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:15:00.503Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:15:00.513Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:15:00.514Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:15:00.516Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:15:00.517Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:17:58.413Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-23T07:17:58.421Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-23T07:17:58.947Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-23T07:17:58.961Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-23T07:17:59.650Z] INFO: Initializing cron jobs...
+[2026-04-23T07:17:59.670Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-23T07:17:59.672Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-23T07:17:59.674Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-23T07:17:59.676Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-23T07:17:59.678Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:17:59.679Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:17:59.680Z] INFO: All cron jobs initialized
+[2026-04-23T07:18:00.333Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-23T07:18:26.790Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-23T07:18:26.798Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-23T07:18:27.248Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-23T07:18:27.261Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-23T07:18:27.974Z] INFO: Initializing cron jobs...
+[2026-04-23T07:18:28.005Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-23T07:18:28.007Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-23T07:18:28.008Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-23T07:18:28.010Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-23T07:18:28.012Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:28.013Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:28.014Z] INFO: All cron jobs initialized
+[2026-04-23T07:18:28.604Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-23T07:18:37.548Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-23T07:18:37.557Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-23T07:18:37.944Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-23T07:18:37.956Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-23T07:18:38.579Z] INFO: Initializing cron jobs...
+[2026-04-23T07:18:38.600Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-23T07:18:38.602Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-23T07:18:38.603Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-23T07:18:38.605Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-23T07:18:38.607Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:38.608Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:38.609Z] INFO: All cron jobs initialized
+[2026-04-23T07:18:39.324Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-23T07:18:42.054Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-23T07:18:42.061Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-23T07:18:42.435Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-23T07:18:42.449Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-23T07:18:43.080Z] INFO: Initializing cron jobs...
+[2026-04-23T07:18:43.102Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-23T07:18:43.104Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-23T07:18:43.105Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-23T07:18:43.107Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-23T07:18:43.109Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:43.110Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-23T07:18:43.111Z] INFO: All cron jobs initialized
+[2026-04-23T07:18:43.769Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-23T07:20:00.906Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:20:00.907Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:20:00.916Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:20:00.918Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:20:00.930Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:20:00.931Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:20:00.933Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:20:00.934Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:25:00.987Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:25:00.989Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:25:00.993Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:25:00.996Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:25:01.006Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:25:01.008Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:25:01.012Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:25:01.014Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive

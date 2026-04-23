@@ -861,6 +861,101 @@ class EmailService {
     return this.sendEmail({ to: user.email, subject, html });
   }
 
+  // ─── Telegram Link Email ────────────────────────────────────────────────────
+
+  async sendTelegramLinkEmail(user, sim, telegramLink, sentBy) {
+    const subject = `Connect Your SIM to Telegram — ${sim.mobileNumber}`;
+
+    const body = `
+      ${greeting(user.name)}
+      ${paragraph(`Your administrator <strong>${sentBy.name}</strong> has requested you to link your SIM to Telegram for activity tracking.`)}
+      ${infoCard([
+      ['Mobile Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
+      ['Operator', sim.operator],
+      ['Status', sim.status],
+      sim.circle ? ['Circle', sim.circle] : null,
+      ['Requested By', sentBy.name],
+    ])}
+      ${alertBox('Linking your SIM to Telegram allows us to track your SIM activity. You will receive periodic check messages and need to reply to keep your SIM marked as active.', {
+      bg: COLORS.infoBg, border: COLORS.infoBdr, textColor: COLORS.info, label: '&#128241; Why Link?'
+    })}
+      ${paragraph('Click the button below to open Telegram and connect your SIM:')}
+      ${ctaButton('Connect via Telegram', telegramLink, '#0088cc')}
+      ${divider()}
+      ${paragraph(`<strong>How to connect:</strong>`)}
+      <ol style="margin: 12px 0; padding-left: 20px; line-height: 1.8; color: #374151;">
+        <li>Click the button above or copy the link</li>
+        <li>Open Telegram (app or web)</li>
+        <li>Start a chat with the bot</li>
+        <li>Tap the <strong>"Start"</strong> button</li>
+        <li>Done! Your SIM is now linked</li>
+      </ol>
+      ${paragraph(`If the button doesn't work, copy this link:<br />
+        <span style="font-size:12px; color:${COLORS.textMuted}; word-break:break-all;">${telegramLink}</span>`)}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
+      headerIcon: '&#9995;',
+      headerTitle: 'Connect SIM to Telegram',
+      headerSubtitle: sim.mobileNumber,
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: user.email, subject, html });
+  }
+
+  // ─── Bulk Telegram Link Email ────────────────────────────────────────────────────
+
+  async sendBulkTelegramLinkEmail(user, simLinks, sentBy) {
+    const subject = `Connect Your SIMs to Telegram — ${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''}`;
+
+    const simRows = simLinks.map(({ sim, link }) => `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.border};">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align: top;">
+                <p style="font-size: 15px; font-weight: 600; color: ${COLORS.textPrimary}; margin: 0;">${sim.mobileNumber}</p>
+                <p style="font-size: 13px; color: ${COLORS.textMuted}; margin: 4px 0 0;">${sim.operator}</p>
+              </td>
+              <td style="text-align: right; vertical-align: middle;">
+                <a href="${link}" style="display: inline-block; padding: 8px 16px; background: #0088cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Connect</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `).join('');
+
+    const body = `
+      ${greeting(user.name)}
+      ${paragraph(`Your administrator <strong>${sentBy.name}</strong> has requested you to link ${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''} to Telegram for activity tracking.`)}
+      ${alertBox('Please connect each SIM to Telegram. You will receive check messages and need to reply to keep your SIMs marked as active.', {
+      bg: COLORS.infoBg, border: COLORS.infoBdr, textColor: COLORS.info, label: '&#128241; Important'
+    })}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+        ${simRows}
+      </table>
+      ${paragraph('<strong>How to connect:</strong>')}
+      <ol style="margin: 12px 0; padding-left: 20px; line-height: 1.8; color: #374151;">
+        <li>Click "Connect" next to each SIM</li>
+        <li>Open Telegram and tap "Start"</li>
+        <li>Your SIM will be automatically linked</li>
+      </ol>
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
+      headerIcon: '&#9995;',
+      headerTitle: 'Connect SIMs to Telegram',
+      headerSubtitle: `${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''} to link`,
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: user.email, subject, html });
+  }
+
   isReady() {
     return this.isConfigured && this.transporter !== null;
   }

@@ -1,7 +1,9 @@
 const telegramService = require('../../services/telegram/telegram.service');
 const Sim = require('../../models/sim/sim.model');
+const User = require('../../models/auth/user.model');
 const { AppError } = require('../../utils/errors');
 const logger = require('../../utils/logger');
+const emailService = require('../../utils/emailService');
 
 class TelegramController {
   /**
@@ -261,6 +263,183 @@ class TelegramController {
       message: 'Telegram webhook endpoint is accessible',
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Send Telegram link to single user via email
+   * POST /api/telegram/send-link-email
+   * Admin only
+   */
+  async sendLinkEmail(req, res, next) {
+    try {
+      const { simId } = req.body;
+      const user = req.user;
+
+      if (!simId) {
+        throw new AppError('SIM ID is required', 400);
+      }
+
+      // Get SIM with assigned user
+      const sim = await Sim.findOne({
+        _id: simId,
+        companyId: user.companyId,
+        isActive: true,
+      }).populate('assignedTo', 'name email');
+
+      if (!sim) {
+        throw new AppError('SIM not found', 404);
+      }
+
+      if (!sim.assignedTo || !sim.assignedTo.email) {
+        throw new AppError('No user assigned to this SIM or user has no email', 400);
+      }
+
+      // Generate Telegram link
+      const telegramLink = telegramService.generateDeepLink(simId);
+
+      // Send email
+      const emailResult = await emailService.sendTelegramLinkEmail(
+        sim.assignedTo,
+        sim,
+        telegramLink,
+        user
+      );
+
+      if (!emailResult.success) {
+        throw new AppError(`Failed to send email: ${emailResult.error}`, 500);
+      }
+
+      logger.info(`[Telegram] Link email sent for SIM ${sim.mobileNumber}`, {
+        simId: sim._id,
+        toEmail: sim.assignedTo.email,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Telegram link sent to ${sim.assignedTo.email}`,
+        data: {
+          simId: sim._id,
+          mobileNumber: sim.mobileNumber,
+          email: sim.assignedTo.email,
+          link: telegramLink,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Send Telegram links to all users (bulk email)
+   * POST /api/telegram/send-link-email-bulk
+   * Admin only
+   */
+  async sendLinkEmailBulk(req, res, next) {
+    try {
+      const { simIds } = req.body;
+      const user = req.user;
+
+      if (!simIds || !Array.isArray(simIds) || simIds.length === 0) {
+        throw new AppError('SIM IDs are required', 400);
+      }
+
+      // Get SIMs with assigned users
+      const sims = await Sim.find({
+        _id: { $in: simIds },
+        companyId: user.companyId,
+        isActive: true,
+      }).populate('assignedTo', 'name email');
+
+      if (sims.length === 0) {
+        throw new AppError('No valid SIMs found', 404);
+      }
+
+      // Group SIMs by user email
+      const userSimMap = new Map();
+
+      for (const sim of sims) {
+        if (sim.assignedTo && sim.assignedTo.email) {
+          const userEmail = sim.assignedTo.email;
+          if (!userSimMap.has(userEmail)) {
+            userSimMap.set(userEmail, {
+              user: sim.assignedTo,
+              simLinks: [],
+            });
+          }
+          userSimMap.get(userEmail).simLinks.push({
+            sim: {
+              _id: sim._id,
+              mobileNumber: sim.mobileNumber,
+              operator: sim.operator,
+              status: sim.status,
+              circle: sim.circle,
+            },
+            link: telegramService.generateDeepLink(sim._id),
+          });
+        }
+      }
+
+      // Send emails
+      const results = {
+        sent: 0,
+        failed: 0,
+        skipped: 0,
+        details: [],
+      };
+
+      for (const [email, { simLinks }] of userSimMap) {
+        try {
+          const emailResult = await emailService.sendBulkTelegramLinkEmail(
+            { email, name: simLinks[0].sim.assignedTo?.name || 'User' },
+            simLinks,
+            user
+          );
+
+          if (emailResult.success) {
+            results.sent++;
+            results.details.push({
+              email,
+              status: 'sent',
+              simCount: simLinks.length,
+            });
+          } else {
+            results.failed++;
+            results.details.push({
+              email,
+              status: 'failed',
+              error: emailResult.error,
+              simCount: simLinks.length,
+            });
+          }
+        } catch (error) {
+          results.failed++;
+          results.details.push({
+            email,
+            status: 'failed',
+            error: error.message,
+            simCount: simLinks.length,
+          });
+        }
+      }
+
+      // Count skipped SIMs (no assigned user or no email)
+      const skippedSims = sims.filter((s) => !s.assignedTo || !s.assignedTo.email);
+      results.skipped = skippedSims.length;
+
+      logger.info(`[Telegram] Bulk link emails sent`, {
+        sent: results.sent,
+        failed: results.failed,
+        skipped: results.skipped,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Emails sent: ${results.sent}, Failed: ${results.failed}, Skipped (no email): ${results.skipped}`,
+        data: results,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
