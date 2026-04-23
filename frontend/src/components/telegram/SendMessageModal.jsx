@@ -205,6 +205,32 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
     }
   }
 
+  // Send links to all UNLINKED SIMs via email
+  const sendEmailToAllUnlinked = async () => {
+    // Get all unlinked SIMs with email
+    const unlinkedSIMs = allSIMs.filter((sim) => !sim.telegramChatId && sim.assignedTo?.email)
+
+    if (unlinkedSIMs.length === 0) {
+      toast.error('No unlinked SIMs with assigned email found')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const simIds = unlinkedSIMs.map((sim) => sim._id)
+      const response = await api.post('/telegram/send-link-email-bulk', {
+        simIds
+      })
+      toast.success(response.data.message)
+      fetchSIMs() // Refresh data
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to send emails'
+      toast.error(errorMsg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -514,12 +540,68 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           {/* ============= GENERATE LINKS TAB ============= */}
           {activeTab === 'link' && (
             <>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
-                All SIMs - Generate Telegram Deep Links
-              </h3>
+              {/* Stats and Bulk Action */}
               <div
                 style={{
-                  maxHeight: '350px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <h3 style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>
+                  All SIMs - Generate Telegram Deep Links
+                </h3>
+                {/* Bulk Send to Unlinked */}
+                <button
+                  onClick={sendEmailToAllUnlinked}
+                  disabled={loading}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    border: '1px solid #16a34a',
+                    borderRadius: '6px',
+                    background: loading ? '#e5e7eb' : '#16a34a',
+                    color: '#fff',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  <FiMail />
+                  {loading ? 'Sending...' : 'Send to All Unlinked'}
+                </button>
+              </div>
+
+              {/* Unlinked Stats */}
+              {(() => {
+                const unlinkedSIMs = allSIMs.filter((sim) => !sim.telegramChatId)
+                const unlinkedWithEmail = unlinkedSIMs.filter((sim) => sim.assignedTo?.email)
+                const unlinkedNoEmail = unlinkedSIMs.filter((sim) => !sim.assignedTo?.email)
+                return (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      backgroundColor: '#fef3c7',
+                      border: '1px solid #fcd34d',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <strong>Unlinked SIMs:</strong> {unlinkedSIMs.length} total
+                    ({unlinkedWithEmail.length} with email, {unlinkedNoEmail.length} without email)
+                  </div>
+                )
+              })()}
+
+              <div
+                style={{
+                  maxHeight: '300px',
                   overflowY: 'auto',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
@@ -539,6 +621,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         borderBottom: '1px solid #f3f4f6',
+                        backgroundColor: sim.telegramChatId ? '#f9fafb' : '#fff',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -562,13 +645,30 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                         <div>
                           <div style={{ fontWeight: '500', fontSize: '13px' }}>
                             {sim.mobileNumber}
+                            {sim.telegramChatId && (
+                              <span style={{
+                                marginLeft: '8px',
+                                padding: '2px 6px',
+                                backgroundColor: '#dcfce7',
+                                color: '#16a34a',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                              }}>
+                                LINKED
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                            {sim.operator} • {sim.telegramChatId ? '✅ Linked' : '⚠️ Not Linked'}
+                            {sim.operator} • {sim.assignedTo?.name || 'Unassigned'}
                           </div>
-                          {sim.assignedTo?.email && (
+                          {sim.assignedTo?.email ? (
                             <div style={{ fontSize: '11px', color: '#16a34a' }}>
                               📧 {sim.assignedTo.email}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '11px', color: '#dc2626' }}>
+                              ⚠️ No email assigned
                             </div>
                           )}
                         </div>

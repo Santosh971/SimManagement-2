@@ -5375,3 +5375,35 @@
 [2026-04-23T07:25:01.008Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
 [2026-04-23T07:25:01.012Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
 [2026-04-23T07:25:01.014Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:30:00.105Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:30:00.108Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:30:00.112Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:30:00.114Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:30:00.126Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:30:00.127Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:30:00.129Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:30:00.130Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:35:00.182Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:35:00.190Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:35:00.194Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:35:00.196Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:35:00.210Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:35:00.211Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:35:00.218Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:35:00.219Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:40:00.347Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:40:00.349Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:40:00.366Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:40:00.368Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:40:00.379Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:40:00.380Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:40:00.383Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:40:00.384Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:45:00.428Z] INFO: Starting WhatsApp inactive check job
+[2026-04-23T07:45:00.431Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-23T07:45:00.449Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:45:00.450Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-23T07:45:00.475Z] INFO: Starting Telegram inactive check job
+[2026-04-23T07:45:00.477Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-23T07:45:00.491Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-23T07:45:00.492Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
