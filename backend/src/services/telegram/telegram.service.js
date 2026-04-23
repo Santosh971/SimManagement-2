@@ -543,11 +543,6 @@ class TelegramService {
     };
   }
 
-    return {
-      processed: updatedCount,
-    };
-  }
-
   /**
    * Get messages for a company
    */
