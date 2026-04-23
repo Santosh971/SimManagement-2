@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
   const { api } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [sendingEmailId, setSendingEmailId] = useState(null) // Track which SIM is being sent
   const [sims, setSims] = useState([]) // Linked SIMs for sending
   const [allSIMs, setAllSIMs] = useState([]) // All SIMs for generating links
   const [selectedIds, setSelectedIds] = useState([])
@@ -170,7 +171,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Send link to single user via email
   const sendEmailToSingle = async (simId, mobileNumber) => {
-    setLoading(true)
+    setSendingEmailId(simId) // Set loading for this specific SIM
     try {
       const response = await api.post('/telegram/send-link-email', { simId })
       toast.success(response.data.message)
@@ -178,7 +179,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
       const errorMsg = error.response?.data?.message || 'Failed to send email'
       toast.error(errorMsg)
     } finally {
-      setLoading(false)
+      setSendingEmailId(null) // Clear loading for this SIM
     }
   }
 
@@ -333,7 +334,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
             <FiLink size={14} />
             Generate Links
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveTab('email')}
             style={{
               flex: 1,
@@ -352,7 +353,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           >
             <FiMail size={14} />
             Send via Email
-          </button>
+          </button> */}
         </div>
 
         {/* Body */}
@@ -692,12 +693,12 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                           title="Copy link to clipboard"
                         >
                           <FiCopy style={{ width: '14px' }} />
-                          Copy
+                          Copy Link
                         </button>
                         {/* Send Email Button */}
                         <button
                           onClick={() => sendEmailToSingle(sim._id, sim.mobileNumber)}
-                          disabled={loading || !sim.assignedTo?.email}
+                          disabled={sendingEmailId === sim._id || !sim.assignedTo?.email}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -706,14 +707,14 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                             fontSize: '12px',
                             border: '1px solid #16a34a',
                             borderRadius: '6px',
-                            background: loading || !sim.assignedTo?.email ? '#e5e7eb' : '#fff',
-                            color: loading || !sim.assignedTo?.email ? '#9ca3af' : '#16a34a',
-                            cursor: loading || !sim.assignedTo?.email ? 'not-allowed' : 'pointer',
+                            background: sendingEmailId === sim._id ? '#f0fdf4' : (!sim.assignedTo?.email ? '#e5e7eb' : '#fff'),
+                            color: sendingEmailId === sim._id || !sim.assignedTo?.email ? '#9ca3af' : '#16a34a',
+                            cursor: sendingEmailId === sim._id || !sim.assignedTo?.email ? 'not-allowed' : 'pointer',
                           }}
                           title={sim.assignedTo?.email ? `Send link to ${sim.assignedTo.email}` : 'No email assigned'}
                         >
                           <FiMail style={{ width: '14px' }} />
-                          Email
+                          {sendingEmailId === sim._id ? 'Sending...' : 'Email'}
                         </button>
                       </div>
                     </div>
