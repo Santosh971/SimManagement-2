@@ -50,20 +50,29 @@ class TelegramController {
 
       const result = await telegramService.sendToSIMs({ simIds, message }, user);
 
+      // Determine if single or bulk send
+      const isSingleSend = simIds.length === 1;
+      const auditAction = isSingleSend ? 'TELEGRAM_MESSAGE_SEND' : 'TELEGRAM_MESSAGE_SEND_BULK';
+
       // Create audit log
       await auditLogService.logAction({
-        action: 'TELEGRAM_MESSAGE_SEND_BULK',
+        action: auditAction,
         module: 'TELEGRAM',
-        description: `Sent bulk Telegram messages: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
+        description: isSingleSend
+          ? `Sent Telegram message to SIM ${result.messages[0]?.mobileNumber || 'unknown'}`
+          : `Sent bulk Telegram messages: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
         performedBy: user._id,
         role: user.role,
         companyId: user.companyId,
+        entityId: isSingleSend ? simIds[0] : null,
+        entityType: isSingleSend ? 'SIM' : null,
         metadata: {
           totalSims: result.total,
           sent: result.sent,
           failed: result.failed,
           skipped: result.skipped,
           messageLength: message.length,
+          simIds: isSingleSend ? undefined : simIds.slice(0, 50), // Store SIM IDs for bulk, limit to 50
         },
         req,
       });
