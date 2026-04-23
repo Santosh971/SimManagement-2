@@ -34,19 +34,28 @@ class WhatsAppController {
         req.user
       );
 
+      // Determine if single or bulk send
+      const isSingleSend = simIds.length === 1 && userIds.length === 0;
+      const auditAction = isSingleSend ? 'WHATSAPP_MESSAGE_SEND' : 'WHATSAPP_MESSAGE_SEND_BULK';
+
       // Audit log
       await auditLogService.logAction({
-        action: 'WHATSAPP_BULK_SEND',
+        action: auditAction,
         module: 'WHATSAPP',
-        description: `Sent ${result.sent} WhatsApp messages (${result.failed} failed)`,
+        description: isSingleSend
+          ? `Sent WhatsApp message to SIM ${result.messages[0]?.phoneNumber || 'unknown'}`
+          : `Sent bulk WhatsApp messages: ${result.sent} sent, ${result.failed} failed`,
         performedBy: req.user._id,
         role: req.user.role,
         companyId: req.user.companyId,
+        entityId: isSingleSend ? simIds[0] : null,
+        entityType: isSingleSend ? 'SIM' : null,
         metadata: {
           total: result.total,
           sent: result.sent,
           failed: result.failed,
           messageLength: message.length,
+          simIds: isSingleSend ? undefined : simIds.slice(0, 50),
         },
         req,
       });
@@ -79,15 +88,17 @@ class WhatsAppController {
       // Process webhook
       const result = await whatsAppService.handleWebhook(req.body);
 
-      // Audit log
-      if (result.success) {
+      // Audit log for webhook reply
+      if (result.success && result.messageId) {
         await auditLogService.logAction({
-          action: 'WHATSAPP_REPLY_RECEIVED',
+          action: 'WHATSAPP_WEBHOOK_REPLY',
           module: 'WHATSAPP',
-          description: `Received WhatsApp reply from ${req.body.From}`,
+          description: `Received WhatsApp reply from ${req.body.From}${result.isActive ? ' (SIM marked active)' : ''}`,
           performedBy: null,
           role: 'system',
-          companyId: null,
+          companyId: result.companyId || null,
+          entityId: result.simId || null,
+          entityType: result.simId ? 'WHATSAPP_MESSAGE' : null,
           metadata: {
             from: req.body.From,
             isActive: result.isActive,
@@ -156,13 +167,16 @@ class WhatsAppController {
 
       // Audit log
       await auditLogService.logAction({
-        action: 'WHATSAPP_PROCESS_INACTIVE',
+        action: 'WHATSAPP_SIM_INACTIVE',
         module: 'WHATSAPP',
-        description: `Manually processed inactive messages: ${result.processed} messages`,
+        description: `Processed inactive WhatsApp messages: ${result.processed} messages, ${result.simsUpdated} SIMs marked inactive`,
         performedBy: req.user._id,
         role: req.user.role,
         companyId: req.user.companyId,
-        metadata: result,
+        metadata: {
+          processed: result.processed,
+          simsUpdated: result.simsUpdated,
+        },
         req,
       });
 

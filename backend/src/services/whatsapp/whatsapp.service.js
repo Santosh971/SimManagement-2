@@ -14,6 +14,7 @@ const User = require('../../models/auth/user.model');
 const { AppError, NotFoundError } = require('../../utils/errors');
 const logger = require('../../utils/logger');
 const crypto = require('crypto');
+const auditLogService = require('../auditLog/auditLog.service');
 
 class WhatsAppService {
   constructor() {
@@ -337,12 +338,29 @@ class WhatsAppService {
       try {
         const sim = await Sim.findById(latestMessage.simId);
         if (sim && sim.status !== 'active') {
+          const previousStatus = sim.status;
           sim.status = 'active';
           sim.lastActiveDate = new Date();
           await sim.save();
 
           logger.info(`[WhatsApp Webhook] Updated SIM ${sim.mobileNumber} to active`, {
             simId: sim._id,
+          });
+
+          // Create audit log for SIM activation via WhatsApp reply
+          await auditLogService.logAction({
+            action: 'WHATSAPP_SIM_ACTIVE',
+            module: 'WHATSAPP',
+            description: `SIM ${sim.mobileNumber} marked ACTIVE via WhatsApp reply (within 1 hour)`,
+            companyId: sim.companyId,
+            entityId: sim._id,
+            entityType: 'SIM',
+            metadata: {
+              simMobileNumber: sim.mobileNumber,
+              previousStatus,
+              messageId: latestMessage._id,
+              responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
+            },
           });
         }
       } catch (error) {
@@ -357,6 +375,8 @@ class WhatsAppService {
       message: 'Reply processed successfully',
       isActive: isWithinOneHour,
       messageId: latestMessage._id,
+      companyId: latestMessage.companyId,
+      simId: latestMessage.simId,
     };
   }
 
@@ -394,6 +414,25 @@ class WhatsAppService {
             sim.status = 'inactive';
             await sim.save();
             simUpdatedCount++;
+
+            // Create audit log for SIM inactivation
+            await auditLogService.logAction({
+              action: 'WHATSAPP_SIM_INACTIVE',
+              module: 'WHATSAPP',
+              description: `SIM ${sim.mobileNumber} marked INACTIVE via WhatsApp (no reply within 1 hour)`,
+              companyId: sim.companyId,
+              entityId: sim._id,
+              entityType: 'SIM',
+              metadata: {
+                simMobileNumber: sim.mobileNumber,
+                messageId: message._id,
+                messageSentAt: message.sentAt,
+              },
+            });
+
+            logger.info(`[WhatsApp Cron] SIM ${sim.mobileNumber} marked inactive`, {
+              simId: sim._id,
+            });
           }
         } catch (error) {
           logger.error(`[WhatsApp Cron] Error updating SIM ${message.simId}`, {

@@ -36,7 +36,7 @@ const AuditLogs = () => {
   const [showFilters, setShowFilters] = useState(false)
 
   // Available options
-  const modules = ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS']
+  const modules = ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM']
   const actions = {
     AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGE', 'PASSWORD_RESET'],
     SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT'],
@@ -50,6 +50,8 @@ const AuditLogs = () => {
     NOTIFICATION: ['NOTIFICATION_CREATE', 'NOTIFICATION_READ'],
     DASHBOARD: ['DASHBOARD_VIEW'],
     SETTINGS: ['SETTINGS_UPDATE'],
+    WHATSAPP: ['WHATSAPP_MESSAGE_SEND', 'WHATSAPP_MESSAGE_SEND_BULK', 'WHATSAPP_WEBHOOK_REPLY', 'WHATSAPP_SIM_ACTIVE', 'WHATSAPP_SIM_INACTIVE'],
+    TELEGRAM: ['TELEGRAM_MESSAGE_SEND', 'TELEGRAM_MESSAGE_SEND_BULK', 'TELEGRAM_LINK_SEND', 'TELEGRAM_LINK_SEND_BULK', 'TELEGRAM_SIM_LINK', 'TELEGRAM_SIM_UNLINK', 'TELEGRAM_WEBHOOK_REPLY', 'TELEGRAM_SIM_ACTIVE', 'TELEGRAM_SIM_INACTIVE'],
   }
 
   // Get available actions based on selected module
@@ -204,6 +206,11 @@ const AuditLogs = () => {
       SUBSCRIPTION: 'bg-cyan-100 text-cyan-700',
       PAYMENT: 'bg-yellow-100 text-yellow-700',
       CALL_LOG: 'bg-teal-100 text-teal-700',
+      NOTIFICATION: 'bg-amber-100 text-amber-700',
+      DASHBOARD: 'bg-slate-100 text-slate-700',
+      SETTINGS: 'bg-gray-100 text-gray-700',
+      WHATSAPP: 'bg-emerald-100 text-emerald-700',
+      TELEGRAM: 'bg-sky-100 text-sky-700',
     }
     return colors[module] || 'bg-gray-100 text-gray-700'
   }

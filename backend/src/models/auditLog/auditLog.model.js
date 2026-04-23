@@ -65,7 +65,7 @@ const AuditLogSchema = new Schema({
   entityType: {
     type: String,
     trim: true,
-    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', 'TELEGRAM_MESSAGE', null],
+    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', 'TELEGRAM_MESSAGE', 'WHATSAPP_MESSAGE', null],
   },
 
   // Additional metadata (flexible key-value store)
