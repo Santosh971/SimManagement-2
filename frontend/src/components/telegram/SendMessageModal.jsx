@@ -540,7 +540,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
               </div>
 
               {/* Update SIM Status Option */}
-              <div
+              {/* <div
                 style={{
                   marginBottom: '16px',
                   padding: '12px 16px',
@@ -572,7 +572,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                     </div>
                   </div>
                 </label>
-              </div>
+              </div> */}
             </>
           )}
 
