@@ -6894,3 +6894,27 @@
 [2026-04-25T12:50:01.004Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
 [2026-04-25T12:50:01.006Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
 [2026-04-25T12:50:01.060Z] INFO: WiFi alert check job completed
+[2026-04-25T12:55:00.980Z] INFO: Starting WhatsApp inactive check job
+[2026-04-25T12:55:00.995Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-25T12:55:01.101Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-25T12:55:01.103Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-25T13:00:00.210Z] INFO: Starting WhatsApp inactive check job
+[2026-04-25T13:00:00.229Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-25T13:00:00.256Z] INFO: Starting Telegram inactive check job
+[2026-04-25T13:00:00.260Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-25T13:00:00.266Z] INFO: Starting WiFi alert check job
+[2026-04-25T13:00:00.333Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-25T13:00:00.334Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-25T13:00:00.346Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-25T13:00:00.349Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-25T13:00:00.444Z] INFO: WiFi alert check job completed
+[2026-04-25T13:05:00.577Z] INFO: Starting WhatsApp inactive check job
+[2026-04-25T13:05:00.582Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-25T13:05:00.593Z] INFO: Starting Telegram inactive check job
+[2026-04-25T13:05:00.595Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-25T13:05:00.598Z] INFO: Starting WiFi alert check job
+[2026-04-25T13:05:00.669Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-25T13:05:00.671Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-25T13:05:00.675Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-25T13:05:00.677Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-25T13:05:00.737Z] INFO: WiFi alert check job completed
