@@ -62,6 +62,8 @@ class CronService {
     this.scheduleDataCleanup();
     this.scheduleWhatsAppInactiveCheck();
     this.scheduleTelegramInactiveCheck();
+    this.scheduleWifiAlertCheck();
+    this.scheduleWifiMetricsCleanup();
 
     logger.info('All cron jobs initialized');
   }
@@ -217,6 +219,40 @@ class CronService {
         logger.info(`Telegram inactive check completed: ${result.processed} messages processed, ${result.simsUpdated} SIMs marked inactive`);
       } catch (error) {
         logger.error('Telegram inactive check job failed:', error);
+      }
+    });
+  }
+
+  // WiFi alert check - runs every 5 minutes
+  // Checks WiFi speeds against thresholds and creates/resolves alerts
+  scheduleWifiAlertCheck() {
+    this.schedule('wifi-alert-check', '*/5 * * * *', async () => {
+      try {
+        logger.info('Starting WiFi alert check job');
+
+        const wifiService = require('../services/wifi/wifi.service');
+        await wifiService.checkAndCreateAlerts();
+
+        logger.info('WiFi alert check job completed');
+      } catch (error) {
+        logger.error('WiFi alert check job failed:', error);
+      }
+    });
+  }
+
+  // WiFi metrics cleanup - runs weekly on Sunday at 3 AM
+  // Cleans old metrics data (older than 30 days)
+  scheduleWifiMetricsCleanup() {
+    this.schedule('wifi-metrics-cleanup', '0 3 * * 0', async () => {
+      try {
+        logger.info('Starting WiFi metrics cleanup job');
+
+        const wifiService = require('../services/wifi/wifi.service');
+        const result = await wifiService.cleanOldMetrics(30);
+
+        logger.info(`WiFi metrics cleanup completed: ${result.deletedCount} old metrics removed`);
+      } catch (error) {
+        logger.error('WiFi metrics cleanup job failed:', error);
       }
     });
   }

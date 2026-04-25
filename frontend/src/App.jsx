@@ -22,6 +22,8 @@ import Subscription from './pages/Subscription'
 import WhatsAppMessages from './pages/WhatsAppMessages'
 import TelegramMessages from './pages/TelegramMessages'
 import SmsLogs from './pages/SmsLogs'
+import WifiMonitor from './pages/WifiMonitor'
+import WifiDevices from './pages/WifiDevices'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -164,6 +166,8 @@ function App() {
             />
             <Route path="whatsapp" element={<WhatsAppMessages />} />
             <Route path="telegram" element={<TelegramMessages />} />
+            <Route path="wifi-monitor" element={<WifiMonitor />} />
+            <Route path="wifi-devices" element={<WifiDevices />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

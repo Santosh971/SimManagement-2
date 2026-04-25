@@ -412,6 +412,71 @@ class NotificationHelper {
     return this.createNotification(notificationData);
   }
 
+  /**
+   * Send WiFi alert email
+   * @param {Object} user - User to notify
+   * @param {Object} wifiNetwork - WiFi network document
+   * @param {Object} alert - Alert document
+   */
+  async sendWifiAlertEmail(user, wifiNetwork, alert) {
+    const emailData = {
+      to: user.email,
+      subject: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
+      html: this._generateWifiAlertHtml(user, wifiNetwork, alert),
+    };
+
+    // Create in-app notification as well
+    const notificationData = {
+      companyId: wifiNetwork.companyId,
+      userId: user._id,
+      type: 'wifi_alert',
+      title: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
+      message: `Average speed ${alert.avgSpeed.toFixed(2)} Mbps is below threshold ${wifiNetwork.alertThreshold} Mbps`,
+      priority: 'high',
+      metadata: {
+        wifiName: wifiNetwork.wifiName,
+        avgSpeed: alert.avgSpeed,
+        threshold: wifiNetwork.alertThreshold,
+        alertType: alert.alertType,
+      },
+      data: { wifiId: wifiNetwork._id, alertId: alert._id },
+    };
+
+    return this.createWithNotification(notificationData, emailData);
+  }
+
+  /**
+   * Generate WiFi alert HTML email
+   * @param {Object} user - User document
+   * @param {Object} wifiNetwork - WiFi network document
+   * @param {Object} alert - Alert document
+   * @returns {string} HTML email content
+   */
+  _generateWifiAlertHtml(user, wifiNetwork, alert) {
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+          <h1 style="margin: 0;">⚠️ WiFi Speed Alert</h1>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+          <h2>Hello ${user.name},</h2>
+          <p>A WiFi speed alert has been triggered for your network.</p>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin: 0 0 15px 0; color: #dc2626;">${wifiNetwork.wifiName}</h3>
+            <p style="margin: 5px 0;"><strong>Average Speed:</strong> ${alert.avgSpeed.toFixed(2)} Mbps</p>
+            <p style="margin: 5px 0;"><strong>Threshold:</strong> ${wifiNetwork.alertThreshold} Mbps</p>
+            <p style="margin: 5px 0;"><strong>Expected Speed:</strong> ${wifiNetwork.expectedSpeed} Mbps</p>
+            <p style="margin: 5px 0;"><strong>Alert Time:</strong> ${new Date(alert.createdAt).toLocaleString()}</p>
+          </div>
+          <p style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b;">
+            <strong>Action Required:</strong> Please check your network connection and take necessary steps to resolve the issue.
+          </p>
+          <p>Best regards,<br>SIM Management Team</p>
+        </div>
+      </div>
+    `;
+  }
+
   // Helper methods for generating HTML
   _generateCompanyCreatedHtml(company, admin) {
     return `

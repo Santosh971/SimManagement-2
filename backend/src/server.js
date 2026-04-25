@@ -25,6 +25,7 @@ const auditLogRoutes = require('./routes/auditLog/auditLog.routes');
 const whatsappRoutes = require('./routes/whatsapp/whatsapp.routes');
 const telegramRoutes = require('./routes/telegram/telegram.routes');
 const smsRoutes = require('./routes/sms/sms.routes');
+const wifiRoutes = require('./routes/wifi/wifi.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -118,6 +119,7 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/wifi', wifiRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

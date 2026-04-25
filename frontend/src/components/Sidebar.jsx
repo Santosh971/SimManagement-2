@@ -195,6 +195,7 @@ import {
   FiMessageCircle,
   FiSend,
   FiMessageSquare,
+  FiWifi,
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -223,6 +224,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'SMS Logs', href: '/app/sms', icon: FiMessageSquare },
           { name: 'WhatsApp', href: '/app/whatsapp', icon: FiMessageCircle },
           { name: 'Telegram', href: '/app/telegram', icon: FiSend },
+          { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi },
+          { name: 'WiFi Devices', href: '/app/wifi-devices', icon: FiSmartphone },
           { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },
