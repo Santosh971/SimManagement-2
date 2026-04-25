@@ -21,6 +21,7 @@ import AuditLogs from './pages/AuditLogs'
 import Subscription from './pages/Subscription'
 import WhatsAppMessages from './pages/WhatsAppMessages'
 import TelegramMessages from './pages/TelegramMessages'
+import SmsLogs from './pages/SmsLogs'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -132,6 +133,7 @@ function App() {
             <Route path="sims" element={<SIMs />} />
             <Route path="recharges" element={<Recharges />} />
             <Route path="call-logs" element={<CallLogs />} />
+            <Route path="sms" element={<SmsLogs />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="reports" element={<Reports />} />
             <Route path="users" element={<Users />} />
