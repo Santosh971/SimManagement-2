@@ -304,6 +304,46 @@ class WifiController {
       next(error);
     }
   }
+
+  // ==================== [SIM-BASED WIFI ACCESS CONTROL] ENDPOINTS ====================
+
+  async getEligibleSims(req, res, next) {
+    try {
+      const sims = await wifiService.getEligibleSims(req.user, req.query.companyId);
+      return successResponse(res, sims);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getWifiAssignedSims(req, res, next) {
+    try {
+      const sims = await wifiService.getWifiAssignedSims(req.params.id, req.user);
+      return successResponse(res, sims);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ==================== MANUAL ALERT CHECK (Testing) ====================
+
+  async checkAlerts(req, res, next) {
+    try {
+      const result = await wifiService.checkAndCreateAlerts();
+      return successResponse(res, result, 'WiFi alert check completed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async testAlertEmail(req, res, next) {
+    try {
+      const result = await wifiService.testAlertEmail(req.params.wifiId, req.user);
+      return successResponse(res, result, 'Test alert email sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new WifiController();

@@ -15,6 +15,22 @@ const createNetworkValidation = [
   body('alertThreshold').isFloat({ min: 0 }).withMessage('Alert threshold must be a positive number'),
   body('emailAlertEnabled').optional().isBoolean().withMessage('Email alert enabled must be a boolean'),
   body('companyId').optional().isMongoId().withMessage('Invalid company ID'),
+  // [SIM-BASED WIFI ACCESS CONTROL] - Validate assignedSims
+  body('assignedSims')
+    .optional()
+    .isArray().withMessage('Assigned SIMs must be an array')
+    .custom((value) => {
+      if (Array.isArray(value)) {
+        for (const id of value) {
+          if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+            throw new Error(`Invalid SIM ID: ${id}`);
+          }
+        }
+      }
+      return true;
+    }),
+  body('ssid').optional().trim().isLength({ max: 100 }),
+  body('bssid').optional().trim().isLength({ max: 20 }),
 ];
 
 const updateNetworkValidation = [
@@ -23,6 +39,22 @@ const updateNetworkValidation = [
   body('expectedSpeed').optional().isFloat({ min: 0 }),
   body('alertThreshold').optional().isFloat({ min: 0 }),
   body('emailAlertEnabled').optional().isBoolean(),
+  // [SIM-BASED WIFI ACCESS CONTROL] - Validate assignedSims
+  body('assignedSims')
+    .optional()
+    .isArray().withMessage('Assigned SIMs must be an array')
+    .custom((value) => {
+      if (Array.isArray(value)) {
+        for (const id of value) {
+          if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+            throw new Error(`Invalid SIM ID: ${id}`);
+          }
+        }
+      }
+      return true;
+    }),
+  body('ssid').optional().trim().isLength({ max: 100 }),
+  body('bssid').optional().trim().isLength({ max: 20 }),
 ];
 
 // Device validations
@@ -153,5 +185,21 @@ router.get('/dashboard/stats', authorize('super_admin', 'admin'), wifiController
 
 // Get hourly metrics for charts
 router.get('/hourly-metrics/:wifiId', authorize('super_admin', 'admin'), param('wifiId').isMongoId().withMessage('Invalid WiFi network ID'), validate, wifiController.getHourlyMetrics);
+
+// ==================== MANUAL ALERT CHECK (Testing) ====================
+
+// Manually trigger WiFi alert check (admin only - for testing)
+router.post('/check-alerts', authorize('super_admin', 'admin'), wifiController.checkAlerts);
+
+// Manually trigger alert email for specific WiFi (admin only - for testing)
+router.post('/test-alert/:wifiId', authorize('super_admin', 'admin'), param('wifiId').isMongoId().withMessage('Invalid WiFi network ID'), validate, wifiController.testAlertEmail);
+
+// ==================== [SIM-BASED WIFI ACCESS CONTROL] ROUTES ====================
+
+// Get eligible SIMs for WiFi assignment (admin only)
+router.get('/eligible-sims', authorize('super_admin', 'admin'), query('companyId').optional().isMongoId(), validate, wifiController.getEligibleSims);
+
+// Get SIMs assigned to a WiFi network
+router.get('/networks/:id/assigned-sims', authorize('super_admin', 'admin'), param('id').isMongoId().withMessage('Invalid WiFi network ID'), validate, wifiController.getWifiAssignedSims);
 
 module.exports = router;

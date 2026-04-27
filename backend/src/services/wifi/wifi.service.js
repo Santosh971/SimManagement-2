@@ -1,17 +1,20 @@
 const { WifiNetwork, WifiDevice, WifiMetric, WifiAlert } = require('../../models/wifi');
 const Company = require('../../models/company/company.model');
+const Sim = require('../../models/sim/sim.model');
 const mongoose = require('mongoose');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../../utils/errors');
 const notificationHelper = require('../../utils/notificationHelper');
+const logger = require('../../utils/logger');
 
 class WifiService {
   // ==================== WIFI NETWORK METHODS ====================
 
   /**
    * Create a new WiFi network
+   * [SIM-BASED WIFI ACCESS CONTROL] - Now supports assignedSims field
    */
   async createWifiNetwork(data, user) {
-    const { wifiName, expectedSpeed, alertThreshold, emailAlertEnabled } = data;
+    const { wifiName, expectedSpeed, alertThreshold, emailAlertEnabled, assignedSims, ssid, bssid } = data;
     const targetCompanyId = user.role === 'super_admin' ? data.companyId : user.companyId;
 
     if (!targetCompanyId) {
@@ -29,6 +32,26 @@ class WifiService {
       throw new ConflictError('WiFi network with this name already exists in your company');
     }
 
+    // [SIM-BASED WIFI ACCESS CONTROL] - Validate assignedSims if provided
+    if (assignedSims && Array.isArray(assignedSims) && assignedSims.length > 0) {
+      // Validate all SIM IDs
+      for (const simId of assignedSims) {
+        if (!mongoose.Types.ObjectId.isValid(simId)) {
+          throw new ValidationError(`Invalid SIM ID: ${simId}`);
+        }
+
+        const sim = await Sim.findById(simId);
+        if (!sim) {
+          throw new NotFoundError(`SIM not found: ${simId}`);
+        }
+
+        // Validate SIM belongs to same company
+        if (sim.companyId.toString() !== targetCompanyId.toString()) {
+          throw new ValidationError(`SIM ${simId} does not belong to this company`);
+        }
+      }
+    }
+
     const wifiNetwork = new WifiNetwork({
       companyId: targetCompanyId,
       wifiName,
@@ -36,9 +59,17 @@ class WifiService {
       alertThreshold,
       emailAlertEnabled: emailAlertEnabled !== undefined ? emailAlertEnabled : true,
       createdBy: user.id,
+      // [SIM-BASED WIFI ACCESS CONTROL] - Optional SIM assignment
+      assignedSims: assignedSims || [],
+      ssid: ssid || '',
+      bssid: bssid || '',
     });
 
     await wifiNetwork.save();
+
+    // Populate assigned SIMs in response
+    await wifiNetwork.populate('assignedSims', 'mobileNumber operator status');
+
     return wifiNetwork;
   }
 
@@ -66,6 +97,7 @@ class WifiService {
 
     const networks = await WifiNetwork.find(filter)
       .populate('createdBy', 'name email')
+      .populate('assignedSims', 'mobileNumber operator status')
       .skip(skip)
       .limit(parseInt(limit))
       .sort(sort);
@@ -96,6 +128,7 @@ class WifiService {
 
   /**
    * Get WiFi network by ID
+   * [SIM-BASED WIFI ACCESS CONTROL] - Now includes assigned SIMs info
    */
   async getWifiNetworkById(wifiId, user) {
     const filter = { _id: wifiId, isActive: true };
@@ -105,7 +138,8 @@ class WifiService {
     }
 
     const network = await WifiNetwork.findOne(filter)
-      .populate('createdBy', 'name email');
+      .populate('createdBy', 'name email')
+      .populate('assignedSims', 'mobileNumber operator status assignedTo');
 
     if (!network) {
       throw new NotFoundError('WiFi network');
@@ -128,6 +162,7 @@ class WifiService {
 
   /**
    * Update WiFi network
+   * [SIM-BASED WIFI ACCESS CONTROL] - Now supports updating assignedSims
    */
   async updateWifiNetwork(wifiId, updateData, user) {
     const filter = { _id: wifiId, isActive: true };
@@ -136,7 +171,7 @@ class WifiService {
       filter.companyId = user.companyId;
     }
 
-    const allowedUpdates = ['wifiName', 'expectedSpeed', 'alertThreshold', 'emailAlertEnabled'];
+    const allowedUpdates = ['wifiName', 'expectedSpeed', 'alertThreshold', 'emailAlertEnabled', 'assignedSims', 'ssid', 'bssid'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -159,10 +194,34 @@ class WifiService {
       }
     }
 
+    // [SIM-BASED WIFI ACCESS CONTROL] - Validate assignedSims if provided
+    if (updates.assignedSims !== undefined) {
+      // Allow empty array to remove all restrictions
+      if (Array.isArray(updates.assignedSims) && updates.assignedSims.length > 0) {
+        const targetCompanyId = filter.companyId || (await WifiNetwork.findById(wifiId))?.companyId;
+
+        for (const simId of updates.assignedSims) {
+          if (!mongoose.Types.ObjectId.isValid(simId)) {
+            throw new ValidationError(`Invalid SIM ID: ${simId}`);
+          }
+
+          const sim = await Sim.findById(simId);
+          if (!sim) {
+            throw new NotFoundError(`SIM not found: ${simId}`);
+          }
+
+          // Validate SIM belongs to same company
+          if (sim.companyId.toString() !== targetCompanyId.toString()) {
+            throw new ValidationError(`SIM ${simId} does not belong to this company`);
+          }
+        }
+      }
+    }
+
     const network = await WifiNetwork.findOneAndUpdate(filter, updates, {
       new: true,
       runValidators: true,
-    });
+    }).populate('assignedSims', 'mobileNumber operator status');
 
     if (!network) {
       throw new NotFoundError('WiFi network');
@@ -666,71 +725,133 @@ class WifiService {
 
   /**
    * Check and create alerts for low speed (called by cron job)
+   * Returns summary of actions taken
    */
   async checkAndCreateAlerts() {
     const networks = await WifiNetwork.find({ isActive: true });
+    const results = {
+      checked: 0,
+      skipped: 0,
+      alertsCreated: 0,
+      alertsUpdated: 0,
+      alertsResolved: 0,
+      emailsSent: 0,
+      emailErrors: [],
+      errors: []
+    };
 
     for (const network of networks) {
-      const avgMetrics = await WifiMetric.getAverageSpeed(network._id, 5);
+      try {
+        const avgMetrics = await WifiMetric.getAverageSpeed(network._id, 5);
 
-      if (!avgMetrics || avgMetrics.count === 0) {
-        // No data received in last 5 minutes, skip
-        continue;
-      }
+        if (!avgMetrics || avgMetrics.count === 0) {
+          // No data received in last 5 minutes, skip
+          results.skipped++;
+          logger.info('[WIFI ALERT] No metrics data', { wifiId: network._id, wifiName: network.wifiName });
+          continue;
+        }
 
-      const avgSpeed = (avgMetrics.avgDownload + avgMetrics.avgUpload) / 2;
+        results.checked++;
+        const avgSpeed = (avgMetrics.avgDownload + avgMetrics.avgUpload) / 2;
 
-      if (avgSpeed < network.alertThreshold) {
-        // Check if there's already an active alert
-        let alert = await WifiAlert.findOne({
+        logger.info('[WIFI ALERT] Speed check', {
           wifiId: network._id,
-          status: 'active',
+          wifiName: network.wifiName,
+          avgSpeed: avgSpeed.toFixed(2),
+          threshold: network.alertThreshold,
+          belowThreshold: avgSpeed < network.alertThreshold
         });
 
-        if (!alert) {
-          // Create new alert
-          alert = await WifiAlert.create({
+        if (avgSpeed < network.alertThreshold) {
+          // Check if there's already an active alert
+          let alert = await WifiAlert.findOne({
             wifiId: network._id,
-            companyId: network.companyId,
-            avgSpeed,
-            threshold: network.alertThreshold,
-            alertType: 'low_speed',
-            message: `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`,
+            status: 'active',
           });
 
-          // Send email alert if enabled
-          if (network.emailAlertEnabled) {
-            try {
-              const company = await Company.findById(network.companyId);
-              if (company) {
-                // Get admin users for the company
-                const adminUsers = await mongoose.model('User').find({
-                  companyId: network.companyId,
-                  role: { $in: ['admin', 'super_admin'] },
-                  isActive: true,
-                });
+          if (!alert) {
+            // Create new alert
+            alert = await WifiAlert.create({
+              wifiId: network._id,
+              companyId: network.companyId,
+              avgSpeed,
+              threshold: network.alertThreshold,
+              alertType: 'low_speed',
+              message: `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`,
+            });
+            results.alertsCreated++;
 
-                for (const admin of adminUsers) {
-                  await notificationHelper.sendWifiAlertEmail(admin, network, alert);
+            logger.info('[WIFI ALERT] New alert created', {
+              wifiId: network._id,
+              wifiName: network.wifiName,
+              avgSpeed: avgSpeed.toFixed(2),
+              alertId: alert._id
+            });
+
+            // Send email alert if enabled
+            if (network.emailAlertEnabled) {
+              try {
+                const company = await Company.findById(network.companyId);
+                if (company) {
+                  // Get admin users for the company
+                  const adminUsers = await mongoose.model('User').find({
+                    companyId: network.companyId,
+                    role: { $in: ['admin', 'super_admin'] },
+                    isActive: true,
+                  });
+
+                  logger.info('[WIFI ALERT] Sending emails to admins', {
+                    wifiId: network._id,
+                    adminCount: adminUsers.length,
+                    admins: adminUsers.map(a => a.email)
+                  });
+
+                  for (const admin of adminUsers) {
+                    try {
+                      await notificationHelper.sendWifiAlertEmail(admin, network, alert);
+                      results.emailsSent++;
+                      logger.info('[WIFI ALERT] Email sent', { email: admin.email, wifiId: network._id });
+                    } catch (emailError) {
+                      results.emailErrors.push({ email: admin.email, error: emailError.message });
+                      logger.error('[WIFI ALERT] Failed to send email', { email: admin.email, error: emailError.message });
+                    }
+                  }
+                } else {
+                  logger.warn('[WIFI ALERT] Company not found', { companyId: network.companyId });
                 }
+              } catch (emailError) {
+                results.errors.push({ wifiId: network._id, error: emailError.message });
+                logger.error('[WIFI ALERT] Email process failed', { wifiId: network._id, error: emailError.message });
               }
-            } catch (emailError) {
-              console.error('Failed to send WiFi alert email:', emailError.message);
+            } else {
+              logger.info('[WIFI ALERT] Email alerts disabled for this network', { wifiId: network._id });
             }
+          } else {
+            // Update existing alert with new avgSpeed
+            alert.avgSpeed = avgSpeed;
+            await alert.save();
+            results.alertsUpdated++;
+            logger.info('[WIFI ALERT] Alert updated', { wifiId: network._id, alertId: alert._id, avgSpeed: avgSpeed.toFixed(2) });
           }
         } else {
-          // Update existing alert with new avgSpeed
-          alert.avgSpeed = avgSpeed;
-          await alert.save();
+          // Speed is good, resolve any active alerts
+          const resolveResult = await WifiAlert.updateMany(
+            { wifiId: network._id, status: 'active' },
+            { status: 'resolved', resolvedAt: new Date() }
+          );
+          if (resolveResult.modifiedCount > 0) {
+            results.alertsResolved += resolveResult.modifiedCount;
+            logger.info('[WIFI ALERT] Alerts resolved', { wifiId: network._id, count: resolveResult.modifiedCount });
+          }
         }
-      } else {
-        // Speed is good, resolve any active alerts
-        await WifiAlert.updateMany(
-          { wifiId: network._id, status: 'active' },
-          { status: 'resolved', resolvedAt: new Date() }
-        );
+      } catch (error) {
+        results.errors.push({ wifiId: network._id, error: error.message });
+        logger.error('[WIFI ALERT] Error processing network', { wifiId: network._id, error: error.message });
       }
     }
+
+    logger.info('[WIFI ALERT] Check completed', results);
+    return results;
   }
 
   /**
@@ -738,6 +859,143 @@ class WifiService {
    */
   async cleanOldMetrics(daysToKeep = 30) {
     return await WifiMetric.cleanOldMetrics(daysToKeep);
+  }
+
+  // ==================== SIM-BASED WIFI ACCESS CONTROL METHODS ====================
+
+  /**
+   * [SIM-BASED WIFI ACCESS CONTROL] - Check if SIM is allowed for WiFi
+   * If assignedSims is empty/undefined, allow all SIMs (backward compatible)
+   * If assignedSims has entries, only allow SIMs in the list
+   */
+  isSimAllowedForWifi(wifi, simId) {
+    // No restriction - all SIMs allowed (backward compatible)
+    if (!wifi.assignedSims || wifi.assignedSims.length === 0) {
+      return true;
+    }
+
+    // Check if SIM is in the allowed list
+    const simIdStr = simId.toString();
+    return wifi.assignedSims.some(id => id.toString() === simIdStr);
+  }
+
+  /**
+   * [SIM-BASED WIFI ACCESS CONTROL] - Get eligible SIMs for WiFi assignment
+   * Returns all SIMs in the company that can be assigned to WiFi networks
+   */
+  async getEligibleSims(user, queryCompanyId) {
+    const targetCompanyId = user.role === 'super_admin' ? queryCompanyId : user.companyId;
+
+    if (!targetCompanyId) {
+      throw new ForbiddenError('Company ID is required');
+    }
+
+    const sims = await Sim.find({
+      companyId: targetCompanyId,
+      isActive: true,
+      status: 'active'
+    })
+      .select('mobileNumber operator status assignedTo')
+      .populate('assignedTo', 'name email')
+      .sort({ mobileNumber: 1 });
+
+    return sims;
+  }
+
+  /**
+   * [SIM-BASED WIFI ACCESS CONTROL] - Get WiFi networks accessible by a SIM
+   * Used by device flow to get available WiFi networks
+   */
+  async getWifiNetworksForSim(companyId, simId) {
+    return await WifiNetwork.findAccessibleBySim(companyId, simId);
+  }
+
+  /**
+   * [SIM-BASED WIFI ACCESS CONTROL] - Get SIMs assigned to a specific WiFi
+   */
+  async getWifiAssignedSims(wifiId, user) {
+    const filter = { _id: wifiId, isActive: true };
+
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    }
+
+    const network = await WifiNetwork.findOne(filter)
+      .populate('assignedSims', 'mobileNumber operator status assignedTo');
+
+    if (!network) {
+      throw new NotFoundError('WiFi network');
+    }
+
+    return network.assignedSims || [];
+  }
+
+  /**
+   * [MANUAL TESTING] - Test alert email for a specific WiFi network
+   * Sends a test email to admin regardless of speed threshold
+   */
+  async testAlertEmail(wifiId, user) {
+    const network = await WifiNetwork.findById(wifiId).populate('companyId');
+
+    if (!network) {
+      throw new NotFoundError('WiFi network');
+    }
+
+    // Verify access
+    if (user.role !== 'super_admin' && network.companyId._id.toString() !== user.companyId.toString()) {
+      throw new ForbiddenError('You do not have access to this WiFi network');
+    }
+
+    // Get latest metrics
+    const latestMetrics = await WifiMetric.getAverageSpeed(wifiId, 5);
+    const avgSpeed = latestMetrics ? (latestMetrics.avgDownload + latestMetrics.avgUpload) / 2 : 0;
+
+    // Create a test alert
+    const alert = {
+      _id: 'test_alert_' + Date.now(),
+      avgSpeed: avgSpeed || 10,
+      threshold: network.alertThreshold,
+      alertType: 'test',
+      message: `[TEST] WiFi speed test alert - Average speed is below threshold`,
+      createdAt: new Date()
+    };
+
+    // Get admin users
+    const adminUsers = await mongoose.model('User').find({
+      companyId: network.companyId._id,
+      role: { $in: ['admin', 'super_admin'] },
+      isActive: true,
+    });
+
+    const emailResults = [];
+
+    for (const admin of adminUsers) {
+      try {
+        await notificationHelper.sendWifiAlertEmail(admin, network, alert);
+        emailResults.push({
+          email: admin.email,
+          name: admin.name,
+          status: 'sent'
+        });
+        logger.info('[WIFI TEST] Test email sent', { email: admin.email, wifiId });
+      } catch (emailError) {
+        emailResults.push({
+          email: admin.email,
+          name: admin.name,
+          status: 'failed',
+          error: emailError.message
+        });
+        logger.error('[WIFI TEST] Failed to send test email', { email: admin.email, error: emailError.message });
+      }
+    }
+
+    return {
+      wifiName: network.wifiName,
+      emailAlertEnabled: network.emailAlertEnabled,
+      avgSpeed: avgSpeed,
+      threshold: network.alertThreshold,
+      adminsNotified: emailResults
+    };
   }
 }
 

@@ -96,6 +96,24 @@ const SimSchema = new Schema({
     default: null,
     index: true,
   },
+  // [SIM-BASED WIFI ACCESS CONTROL] - Device binding fields
+  deviceId: {
+    type: String,
+    default: null,
+    index: true, // For quick lookup
+  },
+  deviceToken: {
+    type: String,
+    default: null,
+  },
+  deviceTokenExpires: {
+    type: Date,
+    default: null,
+  },
+  deviceLastSeen: {
+    type: Date,
+    default: null,
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -161,6 +179,44 @@ SimSchema.statics.findInactive = function (companyId, days = 7) {
     status: 'active',
     lastActiveDate: { $lt: cutoffDate },
   });
+};
+
+// [SIM-BASED WIFI ACCESS CONTROL] - Find SIM by mobile number for device auth
+// Handles both +91XXXXXXXXXX and XXXXXXXXXX formats
+SimSchema.statics.findByMobileNumber = function (mobileNumber) {
+  // Normalize phone number
+  let normalized = mobileNumber.replace(/[\s-]/g, '');
+  if (!normalized.startsWith('+') && normalized.length === 10) {
+    normalized = '+91' + normalized;
+  }
+
+  return this.findOne({
+    mobileNumber: { $in: [normalized, mobileNumber] },
+    isActive: true,
+  });
+};
+
+// [SIM-BASED WIFI ACCESS CONTROL] - Generate device token
+SimSchema.methods.generateDeviceToken = function () {
+  const crypto = require('crypto');
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+  this.deviceToken = token;
+  this.deviceTokenExpires = expiresAt;
+
+  return { token, expiresAt };
+};
+
+// [SIM-BASED WIFI ACCESS CONTROL] - Validate device token
+SimSchema.methods.validateDeviceToken = function (token) {
+  if (!this.deviceToken || this.deviceToken !== token) {
+    return false;
+  }
+  if (this.deviceTokenExpires && this.deviceTokenExpires < new Date()) {
+    return false;
+  }
+  return true;
 };
 
 // Method to check if SIM is assigned

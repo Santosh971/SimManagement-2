@@ -36,6 +36,23 @@ const WifiNetworkSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
   },
+  // [SIM-BASED WIFI ACCESS CONTROL] - Optional field for restricting WiFi access to specific SIMs
+  // If empty or undefined, all SIMs in the company can access this WiFi (backward compatible)
+  assignedSims: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Sim',
+  }],
+  // WiFi identifiers for device validation
+  ssid: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  bssid: {
+    type: String,
+    trim: true,
+    default: '',
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -46,6 +63,8 @@ const WifiNetworkSchema = new Schema({
 WifiNetworkSchema.index({ companyId: 1, wifiName: 1 }, { unique: true });
 WifiNetworkSchema.index({ companyId: 1, isActive: 1 });
 WifiNetworkSchema.index({ createdAt: -1 });
+WifiNetworkSchema.index({ assignedSims: 1 }); // [SIM-BASED WIFI ACCESS CONTROL]
+WifiNetworkSchema.index({ companyId: 1, ssid: 1, bssid: 1 }); // For device validation
 
 // Virtual for status based on latest metrics
 WifiNetworkSchema.virtual('status').get(function () {
@@ -60,6 +79,32 @@ WifiNetworkSchema.statics.findByCompany = function (companyId) {
 // Static method to count by company
 WifiNetworkSchema.statics.countByCompany = function (companyId) {
   return this.countDocuments({ companyId, isActive: true });
+};
+
+// [SIM-BASED WIFI ACCESS CONTROL] - Find WiFi networks accessible by a SIM
+// Returns networks where: assignedSims is empty/undefined OR SIM is in assignedSims
+WifiNetworkSchema.statics.findAccessibleBySim = function (companyId, simId) {
+  return this.find({
+    companyId,
+    isActive: true,
+    $or: [
+      { assignedSims: { $exists: false } },
+      { assignedSims: { $size: 0 } },
+      { assignedSims: simId }
+    ]
+  }).sort({ createdAt: -1 });
+};
+
+// [SIM-BASED WIFI ACCESS CONTROL] - Find WiFi by SSID and BSSID with company
+WifiNetworkSchema.statics.findBySsidBssid = function (companyId, ssid, bssid) {
+  return this.findOne({
+    companyId,
+    isActive: true,
+    $or: [
+      { ssid, bssid },
+      { wifiName: ssid } // fallback to wifiName if ssid not set
+    ]
+  });
 };
 
 module.exports = mongoose.model('WifiNetwork', WifiNetworkSchema);

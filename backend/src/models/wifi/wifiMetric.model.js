@@ -24,6 +24,12 @@ const WifiMetricSchema = new Schema({
     ref: 'WifiDevice',
     index: true,
   },
+  // [SIM-BASED WIFI ACCESS CONTROL] - Track which SIM submitted the metrics
+  simId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Sim',
+    index: true,
+  },
   downloadSpeed: {
     type: Number,
     required: [true, 'Download speed is required'],
@@ -55,6 +61,7 @@ WifiMetricSchema.index({ wifiId: 1, timestamp: -1 });
 WifiMetricSchema.index({ companyId: 1, timestamp: -1 });
 WifiMetricSchema.index({ deviceId: 1, timestamp: -1 });
 WifiMetricSchema.index({ deviceObjectId: 1, timestamp: -1 });
+WifiMetricSchema.index({ simId: 1, timestamp: -1 }); // [SIM-BASED WIFI ACCESS CONTROL]
 WifiMetricSchema.index({ timestamp: 1 });
 
 // Compound index for aggregation queries
