@@ -759,7 +759,8 @@ class WifiService {
           wifiName: network.wifiName,
           avgSpeed: avgSpeed.toFixed(2),
           threshold: network.alertThreshold,
-          belowThreshold: avgSpeed < network.alertThreshold
+          belowThreshold: avgSpeed < network.alertThreshold,
+          emailAlertEnabled: network.emailAlertEnabled
         });
 
         if (avgSpeed < network.alertThreshold) {
@@ -768,6 +769,8 @@ class WifiService {
             wifiId: network._id,
             status: 'active',
           });
+
+          const isNewAlert = !alert;
 
           if (!alert) {
             // Create new alert
@@ -787,51 +790,78 @@ class WifiService {
               avgSpeed: avgSpeed.toFixed(2),
               alertId: alert._id
             });
-
-            // Send email alert if enabled
-            if (network.emailAlertEnabled) {
-              try {
-                const company = await Company.findById(network.companyId);
-                if (company) {
-                  // Get admin users for the company
-                  const adminUsers = await mongoose.model('User').find({
-                    companyId: network.companyId,
-                    role: { $in: ['admin', 'super_admin'] },
-                    isActive: true,
-                  });
-
-                  logger.info('[WIFI ALERT] Sending emails to admins', {
-                    wifiId: network._id,
-                    adminCount: adminUsers.length,
-                    admins: adminUsers.map(a => a.email)
-                  });
-
-                  for (const admin of adminUsers) {
-                    try {
-                      await notificationHelper.sendWifiAlertEmail(admin, network, alert);
-                      results.emailsSent++;
-                      logger.info('[WIFI ALERT] Email sent', { email: admin.email, wifiId: network._id });
-                    } catch (emailError) {
-                      results.emailErrors.push({ email: admin.email, error: emailError.message });
-                      logger.error('[WIFI ALERT] Failed to send email', { email: admin.email, error: emailError.message });
-                    }
-                  }
-                } else {
-                  logger.warn('[WIFI ALERT] Company not found', { companyId: network.companyId });
-                }
-              } catch (emailError) {
-                results.errors.push({ wifiId: network._id, error: emailError.message });
-                logger.error('[WIFI ALERT] Email process failed', { wifiId: network._id, error: emailError.message });
-              }
-            } else {
-              logger.info('[WIFI ALERT] Email alerts disabled for this network', { wifiId: network._id });
-            }
           } else {
             // Update existing alert with new avgSpeed
             alert.avgSpeed = avgSpeed;
+            alert.message = `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`;
             await alert.save();
             results.alertsUpdated++;
             logger.info('[WIFI ALERT] Alert updated', { wifiId: network._id, alertId: alert._id, avgSpeed: avgSpeed.toFixed(2) });
+          }
+
+          // Send email alert if enabled - Send for BOTH new alerts AND existing alerts
+          // (Email is sent every time speed is below threshold to ensure admin is notified)
+          if (network.emailAlertEnabled) {
+            try {
+              const company = await Company.findById(network.companyId);
+              if (company) {
+                // Get admin users for the company
+                const adminUsers = await mongoose.model('User').find({
+                  companyId: network.companyId,
+                  role: { $in: ['admin', 'super_admin'] },
+                  isActive: true,
+                });
+
+                logger.info('[WIFI ALERT] Sending emails to admins', {
+                  wifiId: network._id,
+                  wifiName: network.wifiName,
+                  adminCount: adminUsers.length,
+                  admins: adminUsers.map(a => ({ email: a.email, name: a.name })),
+                  isNewAlert: isNewAlert
+                });
+
+                if (adminUsers.length === 0) {
+                  logger.warn('[WIFI ALERT] No admin users found for company', {
+                    companyId: network.companyId,
+                    wifiId: network._id
+                  });
+                }
+
+                for (const admin of adminUsers) {
+                  try {
+                    const emailResult = await notificationHelper.sendWifiAlertEmail(admin, network, alert);
+                    results.emailsSent++;
+                    logger.info('[WIFI ALERT] Email sent successfully', {
+                      email: admin.email,
+                      wifiId: network._id,
+                      wifiName: network.wifiName,
+                      emailResult: emailResult
+                    });
+                  } catch (emailError) {
+                    results.emailErrors.push({ email: admin.email, error: emailError.message });
+                    logger.error('[WIFI ALERT] Failed to send email to admin', {
+                      email: admin.email,
+                      error: emailError.message,
+                      stack: emailError.stack
+                    });
+                  }
+                }
+              } else {
+                logger.warn('[WIFI ALERT] Company not found', { companyId: network.companyId });
+              }
+            } catch (emailError) {
+              results.errors.push({ wifiId: network._id, error: emailError.message });
+              logger.error('[WIFI ALERT] Email process failed', {
+                wifiId: network._id,
+                error: emailError.message,
+                stack: emailError.stack
+              });
+            }
+          } else {
+            logger.info('[WIFI ALERT] Email alerts disabled for this network', {
+              wifiId: network._id,
+              wifiName: network.wifiName
+            });
           }
         } else {
           // Speed is good, resolve any active alerts
@@ -841,12 +871,21 @@ class WifiService {
           );
           if (resolveResult.modifiedCount > 0) {
             results.alertsResolved += resolveResult.modifiedCount;
-            logger.info('[WIFI ALERT] Alerts resolved', { wifiId: network._id, count: resolveResult.modifiedCount });
+            logger.info('[WIFI ALERT] Alerts resolved - speed recovered', {
+              wifiId: network._id,
+              wifiName: network.wifiName,
+              avgSpeed: avgSpeed.toFixed(2),
+              count: resolveResult.modifiedCount
+            });
           }
         }
       } catch (error) {
         results.errors.push({ wifiId: network._id, error: error.message });
-        logger.error('[WIFI ALERT] Error processing network', { wifiId: network._id, error: error.message });
+        logger.error('[WIFI ALERT] Error processing network', {
+          wifiId: network._id,
+          error: error.message,
+          stack: error.stack
+        });
       }
     }
 
