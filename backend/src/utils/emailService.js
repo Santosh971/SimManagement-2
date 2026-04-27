@@ -861,6 +861,53 @@ class EmailService {
     return this.sendEmail({ to: user.email, subject, html });
   }
 
+  // ─── Subscription Renewal Notification to Superadmin ──────────────────────────
+
+  async sendRenewalNotificationEmail(superadmin, renewalData) {
+    const { company, payment, plan, user } = renewalData;
+    const subject = `Subscription Renewed — ${company.name} — ${plan.name} Plan`;
+
+    const formattedAmount = `₹${payment.amount?.toLocaleString?.() || payment.amount}`;
+    const billingLabel = payment.billingCycle === 'yearly' ? 'Yearly' : 'Monthly';
+    const renewalDate = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const body = `
+      ${greeting(superadmin.name)}
+      ${paragraph('A company has renewed their subscription. Here are the details:')}
+      ${infoCard([
+      ['Company', `<strong>${company.name}</strong>`],
+      ['Company Email', company.email],
+      company.phone ? ['Company Phone', company.phone] : null,
+      ['', ''], // spacer
+      ['Renewed By', user.name],
+      ['User Email', user.email],
+      user.phone ? ['User Phone', user.phone] : null,
+      ['', ''], // spacer
+      ['Plan', `<strong>${plan.name}</strong> (${billingLabel})`],
+      ['Amount Paid', `<strong style="color:#057A55;">${formattedAmount}</strong>`],
+      ['Payment ID', payment.razorpayPaymentId || payment.id],
+      ['New Expiry Date', `<strong style="color:#057A55;">${new Date(company.subscriptionEnds).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>`],
+    ])}
+      ${paragraph(`Renewal completed on ${renewalDate}.`)}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #057A55 0%, #065F46 100%)`,
+      headerIcon: '&#10003;',
+      headerTitle: 'Subscription Renewed',
+      headerSubtitle: `${company.name} renewed their plan`,
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: superadmin.email, subject, html });
+  }
+
   // ─── Telegram Link Email ────────────────────────────────────────────────────
 
   async sendTelegramLinkEmail(user, sim, telegramLink, sentBy) {
@@ -903,6 +950,59 @@ class EmailService {
     });
 
     return this.sendEmail({ to: user.email, subject, html });
+  }
+
+  // ─── New Registration Notification to Superadmin ────────────────────────────────
+
+  async sendNewRegistrationEmail(superadmin, registrationData) {
+    const { company, user, payment, plan } = registrationData;
+    const subject = `New Registration — ${company.name} — ${plan.name} Plan`;
+
+    const formattedAmount = `₹${payment.amount?.toLocaleString?.() || payment.amount}`;
+    const billingLabel = payment.billingCycle === 'yearly' ? 'Yearly' : 'Monthly';
+    const registrationDate = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const body = `
+      ${greeting(superadmin.name)}
+      ${paragraph('A new company has registered on the SIM Management platform. Here are the details:')}
+      ${infoCard([
+      ['Company Name', `<strong>${company.name}</strong>`],
+      ['Company Email', company.email],
+      company.phone ? ['Company Phone', company.phone] : null,
+      ['', ''], // spacer
+      ['Admin Name', user.name],
+      ['Admin Email', user.email],
+      user.phone ? ['Admin Phone', user.phone] : null,
+      ['', ''], // spacer
+      ['Plan', `<strong>${plan.name}</strong> (${billingLabel})`],
+      ['Amount Paid', `<strong style="color:#057A55;">${formattedAmount}</strong>`],
+      ['Payment ID', payment.razorpayPaymentId || payment.id],
+      ['Subscription Valid Until', new Date(company.subscriptionEnds).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })],
+    ])}
+      ${alertBox('The user has been automatically logged in and can start using the platform immediately.', {
+      bg: COLORS.successBg,
+      border: COLORS.successBdr,
+      textColor: '#065F46',
+      label: '&#10003; Auto-login Enabled',
+    })}
+      ${paragraph(`Registration completed on ${registrationDate}.`)}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
+      headerIcon: '&#128176;',
+      headerTitle: 'New Registration',
+      headerSubtitle: `${company.name} has signed up`,
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: superadmin.email, subject, html });
   }
 
   // ─── Bulk Telegram Link Email ────────────────────────────────────────────────────

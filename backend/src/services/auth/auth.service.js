@@ -1,7 +1,5 @@
 const jwt = require('jsonwebtoken');
 const User = require('../../models/auth/user.model');
-const Company = require('../../models/company/company.model');
-const Subscription = require('../../models/subscription/subscription.model');
 const { AppError, UnauthorizedError, ConflictError, NotFoundError } = require('../../utils/errors');
 const config = require('../../config');
 const emailService = require('../../utils/emailService');

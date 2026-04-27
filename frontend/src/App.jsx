@@ -24,6 +24,8 @@ import TelegramMessages from './pages/TelegramMessages'
 import SmsLogs from './pages/SmsLogs'
 import WifiMonitor from './pages/WifiMonitor'
 import WifiDevices from './pages/WifiDevices'
+import LandingContent from './pages/LandingContent'
+import PaymentHistory from './pages/PaymentHistory'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -161,6 +163,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <Subscriptions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="landing-content"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <LandingContent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="payment-history"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <PaymentHistory />
                 </ProtectedRoute>
               }
             />

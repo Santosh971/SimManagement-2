@@ -196,6 +196,8 @@ import {
   FiSend,
   FiMessageSquare,
   FiWifi,
+  FiLayout,
+  FiDollarSign,
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -210,6 +212,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Dashboard', href: '/app/dashboard', icon: FiHome },
           { name: 'Companies', href: '/app/companies', icon: FiUsers },
           { name: 'Subscriptions', href: '/app/subscriptions', icon: FiPackage },
+          { name: 'Payment History', href: '/app/payment-history', icon: FiDollarSign },
+          { name: 'Landing Content', href: '/app/landing-content', icon: FiLayout },
           { name: 'Audit Logs', href: '/app/audit-logs', icon: FiActivity },
           { name: 'Notifications', href: '/app/notifications', icon: FiBell },
           { name: 'Settings', href: '/app/settings', icon: FiSettings },

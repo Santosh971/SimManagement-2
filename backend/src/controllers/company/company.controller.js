@@ -36,6 +36,15 @@ class CompanyController {
     }
   }
 
+  async getList(req, res, next) {
+    try {
+      const companies = await companyService.getCompanyList();
+      return successResponse(res, companies);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const company = await companyService.getCompanyById(req.params.id);

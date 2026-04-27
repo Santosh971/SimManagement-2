@@ -17,7 +17,41 @@ const verifyPaymentValidation = [
   body('razorpay_signature').notEmpty().withMessage('Signature is required'),
 ];
 
-// All routes require authentication
+// Registration order validation
+const createOrderForRegistrationValidation = [
+  body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
+  body('billingCycle').isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('companyName').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
+];
+
+// ============ PUBLIC ROUTES (No Auth Required) ============
+
+// Create order for new registration
+router.post(
+  '/public/create-order',
+  createOrderForRegistrationValidation,
+  validate,
+  paymentController.createOrderForRegistration
+);
+
+// Verify payment and complete registration
+router.post(
+  '/public/verify-and-register',
+  verifyPaymentValidation,
+  validate,
+  paymentController.verifyPaymentAndRegister
+);
+
+// Webhook endpoint (called by Razorpay)
+router.post('/webhook', paymentController.handleWebhook);
+
+// ============ PROTECTED ROUTES (Auth Required) ============
+
+// All routes below require authentication
 router.use(authenticate);
 
 // Create order (admin/super_admin)
@@ -39,6 +73,14 @@ router.post(
 // Get payment history
 router.get('/history', paymentController.getHistory);
 
+// Get all payment history (Super Admin only)
+router.get(
+  '/history/all',
+  authenticate,
+  authorize('super_admin'),
+  paymentController.getAllHistory
+);
+
 // Get single payment
 router.get('/:id', paymentController.getPayment);
 
@@ -48,8 +90,5 @@ router.get(
   authorize('super_admin'),
   paymentController.getStats
 );
-
-// Webhook endpoint (no auth required - called by Razorpay)
-router.post('/webhook', paymentController.handleWebhook);
 
 module.exports = router;

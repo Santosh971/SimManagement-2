@@ -2,19 +2,19 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const PaymentSchema = new Schema({
-  // Company that made the payment
+  // Company that made the payment (null for registration payments, updated after verification)
   companyId: {
     type: Schema.Types.ObjectId,
     ref: 'Company',
-    required: true,
+    required: false,
     index: true,
   },
 
-  // User who initiated the payment
+  // User who initiated the payment (null for registration payments, updated after verification)
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: false,
   },
 
   // Subscription plan purchased

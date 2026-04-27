@@ -10,7 +10,10 @@ class PaymentController {
     try {
       const { subscriptionId, billingCycle } = req.body;
       const companyId = req.user.companyId;
-      const userId = req.user._id;
+      const userId = req.user._id || req.user.id;
+
+      console.log('createOrder controller - User:', req.user);
+      console.log('createOrder controller - companyId:', companyId, 'userId:', userId);
 
       const result = await paymentService.createOrder(
         companyId,
@@ -20,6 +23,50 @@ class PaymentController {
       );
 
       return successResponse(res, result, 'Order created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create order for new registration (public, no auth)
+   * POST /api/payments/public/create-order
+   */
+  async createOrderForRegistration(req, res, next) {
+    try {
+      const { subscriptionId, billingCycle, name, email, password, companyName, phone } = req.body;
+
+      const result = await paymentService.createOrderForRegistration(
+        subscriptionId,
+        billingCycle,
+        { name, email, password, companyName, phone }
+      );
+
+      return successResponse(res, result, 'Order created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Verify payment and complete registration (public, no auth)
+   * POST /api/payments/public/verify-and-register
+   */
+  async verifyPaymentAndRegister(req, res, next) {
+    try {
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      } = req.body;
+
+      const result = await paymentService.verifyPaymentAndRegister({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      });
+
+      return successResponse(res, result, 'Registration completed successfully', 201);
     } catch (error) {
       next(error);
     }
@@ -94,6 +141,30 @@ class PaymentController {
     try {
       const stats = await paymentService.getRevenueStats();
       return successResponse(res, stats);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get all payment history (Super Admin)
+   * GET /api/payments/history/all
+   */
+  async getAllHistory(req, res, next) {
+    try {
+      const { companyId, status, planId, startDate, endDate, page = 1, limit = 20 } = req.query;
+
+      const result = await paymentService.getAllPaymentHistory({
+        companyId,
+        status,
+        planId,
+        startDate,
+        endDate,
+        page: parseInt(page),
+        limit: parseInt(limit),
+      });
+
+      return successResponse(res, result);
     } catch (error) {
       next(error);
     }

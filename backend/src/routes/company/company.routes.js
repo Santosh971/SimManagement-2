@@ -94,6 +94,7 @@ router.use(authorize('super_admin'));
 // Routes
 router.post('/', createCompanyValidation, validate, companyController.create);
 router.get('/', queryValidation, validate, companyController.getAll);
+router.get('/list', companyController.getList);
 router.get('/expiring', companyController.getExpiring);
 router.get('/overview', companyController.getDashboardOverview);
 router.get('/:id', companyController.getById);

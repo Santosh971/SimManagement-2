@@ -52,6 +52,11 @@ const CompanySchema = new Schema({
     type: Date,
     required: [true, 'Subscription end date is required'],
   },
+  billingCycle: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: 'monthly',
+  },
   isActive: {
     type: Boolean,
     default: true,

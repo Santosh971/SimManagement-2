@@ -50,7 +50,8 @@ const checkSubscriptionLimit = (feature) => {
         case 'users':
           if (limits.maxUsers !== -1) {
             const User = require('../models/auth/user.model');
-            const userCount = await User.countDocuments({ companyId: req.user.companyId });
+            // Exclude admin from user count - admins don't count toward limit
+            const userCount = await User.countDocuments({ companyId: req.user.companyId, role: { $ne: 'admin' } });
             if (userCount >= limits.maxUsers) {
               throw new SubscriptionLimitError('Users', limits.maxUsers);
             }

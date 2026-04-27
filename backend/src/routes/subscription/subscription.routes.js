@@ -11,10 +11,10 @@ const createPlanValidation = [
   body('description').optional().trim().isLength({ max: 500 }),
   body('price.monthly').isFloat({ min: 0 }).withMessage('Monthly price is required'),
   body('price.yearly').isFloat({ min: 0 }).withMessage('Yearly price is required'),
-  body('trialDays').optional().isInt({ min: 0 }),
-  body('limits.maxSims').optional().isInt(),
-  body('limits.maxUsers').optional().isInt(),
-  body('limits.maxRecharges').optional().isInt(),
+  body('trialDays').optional().isInt({ min: 0 }).withMessage('Trial days cannot be negative'),
+  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
+  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
+  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
 ];
 
 const updatePlanValidation = [
@@ -23,6 +23,10 @@ const updatePlanValidation = [
   body('description').optional().trim().isLength({ max: 500 }),
   body('price.monthly').optional().isFloat({ min: 0 }),
   body('price.yearly').optional().isFloat({ min: 0 }),
+  body('trialDays').optional().isInt({ min: 0 }).withMessage('Trial days cannot be negative'),
+  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
+  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
+  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
 ];
 
 // Public routes - get plans (for landing page)

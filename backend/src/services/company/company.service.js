@@ -103,6 +103,14 @@ class CompanyService {
     return { data: companies, total, page: parseInt(page), limit: parseInt(limit) };
   }
 
+  // Get simple list of companies for dropdowns
+  async getCompanyList() {
+    const companies = await Company.find({})
+      .select('name email')
+      .sort({ name: 1 });
+    return companies;
+  }
+
   async getCompanyById(companyId) {
     const company = await Company.findById(companyId)
       .populate('subscriptionId')
@@ -454,9 +462,9 @@ class CompanyService {
       throw new NotFoundError('Company');
     }
 
-    // Get current SIM and User counts
+    // Get current SIM and User counts (exclude admin from user count)
     const currentSims = await Sim.countDocuments({ companyId, isActive: true });
-    const currentUsers = await User.countDocuments({ companyId, isActive: true });
+    const currentUsers = await User.countDocuments({ companyId, isActive: true, role: { $ne: 'admin' } });
 
     // Determine subscription status
     const now = new Date();
@@ -486,6 +494,7 @@ class CompanyService {
         limits: company.subscriptionId.limits,
         isPopular: company.subscriptionId.isPopular,
       } : null,
+      billingCycle: company.billingCycle || 'monthly',
       status,
       subscriptionStartDate: company.subscriptionStartDate,
       subscriptionEndDate: company.subscriptionEndDate,

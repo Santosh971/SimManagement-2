@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { FiCheck, FiPackage, FiCreditCard, FiX } from 'react-icons/fi'
+import { FiCheck, FiPackage, FiCreditCard, FiX, FiTrash2, FiPlus } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
   PageContainer,
@@ -45,9 +45,11 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
       apiAccess: false,
       prioritySupport: false,
     },
+    customFeatures: [],
     trialDays: 14,
     isPopular: false,
   })
+  const [newCustomFeature, setNewCustomFeature] = useState('')
 
   useEffect(() => {
     if (plan) {
@@ -74,6 +76,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           apiAccess: plan.features?.apiAccess || false,
           prioritySupport: plan.features?.prioritySupport || false,
         },
+        customFeatures: plan.customFeatures || [],
         trialDays: plan.trialDays || 14,
         isPopular: plan.isPopular || false,
       })
@@ -94,10 +97,12 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           apiAccess: false,
           prioritySupport: false,
         },
+        customFeatures: [],
         trialDays: 14,
         isPopular: false,
       })
     }
+    setNewCustomFeature('')
   }, [plan])
 
   const handleChange = (e) => {
@@ -292,12 +297,16 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Max SIMs</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+                Max SIMs
+                <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '4px' }}>(-1 for unlimited)</span>
+              </label>
               <input
                 type="number"
                 name="limits.maxSims"
                 value={formData.limits.maxSims}
                 onChange={handleChange}
+                min="-1"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -310,12 +319,16 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Max Users</label>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+                Max Users
+                <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '4px' }}>(-1 for unlimited)</span>
+              </label>
               <input
                 type="number"
                 name="limits.maxUsers"
                 value={formData.limits.maxUsers}
                 onChange={handleChange}
+                min="-1"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -334,6 +347,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 name="trialDays"
                 value={formData.trialDays}
                 onChange={handleChange}
+                min="0"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -345,6 +359,25 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 }}
               />
             </div>
+          </div>
+
+          {/* Mark as Popular */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                name="isPopular"
+                checked={formData.isPopular}
+                onChange={handleChange}
+                style={{ width: '18px', height: '18px' }}
+              />
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>Mark as Popular</span>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                  This will highlight the plan with a "Most Popular" badge
+                </p>
+              </div>
+            </label>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
@@ -373,6 +406,105 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* Custom Features */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Custom Features</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <input
+                type="text"
+                value={newCustomFeature}
+                onChange={(e) => setNewCustomFeature(e.target.value)}
+                placeholder="e.g., Free setup assistance"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (newCustomFeature.trim()) {
+                      setFormData(prev => ({
+                        ...prev,
+                        customFeatures: [...prev.customFeatures, newCustomFeature.trim()]
+                      }))
+                      setNewCustomFeature('')
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (newCustomFeature.trim()) {
+                    setFormData(prev => ({
+                      ...prev,
+                      customFeatures: [...prev.customFeatures, newCustomFeature.trim()]
+                    }))
+                    setNewCustomFeature('')
+                  }
+                }}
+                style={{
+                  padding: '10px 16px',
+                  backgroundColor: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <FiPlus style={{ width: '16px', height: '16px' }} />
+                Add
+              </button>
+            </div>
+            {formData.customFeatures.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {formData.customFeatures.map((feature, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <span>{feature}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          customFeatures: prev.customFeatures.filter((_, i) => i !== index)
+                        }))
+                      }}
+                      style={{
+                        padding: '2px',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#6b7280',
+                        display: 'flex',
+                      }}
+                    >
+                      <FiX style={{ width: '14px', height: '14px' }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -597,17 +729,27 @@ export default function Subscriptions() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [selectedBilling, setSelectedBilling] = useState('monthly')
+  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'active', 'inactive'
 
   const isSuperAdmin = user?.role === 'super_admin'
 
   useEffect(() => {
     fetchSubscriptions()
-  }, [])
+  }, [statusFilter])
 
   const fetchSubscriptions = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/subscriptions')
+      // Build query params
+      const params = {}
+      if (isSuperAdmin && statusFilter !== 'all') {
+        params.activeOnly = statusFilter // 'active' or 'inactive'
+      } else if (!isSuperAdmin) {
+        params.activeOnly = true // Non-super admins only see active plans
+      }
+      // If statusFilter is 'all', don't pass activeOnly (show all)
+
+      const response = await api.get('/subscriptions', { params })
       setSubscriptions(response.data.data || [])
     } catch (error) {
       toast.error('Failed to fetch subscriptions')
@@ -624,6 +766,20 @@ export default function Subscriptions() {
       fetchSubscriptions()
     } catch (error) {
       toast.error('Failed to update status')
+    }
+  }
+
+  const deletePlan = async (id, planName) => {
+    if (!window.confirm(`Are you sure you want to delete "${planName}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await api.delete(`/subscriptions/${id}`)
+      toast.success('Plan deleted successfully')
+      fetchSubscriptions()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete plan')
     }
   }
 
@@ -683,6 +839,68 @@ export default function Subscriptions() {
         }
       />
 
+      {/* Filter Tabs - Super Admin Only */}
+      {isSuperAdmin && (
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          marginBottom: '24px',
+          backgroundColor: '#f3f4f6',
+          padding: '4px',
+          borderRadius: '8px',
+          width: 'fit-content'
+        }}>
+          <button
+            onClick={() => setStatusFilter('all')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: statusFilter === 'all' ? '#ffffff' : 'transparent',
+              color: statusFilter === 'all' ? '#111827' : '#6b7280',
+              fontWeight: statusFilter === 'all' ? '500' : '400',
+              cursor: 'pointer',
+              boxShadow: statusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            All Plans
+          </button>
+          <button
+            onClick={() => setStatusFilter('active')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: statusFilter === 'active' ? '#ffffff' : 'transparent',
+              color: statusFilter === 'active' ? '#111827' : '#6b7280',
+              fontWeight: statusFilter === 'active' ? '500' : '400',
+              cursor: 'pointer',
+              boxShadow: statusFilter === 'active' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setStatusFilter('inactive')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: statusFilter === 'inactive' ? '#ffffff' : 'transparent',
+              color: statusFilter === 'inactive' ? '#111827' : '#6b7280',
+              fontWeight: statusFilter === 'inactive' ? '500' : '400',
+              cursor: 'pointer',
+              boxShadow: statusFilter === 'inactive' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            Inactive
+          </button>
+        </div>
+      )}
+
       {/* Plans Grid */}
       {subscriptions.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
@@ -690,11 +908,20 @@ export default function Subscriptions() {
             <Card
               key={plan._id}
               style={{
-                boxShadow: plan.isPopular ? '0 0 0 2px #2563eb' : '0 1px 3px rgba(0,0,0,0.1)',
+                boxShadow: plan.isPopular
+                  ? '0 0 0 2px #2563eb'
+                  : plan.isActive
+                    ? '0 1px 3px rgba(0,0,0,0.1)'
+                    : '0 1px 3px rgba(0,0,0,0.05)',
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
                 overflow: 'hidden',
+                opacity: plan.isActive ? 1 : 0.7,
+                border: plan.isActive
+                  ? 'none'
+                  : '2px solid #fecaca',
+                transition: 'all 0.2s ease',
               }}
             >
               {/* Popular Badge — fixed height so all cards align even without it */}
@@ -826,11 +1053,29 @@ export default function Subscriptions() {
                     alignItems: 'center',
                     gap: '8px',
                     fontSize: '14px',
+                    marginBottom: '6px',
                     color: plan.features?.advancedReports ? '#16a34a' : '#d1d5db',
                   }}>
                     <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
                     <span>Advanced Reports</span>
                   </div>
+                  {/* Custom Features */}
+                  {plan.customFeatures?.map((feature, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px',
+                        marginBottom: '6px',
+                        color: '#16a34a',
+                      }}
+                    >
+                      <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
                 </div>
 
                 {/* ── Action Buttons — always at bottom ────────────────────── */}
@@ -838,7 +1083,12 @@ export default function Subscriptions() {
                   <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
                     <Button
                       variant="secondary"
-                      style={{ flex: 1 }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: plan.isActive ? '#fef2f2' : '#dcfce7',
+                        color: plan.isActive ? '#dc2626' : '#16a34a',
+                        borderColor: plan.isActive ? '#fecaca' : '#bbf7d0',
+                      }}
                       onClick={() => toggleStatus(plan._id)}
                     >
                       {plan.isActive ? 'Deactivate' : 'Activate'}
@@ -847,8 +1097,17 @@ export default function Subscriptions() {
                       variant="secondary"
                       onClick={() => openModal(plan)}
                       style={{ flexShrink: 0, padding: '10px 12px' }}
+                      title="Edit Plan"
                     >
                       <FiPackage style={{ width: '16px', height: '16px' }} />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => deletePlan(plan._id, plan.name)}
+                      style={{ flexShrink: 0, padding: '10px 12px', backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}
+                      title="Delete Plan"
+                    >
+                      <FiTrash2 style={{ width: '16px', height: '16px' }} />
                     </Button>
                   </div>
                 ) : (

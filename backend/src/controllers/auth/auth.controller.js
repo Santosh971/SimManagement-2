@@ -1,95 +1,16 @@
 const authService = require('../../services/auth/auth.service');
 const auditLogService = require('../../services/auditLog/auditLog.service');
-const { successResponse, errorResponse } = require('../../utils/response');
-const { ConflictError, AppError } = require('../../utils/errors');
+const { successResponse } = require('../../utils/response');
 const User = require('../../models/auth/user.model');
-const crypto = require('crypto');
 
 class AuthController {
-  // async register(req, res, next) {
-  //   try {
-  //     const result = await authService.register(req.body);
-  //     return successResponse(res, result, 'User registered successfully', 201);
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // }
-
-
-
-  async register(userData) {
-    let { email, password, name, role, companyId, phone } = userData;
-
-    // [GLOBAL UNIQUE EMAIL] Check if email exists anywhere in the system
-    // One email can only belong to one user across all companies
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      throw new ConflictError('An account with this email already exists.');
-    }
-
-    // ❗ Prevent creating super admin
-    if (role === 'super_admin') {
-      throw new AppError('Cannot create super admin through registration', 403);
-    }
-
-    // ❗ Admin must have company
-    if (role === 'admin' && !companyId) {
-      throw new AppError('Company ID is required for admin role', 400);
-    }
-
-    // ✅ NEW LOGIC
-    if (role === 'user') {
-      // Option 1: No login system → no password
-      password = undefined;
-
-      // Option 2 (better): auto-generate password
-      // password = crypto.randomBytes(8).toString('hex');
-    }
-
-    // ❗ Admin must have password
-    if (role === 'admin' && !password) {
-      throw new AppError('Password is required for admin', 400);
-    }
-
-    const user = new User({
-      email: email.toLowerCase(),
-      password,
-      name,
-      role: role || 'user',
-      companyId: companyId || null,
-      phone,
-    });
-
+  async register(req, res, next) {
     try {
-      await user.save();
-    } catch (saveError) {
-      // [GLOBAL UNIQUE EMAIL] Handle MongoDB duplicate key error
-      if (saveError.code === 11000) {
-        const field = Object.keys(saveError.keyValue)[0];
-        if (field === 'email') {
-          throw new ConflictError('This email address is already registered in the system. Each email can only be used once.');
-        } else if (field === 'mobileNumber') {
-          throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
-        } else {
-          throw new ConflictError(`${field} is already in use.`);
-        }
-      }
-      throw saveError;
+      const result = await authService.register(req.body);
+      return successResponse(res, result, 'User registered successfully', 201);
+    } catch (error) {
+      next(error);
     }
-
-    // ❗ Only generate tokens for login users
-    let tokens = null;
-    if (role !== 'user') {
-      tokens = this.generateTokens(user);
-      user.refreshToken = tokens.refreshToken;
-      await user.save();
-    }
-
-    return {
-      user: this.sanitizeUser(user),
-      accessToken: tokens?.accessToken || null,
-      refreshToken: tokens?.refreshToken || null,
-    };
   }
 
   async login(req, res, next) {

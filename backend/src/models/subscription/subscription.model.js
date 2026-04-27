@@ -41,10 +41,15 @@ const SubscriptionSchema = new Schema({
     apiAccess: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false },
   },
+  // Custom features array for additional features beyond predefined ones
+  customFeatures: {
+    type: [String],
+    default: [],
+  },
   limits: {
-    maxSims: { type: Number, default: 10 }, // -1 for unlimited
-    maxUsers: { type: Number, default: 5 },
-    maxRecharges: { type: Number, default: 100 },
+    maxSims: { type: Number, default: 10, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
+    maxUsers: { type: Number, default: 5, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
+    maxRecharges: { type: Number, default: 100, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
     callLogSync: { type: Boolean, default: true },
     whatsappStatus: { type: Boolean, default: false },
     reports: { type: Boolean, default: true },

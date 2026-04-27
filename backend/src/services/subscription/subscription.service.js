@@ -18,11 +18,19 @@ class SubscriptionService {
   }
 
   async getAllPlans(query = {}) {
-    const { activeOnly = true } = query;
+    const { activeOnly } = query;
 
     const filter = {};
-    if (activeOnly === 'true' || activeOnly === true) {
+    // Handle different activeOnly values:
+    // - 'all' or undefined: show all plans
+    // - 'true', true, or 'active': show only active plans
+    // - 'false', false, or 'inactive': show only inactive plans
+    if (activeOnly === 'all' || activeOnly === undefined) {
+      // Show all plans - no filter
+    } else if (activeOnly === 'true' || activeOnly === true || activeOnly === 'active') {
       filter.isActive = true;
+    } else if (activeOnly === 'false' || activeOnly === false || activeOnly === 'inactive') {
+      filter.isActive = false;
     }
 
     const plans = await Subscription.find(filter).sort({ sortOrder: 1 });
@@ -111,7 +119,7 @@ class SubscriptionService {
   async comparePlans() {
     const plans = await Subscription.find({ isActive: true })
       .sort({ sortOrder: 1 })
-      .select('name description price features limits');
+      .select('name description price features customFeatures limits isPopular');
 
     return plans.map((plan) => ({
       ...plan.toObject(),

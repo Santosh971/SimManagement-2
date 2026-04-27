@@ -27,6 +27,7 @@ const telegramRoutes = require('./routes/telegram/telegram.routes');
 const smsRoutes = require('./routes/sms/sms.routes');
 const wifiRoutes = require('./routes/wifi/wifi.routes');
 const deviceRoutes = require('./routes/device/device.routes'); // [SIM-BASED WIFI ACCESS CONTROL]
+const landingContentRoutes = require('./routes/landingContent/landingContent.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -122,6 +123,7 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/wifi', wifiRoutes);
 app.use('/api/device', deviceRoutes); // [SIM-BASED WIFI ACCESS CONTROL]
+app.use('/api/landing-content', landingContentRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
