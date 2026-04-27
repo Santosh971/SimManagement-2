@@ -7787,3 +7787,457 @@
 [2026-04-27T10:57:57.325Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
 [2026-04-27T10:57:57.327Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
 [2026-04-27T10:57:57.327Z] INFO: All cron jobs initialized
+[2026-04-27T11:00:00.585Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:00:00.590Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:00:00.600Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:00:00.601Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:00:00.606Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:00:00.654Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:00:00.656Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:00:00.673Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:00:00.673Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:00:00.746Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"1.87","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T11:00:00.892Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef40847ab1903eb4f79eb0","avgSpeed":"1.87"}
+[2026-04-27T11:00:01.041Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T11:00:01.169Z] INFO: Notification created {"notificationId":"69ef41b1b9630ffc72390bec","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T11:00:01.172Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T11:00:05.083Z] INFO: Email sent successfully {"messageId":"<8ccd9db7-e091-80ee-9b8b-259a63fd7f6c@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777287604 98e67ed59e1d1-3614195a9f0sm31073498a91.9 - gsmtp"}
+[2026-04-27T11:00:05.160Z] INFO: Email notification sent {"notificationId":"69ef41b1b9630ffc72390bec"}
+[2026-04-27T11:00:05.161Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 1.87 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":1.8659123773764734,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef40847ab1903eb4f79eb0"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T11:00:05.086Z","_id":"69ef41b1b9630ffc72390bec","sentVia":[{"channel":"email","sentAt":"2026-04-27T11:00:05.084Z","status":"success","error":null,"_id":"69ef41b5b9630ffc72390bee","id":"69ef41b5b9630ffc72390bee"}],"expiresAt":"2026-05-27T11:00:01.047Z","createdAt":"2026-04-27T11:00:01.049Z","updatedAt":"2026-04-27T11:00:05.087Z","__v":1,"timeAgo":"Just now","id":"69ef41b1b9630ffc72390bec"}}
+[2026-04-27T11:00:05.163Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T11:00:05.164Z] INFO: WiFi alert check job completed
+[2026-04-27T11:05:00.718Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:05:00.726Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:05:00.734Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:05:00.735Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:05:00.740Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:05:00.798Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:05:00.800Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:05:00.881Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:05:00.882Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:05:00.884Z] INFO: WiFi alert check job completed
+[2026-04-27T11:05:01.086Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:05:01.087Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:10:00.709Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:10:00.714Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:10:00.717Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:10:00.718Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:10:00.720Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:10:00.764Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:10:00.765Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:10:00.766Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:10:00.767Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:10:00.819Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:10:00.820Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:10:00.821Z] INFO: WiFi alert check job completed
+[2026-04-27T11:15:00.756Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:15:00.760Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:15:00.763Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:15:00.765Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:15:00.769Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:15:00.805Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:15:00.807Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:15:00.808Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:15:00.809Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:15:00.893Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.45","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T11:15:01.096Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef4534904c8263530c56cf","avgSpeed":"2.45"}
+[2026-04-27T11:15:01.201Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T11:15:01.263Z] INFO: Notification created {"notificationId":"69ef4535b9630ffc72390c00","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T11:15:01.266Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T11:15:04.923Z] INFO: Email sent successfully {"messageId":"<bac9869c-bc34-c798-76ab-7c2e8ef44e4f@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777288504 d9443c01a7336-2b7a9efd0f2sm126968905ad.31 - gsmtp"}
+[2026-04-27T11:15:04.983Z] INFO: Email notification sent {"notificationId":"69ef4535b9630ffc72390c00"}
+[2026-04-27T11:15:04.984Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.45 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.4518529334760553,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef4534904c8263530c56cf"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T11:15:04.927Z","_id":"69ef4535b9630ffc72390c00","sentVia":[{"channel":"email","sentAt":"2026-04-27T11:15:04.925Z","status":"success","error":null,"_id":"69ef4538b9630ffc72390c02","id":"69ef4538b9630ffc72390c02"}],"expiresAt":"2026-05-27T11:15:01.214Z","createdAt":"2026-04-27T11:15:01.217Z","updatedAt":"2026-04-27T11:15:04.929Z","__v":1,"timeAgo":"Just now","id":"69ef4535b9630ffc72390c00"}}
+[2026-04-27T11:15:04.987Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T11:15:04.988Z] INFO: WiFi alert check job completed
+[2026-04-27T11:20:00.869Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:20:00.897Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:20:00.901Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:20:00.902Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:20:00.905Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:20:00.939Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:20:00.940Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:20:00.942Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:20:00.943Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:20:01.005Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.24","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T11:20:01.099Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef4534904c8263530c56cf","avgSpeed":"2.24"}
+[2026-04-27T11:20:01.185Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T11:20:01.235Z] INFO: Notification created {"notificationId":"69ef4661b9630ffc72390c0c","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T11:20:01.236Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T11:20:04.745Z] INFO: Email sent successfully {"messageId":"<a8cf9985-5797-730c-1544-50f19a4ccf25@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777288804 d2e1a72fcca58-82f932dabd4sm32465135b3a.51 - gsmtp"}
+[2026-04-27T11:20:04.791Z] INFO: Email notification sent {"notificationId":"69ef4661b9630ffc72390c0c"}
+[2026-04-27T11:20:04.792Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.24 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.2439955335670603,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef4534904c8263530c56cf"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T11:20:04.747Z","_id":"69ef4661b9630ffc72390c0c","sentVia":[{"channel":"email","sentAt":"2026-04-27T11:20:04.746Z","status":"success","error":null,"_id":"69ef4664b9630ffc72390c0e","id":"69ef4664b9630ffc72390c0e"}],"expiresAt":"2026-05-27T11:20:01.189Z","createdAt":"2026-04-27T11:20:01.190Z","updatedAt":"2026-04-27T11:20:04.749Z","__v":1,"timeAgo":"Just now","id":"69ef4661b9630ffc72390c0c"}}
+[2026-04-27T11:20:04.795Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T11:20:04.796Z] INFO: WiFi alert check job completed
+[2026-04-27T11:25:00.054Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:25:00.056Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:25:00.059Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:25:00.060Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:25:00.063Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:25:00.092Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:25:00.093Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:25:00.096Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:25:00.097Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:25:00.138Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.45","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T11:25:00.227Z] INFO: [WIFI ALERT] New alert created {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.45","alertId":"69ef478cb9630ffc72390c15"}
+[2026-04-27T11:25:00.321Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":true}
+[2026-04-27T11:25:00.373Z] INFO: Notification created {"notificationId":"69ef478cb9630ffc72390c19","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T11:25:00.374Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T11:25:04.175Z] INFO: Email sent successfully {"messageId":"<323dc5e9-27de-6eda-0216-65e960a8ea1d@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777289103 d9443c01a7336-2b5fa9ff98csm302884935ad.3 - gsmtp"}
+[2026-04-27T11:25:04.214Z] INFO: Email notification sent {"notificationId":"69ef478cb9630ffc72390c19"}
+[2026-04-27T11:25:04.215Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.45 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.4534207306677844,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef478cb9630ffc72390c15"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T11:25:04.178Z","_id":"69ef478cb9630ffc72390c19","sentVia":[{"channel":"email","sentAt":"2026-04-27T11:25:04.177Z","status":"success","error":null,"_id":"69ef4790b9630ffc72390c1b","id":"69ef4790b9630ffc72390c1b"}],"expiresAt":"2026-05-27T11:25:00.326Z","createdAt":"2026-04-27T11:25:00.327Z","updatedAt":"2026-04-27T11:25:04.180Z","__v":1,"timeAgo":"Just now","id":"69ef478cb9630ffc72390c19"}}
+[2026-04-27T11:25:04.216Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":1,"alertsUpdated":0,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T11:25:04.217Z] INFO: WiFi alert check job completed
+[2026-04-27T11:30:00.183Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:30:00.185Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:30:00.187Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:30:00.188Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:30:00.190Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:30:00.231Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:30:00.232Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:30:00.233Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:30:00.233Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:30:00.277Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.67","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T11:30:00.373Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef478cb9630ffc72390c15","avgSpeed":"2.67"}
+[2026-04-27T11:30:00.453Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T11:30:00.499Z] INFO: Notification created {"notificationId":"69ef48b8b9630ffc72390c25","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T11:30:00.500Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T11:30:04.020Z] INFO: Email sent successfully {"messageId":"<6afe7acc-73b0-b275-1b62-876ae6d5c983@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777289403 d2e1a72fcca58-82f8e9d2fa9sm32995155b3a.16 - gsmtp"}
+[2026-04-27T11:30:04.068Z] INFO: Email notification sent {"notificationId":"69ef48b8b9630ffc72390c25"}
+[2026-04-27T11:30:04.069Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.67 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.6697776563764246,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef478cb9630ffc72390c15"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T11:30:04.021Z","_id":"69ef48b8b9630ffc72390c25","sentVia":[{"channel":"email","sentAt":"2026-04-27T11:30:04.021Z","status":"success","error":null,"_id":"69ef48bcb9630ffc72390c27","id":"69ef48bcb9630ffc72390c27"}],"expiresAt":"2026-05-27T11:30:00.455Z","createdAt":"2026-04-27T11:30:00.456Z","updatedAt":"2026-04-27T11:30:04.025Z","__v":1,"timeAgo":"Just now","id":"69ef48b8b9630ffc72390c25"}}
+[2026-04-27T11:30:04.070Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T11:30:04.071Z] INFO: WiFi alert check job completed
+[2026-04-27T11:35:00.912Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:35:00.931Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:35:00.967Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:35:00.969Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:35:00.973Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:35:01.020Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:35:01.022Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:35:01.023Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:35:01.023Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:35:01.080Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:35:01.081Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:35:01.082Z] INFO: WiFi alert check job completed
+[2026-04-27T11:38:36.198Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T11:38:36.228Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T11:38:37.706Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T11:38:37.735Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-27T11:38:39.692Z] INFO: Initializing cron jobs...
+[2026-04-27T11:38:39.773Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-27T11:38:39.775Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-27T11:38:39.777Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-27T11:38:39.779Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-27T11:38:39.782Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:38:39.786Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:38:39.788Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
+[2026-04-27T11:38:39.791Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
+[2026-04-27T11:38:39.792Z] INFO: All cron jobs initialized
+[2026-04-27T11:38:40.169Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-27T11:40:00.637Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:40:00.640Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:40:00.653Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:40:00.654Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:40:00.657Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:40:00.723Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:40:00.724Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:40:00.726Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:40:00.727Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:40:00.759Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:40:00.760Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:40:00.761Z] INFO: WiFi alert check job completed
+[2026-04-27T11:45:00.680Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:45:00.711Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:45:00.722Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:45:00.723Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:45:00.726Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:45:00.788Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:45:00.789Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:45:00.790Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:45:00.791Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:45:00.850Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:45:00.851Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:45:00.852Z] INFO: WiFi alert check job completed
+[2026-04-27T11:46:18.585Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T11:46:18.605Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T11:46:19.168Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T11:46:19.185Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-27T11:46:21.031Z] INFO: Initializing cron jobs...
+[2026-04-27T11:46:21.074Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-27T11:46:21.075Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-27T11:46:21.076Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-27T11:46:21.078Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-27T11:46:21.080Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:21.081Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:21.083Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
+[2026-04-27T11:46:21.084Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
+[2026-04-27T11:46:21.084Z] INFO: All cron jobs initialized
+[2026-04-27T11:46:21.328Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-27T11:46:34.821Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T11:46:34.831Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T11:46:35.229Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T11:46:35.241Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-27T11:46:37.090Z] INFO: Initializing cron jobs...
+[2026-04-27T11:46:37.113Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-27T11:46:37.115Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-27T11:46:37.117Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-27T11:46:37.118Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-27T11:46:37.120Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:37.121Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:37.122Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
+[2026-04-27T11:46:37.123Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
+[2026-04-27T11:46:37.124Z] INFO: All cron jobs initialized
+[2026-04-27T11:46:37.268Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-27T11:46:40.074Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T11:46:40.084Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T11:46:40.451Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T11:46:40.462Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-27T11:46:42.409Z] INFO: Initializing cron jobs...
+[2026-04-27T11:46:42.439Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-27T11:46:42.440Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-27T11:46:42.442Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-27T11:46:42.443Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-27T11:46:42.445Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:42.446Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-27T11:46:42.448Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
+[2026-04-27T11:46:42.450Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
+[2026-04-27T11:46:42.451Z] INFO: All cron jobs initialized
+[2026-04-27T11:46:42.577Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-27T11:46:52.349Z] INFO: Email configuration check {"hasHost":false,"port":587,"hasUser":false,"hasPass":false,"passLength":0,"hasFrom":false}
+[2026-04-27T11:46:52.355Z] WARN: Email configuration is incomplete. Email notifications will be disabled. {"hasHost":false,"hasUser":false,"hasPass":false}
+[2026-04-27T11:47:08.012Z] INFO: Email configuration check {"hasHost":false,"port":587,"hasUser":false,"hasPass":false,"passLength":0,"hasFrom":false}
+[2026-04-27T11:47:08.014Z] WARN: Email configuration is incomplete. Email notifications will be disabled. {"hasHost":false,"hasUser":false,"hasPass":false}
+[2026-04-27T11:47:25.447Z] INFO: Email configuration check {"hasHost":false,"port":587,"hasUser":false,"hasPass":false,"passLength":0,"hasFrom":false}
+[2026-04-27T11:47:25.452Z] WARN: Email configuration is incomplete. Email notifications will be disabled. {"hasHost":false,"hasUser":false,"hasPass":false}
+[2026-04-27T11:50:00.151Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:50:00.175Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:50:00.229Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:50:00.231Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:50:00.235Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:50:00.275Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:50:00.276Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:50:00.279Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:50:00.280Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:50:00.362Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:50:00.363Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:50:00.365Z] INFO: WiFi alert check job completed
+[2026-04-27T11:55:00.352Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T11:55:00.370Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T11:55:00.380Z] INFO: Starting Telegram inactive check job
+[2026-04-27T11:55:00.381Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T11:55:00.385Z] INFO: Starting WiFi alert check job
+[2026-04-27T11:55:00.449Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:55:00.451Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:55:00.453Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T11:55:00.454Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T11:55:00.488Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T11:55:00.489Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T11:55:00.490Z] INFO: WiFi alert check job completed
+[2026-04-27T12:00:00.485Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:00:00.491Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:00:00.498Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:00:00.499Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:00:00.504Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:00:00.536Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:00:00.538Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:00:00.540Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:00:00.541Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:00:00.597Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:00:00.599Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:00:00.600Z] INFO: WiFi alert check job completed
+[2026-04-27T12:05:00.344Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:05:00.351Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:05:00.361Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:05:00.363Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:05:00.368Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:05:00.392Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:05:00.393Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:05:00.432Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:05:00.433Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:05:00.482Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:05:00.483Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:05:00.484Z] INFO: WiFi alert check job completed
+[2026-04-27T12:10:00.534Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:10:00.537Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:10:00.542Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:10:00.544Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:10:00.548Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:10:00.581Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:10:00.583Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:10:00.598Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:10:00.600Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:10:00.643Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:10:00.657Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:10:00.659Z] INFO: WiFi alert check job completed
+[2026-04-27T12:15:00.765Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:15:00.785Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:15:00.820Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:15:00.822Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:15:00.826Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:15:00.859Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:15:00.860Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:15:00.880Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:15:00.881Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:15:01.040Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:15:01.041Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:15:01.042Z] INFO: WiFi alert check job completed
+[2026-04-27T12:20:00.913Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:20:00.916Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:20:00.921Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:20:00.923Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:20:00.928Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:20:00.974Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:20:00.975Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:20:00.979Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:20:00.980Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:20:01.030Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:20:01.032Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:20:01.033Z] INFO: WiFi alert check job completed
+[2026-04-27T12:25:00.791Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:25:00.798Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:25:00.803Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:25:00.805Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:25:00.809Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:25:00.850Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:25:00.852Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:25:00.879Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:25:00.880Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:25:00.942Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T12:25:00.943Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T12:25:00.943Z] INFO: WiFi alert check job completed
+[2026-04-27T12:30:00.828Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:30:00.838Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:30:00.842Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:30:00.844Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:30:00.846Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:30:00.881Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:30:00.883Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:30:00.885Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:30:00.886Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:30:00.987Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.71","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T12:30:01.148Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"2.71"}
+[2026-04-27T12:30:01.265Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T12:30:01.617Z] INFO: Notification created {"notificationId":"69ef56c9a22e08d96b88b91d","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T12:30:01.621Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T12:30:05.569Z] INFO: Email sent successfully {"messageId":"<cf0ad006-bad0-cd98-bf51-9782977b1b97@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777293005 d2e1a72fcca58-82f8e981c12sm39642165b3a.6 - gsmtp"}
+[2026-04-27T12:30:05.628Z] INFO: Email notification sent {"notificationId":"69ef56c9a22e08d96b88b91d"}
+[2026-04-27T12:30:05.629Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.71 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.7062385553995165,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T12:30:05.577Z","_id":"69ef56c9a22e08d96b88b91d","sentVia":[{"channel":"email","sentAt":"2026-04-27T12:30:05.570Z","status":"success","error":null,"_id":"69ef56cda22e08d96b88b91f","id":"69ef56cda22e08d96b88b91f"}],"expiresAt":"2026-05-27T12:30:01.549Z","createdAt":"2026-04-27T12:30:01.555Z","updatedAt":"2026-04-27T12:30:05.578Z","__v":1,"timeAgo":"Just now","id":"69ef56c9a22e08d96b88b91d"}}
+[2026-04-27T12:30:05.632Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T12:30:05.633Z] INFO: WiFi alert check job completed
+[2026-04-27T12:35:00.979Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:35:00.995Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:35:01.042Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:35:01.043Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:40:00.211Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:40:00.213Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:40:00.217Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:40:00.220Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:40:00.224Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:40:00.259Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:40:00.260Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:40:00.264Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:40:00.264Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:40:00.337Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"3.15","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T12:40:00.430Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"3.15"}
+[2026-04-27T12:40:00.538Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T12:40:00.597Z] INFO: Notification created {"notificationId":"69ef5920a22e08d96b88b92a","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T12:40:00.600Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T12:40:04.293Z] INFO: Email sent successfully {"messageId":"<d8b65d16-f8bb-f382-9e47-6443968e002f@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777293604 98e67ed59e1d1-3613fb4b4b5sm17042488a91.3 - gsmtp"}
+[2026-04-27T12:40:04.333Z] INFO: Email notification sent {"notificationId":"69ef5920a22e08d96b88b92a"}
+[2026-04-27T12:40:04.334Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 3.15 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":3.1452871736306207,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T12:40:04.296Z","_id":"69ef5920a22e08d96b88b92a","sentVia":[{"channel":"email","sentAt":"2026-04-27T12:40:04.294Z","status":"success","error":null,"_id":"69ef5924a22e08d96b88b92c","id":"69ef5924a22e08d96b88b92c"}],"expiresAt":"2026-05-27T12:40:00.545Z","createdAt":"2026-04-27T12:40:00.546Z","updatedAt":"2026-04-27T12:40:04.296Z","__v":1,"timeAgo":"Just now","id":"69ef5920a22e08d96b88b92a"}}
+[2026-04-27T12:40:04.337Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T12:40:04.337Z] INFO: WiFi alert check job completed
+[2026-04-27T12:45:00.280Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:45:00.284Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:45:00.287Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:45:00.288Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:45:00.327Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:45:00.696Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:45:00.697Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:45:00.698Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:45:00.699Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:45:01.080Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.64","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T12:45:02.016Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"2.64"}
+[2026-04-27T12:45:02.968Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T12:45:03.850Z] INFO: Notification created {"notificationId":"69ef5a4ea22e08d96b88b936","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T12:45:03.851Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T12:45:10.997Z] INFO: Email sent successfully {"messageId":"<057759e9-01c1-cb5b-c160-aaa07f8539b8@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777293910 d9443c01a7336-2b5faa326f5sm291156955ad.32 - gsmtp"}
+[2026-04-27T12:45:11.043Z] INFO: Email notification sent {"notificationId":"69ef5a4ea22e08d96b88b936"}
+[2026-04-27T12:45:11.044Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.64 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.6386464811959405,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T12:45:10.999Z","_id":"69ef5a4ea22e08d96b88b936","sentVia":[{"channel":"email","sentAt":"2026-04-27T12:45:10.999Z","status":"success","error":null,"_id":"69ef5a56a22e08d96b88b938","id":"69ef5a56a22e08d96b88b938"}],"expiresAt":"2026-05-27T12:45:02.972Z","createdAt":"2026-04-27T12:45:02.973Z","updatedAt":"2026-04-27T12:45:11.000Z","__v":1,"timeAgo":"Just now","id":"69ef5a4ea22e08d96b88b936"}}
+[2026-04-27T12:45:11.045Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T12:45:11.046Z] INFO: WiFi alert check job completed
+[2026-04-27T12:50:00.288Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:50:00.301Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:50:00.330Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:50:00.331Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:50:00.376Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:50:00.377Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:50:00.378Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:50:00.378Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:50:00.410Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:50:00.513Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"3.17","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T12:50:00.608Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"3.17"}
+[2026-04-27T12:50:00.701Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T12:50:00.765Z] INFO: Notification created {"notificationId":"69ef5b78a22e08d96b88b942","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T12:50:00.787Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T12:50:04.289Z] INFO: Email sent successfully {"messageId":"<ecdee9ba-f4a3-fa7f-35b4-6561649875f8@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777294204 d9443c01a7336-2b5fa9ff8d6sm294042775ad.1 - gsmtp"}
+[2026-04-27T12:50:04.344Z] INFO: Email notification sent {"notificationId":"69ef5b78a22e08d96b88b942"}
+[2026-04-27T12:50:04.345Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 3.17 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":3.174845365045855,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T12:50:04.292Z","_id":"69ef5b78a22e08d96b88b942","sentVia":[{"channel":"email","sentAt":"2026-04-27T12:50:04.290Z","status":"success","error":null,"_id":"69ef5b7ca22e08d96b88b944","id":"69ef5b7ca22e08d96b88b944"}],"expiresAt":"2026-05-27T12:50:00.718Z","createdAt":"2026-04-27T12:50:00.719Z","updatedAt":"2026-04-27T12:50:04.293Z","__v":1,"timeAgo":"Just now","id":"69ef5b78a22e08d96b88b942"}}
+[2026-04-27T12:50:04.347Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T12:50:04.348Z] INFO: WiFi alert check job completed
+[2026-04-27T12:55:00.493Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T12:55:00.498Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T12:55:00.524Z] INFO: Starting Telegram inactive check job
+[2026-04-27T12:55:00.526Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T12:55:00.552Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:55:00.553Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:55:00.573Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T12:55:00.574Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T12:55:00.633Z] INFO: Starting WiFi alert check job
+[2026-04-27T12:55:00.752Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.51","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T12:55:00.852Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"2.51"}
+[2026-04-27T12:55:00.962Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T12:55:01.021Z] INFO: Notification created {"notificationId":"69ef5ca4a22e08d96b88b94e","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T12:55:01.022Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T12:55:04.512Z] INFO: Email sent successfully {"messageId":"<6923be4a-c678-38cd-d05e-0a136bde027c@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777294504 d2e1a72fcca58-82f8e981c07sm39618894b3a.1 - gsmtp"}
+[2026-04-27T12:55:04.570Z] INFO: Email notification sent {"notificationId":"69ef5ca4a22e08d96b88b94e"}
+[2026-04-27T12:55:04.571Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.51 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.507196391592773,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T12:55:04.515Z","_id":"69ef5ca4a22e08d96b88b94e","sentVia":[{"channel":"email","sentAt":"2026-04-27T12:55:04.514Z","status":"success","error":null,"_id":"69ef5ca8a22e08d96b88b950","id":"69ef5ca8a22e08d96b88b950"}],"expiresAt":"2026-05-27T12:55:00.965Z","createdAt":"2026-04-27T12:55:00.966Z","updatedAt":"2026-04-27T12:55:04.516Z","__v":1,"timeAgo":"Just now","id":"69ef5ca4a22e08d96b88b94e"}}
+[2026-04-27T12:55:04.572Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T12:55:04.573Z] INFO: WiFi alert check job completed
+[2026-04-27T13:00:00.664Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:00:00.674Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:00:00.735Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:00:00.737Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:00:00.740Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:00:00.741Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:00:00.784Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:00:00.785Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:00:00.828Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:00:00.915Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.61","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T13:00:01.071Z] INFO: [WIFI ALERT] Alert updated {"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9","avgSpeed":"2.61"}
+[2026-04-27T13:00:01.170Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":false}
+[2026-04-27T13:00:01.220Z] INFO: Notification created {"notificationId":"69ef5dd1a22e08d96b88b95a","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T13:00:01.221Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T13:00:04.802Z] INFO: Email sent successfully {"messageId":"<eeb63ebd-6038-2f60-8ca4-bb5b44962743@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777294804 d2e1a72fcca58-82f8e981be6sm39452697b3a.9 - gsmtp"}
+[2026-04-27T13:00:04.863Z] INFO: Email notification sent {"notificationId":"69ef5dd1a22e08d96b88b95a"}
+[2026-04-27T13:00:04.864Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.61 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.6129524254564243,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef56c8e03c0d65f0fadcf9"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T13:00:04.805Z","_id":"69ef5dd1a22e08d96b88b95a","sentVia":[{"channel":"email","sentAt":"2026-04-27T13:00:04.804Z","status":"success","error":null,"_id":"69ef5dd4a22e08d96b88b95c","id":"69ef5dd4a22e08d96b88b95c"}],"expiresAt":"2026-05-27T13:00:01.179Z","createdAt":"2026-04-27T13:00:01.179Z","updatedAt":"2026-04-27T13:00:04.807Z","__v":1,"timeAgo":"Just now","id":"69ef5dd1a22e08d96b88b95a"}}
+[2026-04-27T13:00:04.865Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":0,"alertsUpdated":1,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T13:00:04.865Z] INFO: WiFi alert check job completed
+[2026-04-27T13:05:00.736Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:05:00.740Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:05:00.752Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:05:00.753Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:05:00.780Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:05:00.781Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:05:00.801Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:05:00.802Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:05:00.847Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:05:00.987Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"3.30","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T13:05:01.080Z] INFO: [WIFI ALERT] New alert created {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"3.30","alertId":"69ef5efda22e08d96b88b963"}
+[2026-04-27T13:05:01.157Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":true}
+[2026-04-27T13:05:01.204Z] INFO: Notification created {"notificationId":"69ef5efda22e08d96b88b967","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T13:05:01.205Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T13:05:04.655Z] INFO: Email sent successfully {"messageId":"<504bb790-b507-047d-5507-ce3edf615149@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777295104 98e67ed59e1d1-362bbf963c9sm27130044a91.16 - gsmtp"}
+[2026-04-27T13:05:04.698Z] INFO: Email notification sent {"notificationId":"69ef5efda22e08d96b88b967"}
+[2026-04-27T13:05:04.699Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 3.30 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":3.2990672952695648,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef5efda22e08d96b88b963"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T13:05:04.658Z","_id":"69ef5efda22e08d96b88b967","sentVia":[{"channel":"email","sentAt":"2026-04-27T13:05:04.657Z","status":"success","error":null,"_id":"69ef5f00a22e08d96b88b969","id":"69ef5f00a22e08d96b88b969"}],"expiresAt":"2026-05-27T13:05:01.159Z","createdAt":"2026-04-27T13:05:01.159Z","updatedAt":"2026-04-27T13:05:04.659Z","__v":1,"timeAgo":"Just now","id":"69ef5efda22e08d96b88b967"}}
+[2026-04-27T13:05:04.700Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":1,"alertsUpdated":0,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T13:05:04.701Z] INFO: WiFi alert check job completed

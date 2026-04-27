@@ -302,6 +302,37 @@ class CompanyController {
       next(error);
     }
   }
+
+  /**
+   * Get company details for logged-in user
+   * GET /api/company/my
+   */
+  async getMyCompany(req, res, next) {
+    try {
+      const company = await companyService.getMyCompany(req.user.companyId);
+      return successResponse(res, company);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get company details by ID
+   * GET /api/company/:companyId
+   * Note: Users can only access their own company, super_admin can access any
+   */
+  async getCompanyDetailsById(req, res, next) {
+    try {
+      const company = await companyService.getCompanyDetailsById(
+        req.params.companyId,
+        req.user.companyId,
+        req.user.role
+      );
+      return successResponse(res, company);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new CompanyController();

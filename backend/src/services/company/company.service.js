@@ -499,6 +499,79 @@ class CompanyService {
       },
     };
   }
+
+  /**
+   * Get company details for logged-in user
+   * @param {string} companyId - Company ID from JWT token
+   * @returns {Object} Mapped company response
+   */
+  async getMyCompany(companyId) {
+    const company = await Company.findById(companyId)
+      .populate('subscriptionId', 'name price limits')
+      .select('_id name logo address phone email website subscriptionId subscriptionStartDate subscriptionEndDate status isActive createdAt settings');
+
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    return this.mapCompanyResponse(company);
+  }
+
+  /**
+   * Get company details by ID (Admin use)
+   * @param {string} companyId - Company ID
+   * @param {string} requesterCompanyId - Requester's company ID for validation
+   * @param {string} requesterRole - Requester's role
+   * @returns {Object} Mapped company response
+   */
+  async getCompanyDetailsById(companyId, requesterCompanyId, requesterRole) {
+    // Security: Only super_admin can access any company, others only their own
+    if (requesterRole !== 'super_admin' && companyId !== requesterCompanyId) {
+      throw new NotFoundError('Company');
+    }
+
+    const company = await Company.findById(companyId)
+      .populate('subscriptionId', 'name price limits')
+      .select('_id name logo address phone email website subscriptionId subscriptionStartDate subscriptionEndDate status isActive createdAt settings');
+
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    return this.mapCompanyResponse(company);
+  }
+
+  /**
+   * Map company document to safe response object
+   * @param {Object} company - Company document
+   * @returns {Object} Mapped response
+   */
+  mapCompanyResponse(company) {
+    return {
+      _id: company._id,
+      name: company.name,
+      logo: company.logo || null,
+      address: company.address || '',
+      phone: company.phone || '',
+      email: company.email || '',
+      website: company.website || '',
+      plan: company.subscriptionId?.name || 'basic',
+      planDetails: company.subscriptionId ? {
+        _id: company.subscriptionId._id,
+        name: company.subscriptionId.name,
+        price: company.subscriptionId.price,
+        limits: company.subscriptionId.limits,
+      } : null,
+      maxSIMs: company.subscriptionId?.limits?.maxSims || 0,
+      maxUsers: company.subscriptionId?.limits?.maxUsers || 0,
+      subscriptionStartDate: company.subscriptionStartDate,
+      subscriptionEndDate: company.subscriptionEndDate,
+      status: company.isActive ? 'active' : 'inactive',
+      subscriptionStatus: company.subscriptionEndDate && new Date(company.subscriptionEndDate) < new Date() ? 'expired' : 'active',
+      createdAt: company.createdAt,
+      settings: company.settings || {},
+    };
+  }
 }
 
 module.exports = new CompanyService();

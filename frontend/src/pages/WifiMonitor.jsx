@@ -419,7 +419,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave }) {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => {}} // Handled by parent div click
+                          onChange={() => { }} // Handled by parent div click
                           style={{ width: '14px', height: '14px' }}
                         />
                         <div>
@@ -641,7 +641,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
           </div>
 
           {/* Devices List */}
-          <div>
+          {/* <div>
             <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Connected Devices</h3>
             {wifi.devices && wifi.devices.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -667,7 +667,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
                 <p style={{ color: '#6b7280' }}>No devices assigned to this WiFi network</p>
               </div>
             )}
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
@@ -847,7 +847,7 @@ export default function WifiMonitor() {
           </CardBody>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardBody>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
@@ -859,7 +859,7 @@ export default function WifiMonitor() {
               </div>
             </div>
           </CardBody>
-        </Card>
+        </Card> */}
 
         <Card>
           <CardBody>
@@ -931,9 +931,9 @@ export default function WifiMonitor() {
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Expected Speed</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Alert Threshold</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Current Speed</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Devices</th>
+                    {/* <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Devices</th> */}
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>SIMs</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Status</th>
+                    {/* <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Status</th> */}
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Actions</th>
                   </tr>
                 </thead>
@@ -965,7 +965,7 @@ export default function WifiMonitor() {
                             {network.currentAvgSpeed || '0'} Mbps
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>{network.deviceCount || 0}</td>
+                        {/* <td style={{ padding: '12px 16px' }}>{network.deviceCount || 0}</td> */}
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <FiUsers style={{ width: '14px', height: '14px', color: '#6b7280' }} />
@@ -981,9 +981,9 @@ export default function WifiMonitor() {
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        {/* <td style={{ padding: '12px 16px' }}>
                           <Badge variant={status.variant}>{status.label}</Badge>
-                        </td>
+                        </td> */}
                         <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button

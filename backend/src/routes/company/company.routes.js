@@ -83,6 +83,12 @@ router.use(authenticate);
 // Admin-only route to get their company's subscription
 router.get('/my-subscription', authorize('admin'), companyController.getMySubscription);
 
+// [NEW] Get company details for logged-in user - accessible by admin and super_admin
+router.get('/my', companyController.getMyCompany);
+
+// [NEW] Get company details by ID - super_admin can access any, admin only their own
+router.get('/details/:companyId', authorize('admin', 'super_admin'), companyController.getCompanyDetailsById);
+
 router.use(authorize('super_admin'));
 
 // Routes

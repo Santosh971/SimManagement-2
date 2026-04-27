@@ -453,7 +453,17 @@ class NotificationHelper {
    * @returns {string} HTML email content
    */
   _generateWifiAlertHtml(user, wifiNetwork, alert) {
+    // const alertTime = new Date(alert.createdAt).toLocaleString('en-IN', {
+    //   day: 'numeric',
+    //   month: 'short',
+    //   year: 'numeric',
+    //   hour: '2-digit',
+    //   minute: '2-digit',
+    //   hour12: true
+    // });
+
     const alertTime = new Date(alert.createdAt).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
