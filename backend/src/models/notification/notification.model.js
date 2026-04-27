@@ -15,7 +15,7 @@ const NotificationSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ['recharge_due', 'inactive_sim', 'subscription_expiry', 'system', 'alert', 'info'],
+    enum: ['recharge_due', 'inactive_sim', 'subscription_expiry', 'system', 'alert', 'info', 'wifi_alert', 'security'],
     required: [true, 'Notification type is required'],
   },
   title: {
@@ -40,12 +40,19 @@ const NotificationSchema = new Schema({
     planName: { type: String },
     daysLeft: { type: Number },
     expiryDate: { type: Date },
+    // WiFi alert metadata
+    wifiName: { type: String },
+    avgSpeed: { type: Number },
+    threshold: { type: Number },
+    alertType: { type: String },
     customData: { type: Schema.Types.Mixed },
   },
   data: {
     simId: { type: Schema.Types.ObjectId, ref: 'Sim' },
     rechargeId: { type: Schema.Types.ObjectId, ref: 'Recharge' },
     companyId: { type: Schema.Types.ObjectId, ref: 'Company' },
+    wifiId: { type: Schema.Types.ObjectId, ref: 'WifiNetwork' },
+    alertId: { type: Schema.Types.ObjectId, ref: 'WifiAlert' },
     customData: { type: Schema.Types.Mixed },
   },
   priority: {
