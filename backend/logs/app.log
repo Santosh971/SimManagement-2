@@ -7753,3 +7753,37 @@
 [2026-04-27T10:50:04.028Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 3.11 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":3.1145509108840357,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef3f587ab1903eb4f79ea3"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T10:50:03.985Z","_id":"69ef3f587ab1903eb4f79ea7","sentVia":[{"channel":"email","sentAt":"2026-04-27T10:50:03.984Z","status":"success","error":null,"_id":"69ef3f5b7ab1903eb4f79ea9","id":"69ef3f5b7ab1903eb4f79ea9"}],"expiresAt":"2026-05-27T10:50:00.408Z","createdAt":"2026-04-27T10:50:00.410Z","updatedAt":"2026-04-27T10:50:03.986Z","__v":1,"timeAgo":"Just now","id":"69ef3f587ab1903eb4f79ea7"}}
 [2026-04-27T10:50:04.029Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":1,"alertsUpdated":0,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
 [2026-04-27T10:50:04.030Z] INFO: WiFi alert check job completed
+[2026-04-27T10:55:00.191Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T10:55:00.192Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T10:55:00.195Z] INFO: Starting Telegram inactive check job
+[2026-04-27T10:55:00.196Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T10:55:00.199Z] INFO: Starting WiFi alert check job
+[2026-04-27T10:55:00.231Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T10:55:00.232Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T10:55:00.243Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T10:55:00.244Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T10:55:00.274Z] INFO: [WIFI ALERT] Speed check {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.19","threshold":5,"belowThreshold":true,"emailAlertEnabled":true}
+[2026-04-27T10:55:00.362Z] INFO: [WIFI ALERT] New alert created {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","avgSpeed":"2.19","alertId":"69ef40847ab1903eb4f79eb0"}
+[2026-04-27T10:55:00.464Z] INFO: [WIFI ALERT] Sending emails to admins {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","adminCount":1,"admins":[{"email":"cascadecode60@gmail.com","name":"Yadnesh Khatekar"}],"isNewAlert":true}
+[2026-04-27T10:55:00.522Z] INFO: Notification created {"notificationId":"69ef40847ab1903eb4f79eb4","type":"wifi_alert","companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b"}
+[2026-04-27T10:55:00.523Z] INFO: Sending email {"to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi"}
+[2026-04-27T10:55:03.902Z] INFO: Email sent successfully {"messageId":"<09531d1f-a195-2357-1e01-ec4659533b87@gmail.com>","to":"cascadecode60@gmail.com","subject":"WiFi Speed Alert - Office WiFi","response":"250 2.0.0 OK  1777287303 98e67ed59e1d1-362dde4ccbfsm16260919a91.1 - gsmtp"}
+[2026-04-27T10:55:03.955Z] INFO: Email notification sent {"notificationId":"69ef40847ab1903eb4f79eb4"}
+[2026-04-27T10:55:03.956Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 2.19 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":2.1920580166925703,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef40847ab1903eb4f79eb0"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T10:55:03.904Z","_id":"69ef40847ab1903eb4f79eb4","sentVia":[{"channel":"email","sentAt":"2026-04-27T10:55:03.903Z","status":"success","error":null,"_id":"69ef40877ab1903eb4f79eb6","id":"69ef40877ab1903eb4f79eb6"}],"expiresAt":"2026-05-27T10:55:00.471Z","createdAt":"2026-04-27T10:55:00.472Z","updatedAt":"2026-04-27T10:55:03.904Z","__v":1,"timeAgo":"Just now","id":"69ef40847ab1903eb4f79eb4"}}
+[2026-04-27T10:55:03.960Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":1,"alertsUpdated":0,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
+[2026-04-27T10:55:03.961Z] INFO: WiFi alert check job completed
+[2026-04-27T10:57:54.438Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T10:57:54.452Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T10:57:54.967Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T10:57:54.981Z] INFO: [Telegram] Bot token configured, service ready
+[2026-04-27T10:57:57.252Z] INFO: Email transporter verified successfully - emails will be sent
+[2026-04-27T10:57:57.276Z] INFO: Initializing cron jobs...
+[2026-04-27T10:57:57.318Z] INFO: Job recharge-reminder scheduled: 0 9 * * *
+[2026-04-27T10:57:57.319Z] INFO: Job inactive-sim-alert scheduled: 0 10 * * *
+[2026-04-27T10:57:57.320Z] INFO: Job subscription-expiry-check scheduled: 0 8 * * *
+[2026-04-27T10:57:57.322Z] INFO: Job data-cleanup scheduled: 0 2 * * 0
+[2026-04-27T10:57:57.323Z] INFO: Job whatsapp-inactive-check scheduled: */5 * * * *
+[2026-04-27T10:57:57.324Z] INFO: Job telegram-inactive-check scheduled: */5 * * * *
+[2026-04-27T10:57:57.325Z] INFO: Job wifi-alert-check scheduled: */5 * * * *
+[2026-04-27T10:57:57.327Z] INFO: Job wifi-metrics-cleanup scheduled: 0 3 * * 0
+[2026-04-27T10:57:57.327Z] INFO: All cron jobs initialized

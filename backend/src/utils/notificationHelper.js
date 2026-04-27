@@ -453,27 +453,111 @@ class NotificationHelper {
    * @returns {string} HTML email content
    */
   _generateWifiAlertHtml(user, wifiNetwork, alert) {
+    const alertTime = new Date(alert.createdAt).toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
     return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="margin: 0;">⚠️ WiFi Speed Alert</h1>
-        </div>
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-          <h2>Hello ${user.name},</h2>
-          <p>A WiFi speed alert has been triggered for your network.</p>
-          <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin: 0 0 15px 0; color: #dc2626;">${wifiNetwork.wifiName}</h3>
-            <p style="margin: 5px 0;"><strong>Average Speed:</strong> ${alert.avgSpeed.toFixed(2)} Mbps</p>
-            <p style="margin: 5px 0;"><strong>Threshold:</strong> ${wifiNetwork.alertThreshold} Mbps</p>
-            <p style="margin: 5px 0;"><strong>Expected Speed:</strong> ${wifiNetwork.expectedSpeed} Mbps</p>
-            <p style="margin: 5px 0;"><strong>Alert Time:</strong> ${new Date(alert.createdAt).toLocaleString()}</p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600;">WiFi Speed Alert</h1>
           </div>
-          <p style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b;">
-            <strong>Action Required:</strong> Please check your network connection and take necessary steps to resolve the issue.
-          </p>
-          <p>Best regards,<br>SIM Management Team</p>
+
+          <!-- WiFi Name Banner -->
+          <div style="background: #1f2937; color: white; padding: 20px 30px; text-align: center;">
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 5px;">Network Name</div>
+            <div style="font-size: 24px; font-weight: 600;">${wifiNetwork.wifiName}</div>
+            ${wifiNetwork.ssid ? `<div style="font-size: 14px; color: #d1d5db; margin-top: 5px;">SSID: ${wifiNetwork.ssid}</div>` : ''}
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #111827;">Hello ${user.name},</h2>
+            <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 16px;">
+              A WiFi speed alert has been triggered. Your network speed has dropped below the configured threshold.
+            </p>
+
+            <!-- Speed Comparison -->
+            <div style="background: #fef2f2; border: 2px solid #fecaca; border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+              <div style="display: table; width: 100%;">
+                <div style="display: table-row;">
+                  <div style="display: table-cell; width: 50%; text-align: center; padding: 15px;">
+                    <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Current Speed</div>
+                    <div style="font-size: 36px; font-weight: 700; color: #dc2626; margin: 10px 0;">${alert.avgSpeed.toFixed(2)}</div>
+                    <div style="font-size: 14px; color: #dc2626;">Mbps</div>
+                  </div>
+                  <div style="display: table-cell; width: 50%; text-align: center; padding: 15px; border-left: 1px solid #fecaca;">
+                    <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Threshold</div>
+                    <div style="font-size: 36px; font-weight: 700; color: #059669; margin: 10px 0;">${wifiNetwork.alertThreshold}</div>
+                    <div style="font-size: 14px; color: #059669;">Mbps</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Network Details -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #374151;">Network Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">WiFi Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.wifiName}</td>
+                </tr>
+                ${wifiNetwork.ssid ? `<tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">SSID:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.ssid}</td>
+                </tr>` : ''}
+                ${wifiNetwork.bssid ? `<tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">BSSID:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right; font-family: monospace;">${wifiNetwork.bssid}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Expected Speed:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.expectedSpeed} Mbps</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Alert Time:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${alertTime}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Action Required -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">⚡ Action Required</div>
+              <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
+                Please check your network connection and take necessary steps to resolve the issue.
+                If this issue persists, consider contacting your internet service provider.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+              This is an automated alert from <strong>SIM Management</strong>
+            </p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              © ${new Date().getFullYear()} SIM Management. All rights reserved.
+            </p>
+          </div>
         </div>
-      </div>
+      </body>
+      </html>
     `;
   }
 
