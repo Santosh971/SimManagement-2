@@ -8241,3 +8241,67 @@
 [2026-04-27T13:05:04.699Z] INFO: [WIFI ALERT] Email sent successfully {"email":"cascadecode60@gmail.com","wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi","emailResult":{"companyId":"69e761b49bf10b5a4cbc6262","userId":"69e7620d9bf10b5a4cbc627b","type":"wifi_alert","title":"WiFi Speed Alert - Office WiFi","message":"Average speed 3.30 Mbps is below threshold 5 Mbps","metadata":{"wifiName":"Office WiFi","avgSpeed":3.2990672952695648,"threshold":5,"alertType":"low_speed"},"data":{"wifiId":"69ef1d98b9e7c3f0a5439484","alertId":"69ef5efda22e08d96b88b963"},"priority":"high","channels":{"email":true,"sms":false,"inApp":true},"status":"sent","isRead":false,"readAt":null,"sentAt":"2026-04-27T13:05:04.658Z","_id":"69ef5efda22e08d96b88b967","sentVia":[{"channel":"email","sentAt":"2026-04-27T13:05:04.657Z","status":"success","error":null,"_id":"69ef5f00a22e08d96b88b969","id":"69ef5f00a22e08d96b88b969"}],"expiresAt":"2026-05-27T13:05:01.159Z","createdAt":"2026-04-27T13:05:01.159Z","updatedAt":"2026-04-27T13:05:04.659Z","__v":1,"timeAgo":"Just now","id":"69ef5efda22e08d96b88b967"}}
 [2026-04-27T13:05:04.700Z] INFO: [WIFI ALERT] Check completed {"checked":1,"skipped":0,"alertsCreated":1,"alertsUpdated":0,"alertsResolved":0,"emailsSent":1,"emailErrors":[],"errors":[]}
 [2026-04-27T13:05:04.701Z] INFO: WiFi alert check job completed
+[2026-04-27T13:10:00.856Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:10:00.865Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:10:00.880Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:10:00.882Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:10:00.918Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:10:00.920Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:10:00.921Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:10:00.922Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:10:00.948Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:10:01.043Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T13:10:01.044Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T13:10:01.045Z] INFO: WiFi alert check job completed
+[2026-04-27T13:15:00.031Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:15:00.111Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T13:15:00.113Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T13:15:00.113Z] INFO: WiFi alert check job completed
+[2026-04-27T13:15:00.948Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:15:00.950Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:15:00.953Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:15:00.955Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:15:01.035Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:15:01.036Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:15:01.037Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:15:01.038Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:20:00.111Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:20:00.113Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:20:00.116Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:20:00.118Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:20:00.160Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:20:00.160Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:20:00.162Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:20:00.163Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:20:00.219Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:20:00.318Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T13:20:00.319Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T13:20:00.320Z] INFO: WiFi alert check job completed
+[2026-04-27T13:25:00.210Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:25:00.226Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:25:00.251Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:25:00.252Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:25:00.286Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:25:00.287Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:25:00.288Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:25:00.289Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:25:00.361Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:25:00.485Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T13:25:00.486Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T13:25:00.486Z] INFO: WiFi alert check job completed
+[2026-04-27T13:30:00.314Z] INFO: Starting WhatsApp inactive check job
+[2026-04-27T13:30:00.316Z] INFO: [WhatsApp Cron] Processing inactive messages...
+[2026-04-27T13:30:00.318Z] INFO: Starting Telegram inactive check job
+[2026-04-27T13:30:00.320Z] INFO: [Telegram Cron] Processing inactive messages...
+[2026-04-27T13:30:00.378Z] INFO: [Telegram Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:30:00.379Z] INFO: Telegram inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:30:00.380Z] INFO: [WhatsApp Cron] Processed 0 messages, updated 0 SIMs
+[2026-04-27T13:30:00.381Z] INFO: WhatsApp inactive check completed: 0 messages processed, 0 SIMs marked inactive
+[2026-04-27T13:30:00.407Z] INFO: Starting WiFi alert check job
+[2026-04-27T13:30:00.510Z] INFO: [WIFI ALERT] No metrics data {"wifiId":"69ef1d98b9e7c3f0a5439484","wifiName":"Office WiFi"}
+[2026-04-27T13:30:00.511Z] INFO: [WIFI ALERT] Check completed {"checked":0,"skipped":1,"alertsCreated":0,"alertsUpdated":0,"alertsResolved":0,"emailsSent":0,"emailErrors":[],"errors":[]}
+[2026-04-27T13:30:00.512Z] INFO: WiFi alert check job completed
+[2026-04-27T13:32:55.401Z] INFO: Email configuration check {"hasHost":true,"host":"smtp.gmail.com","port":587,"hasUser":true,"user":"santoshshimpankar.ukvalley@gmail.com","hasPass":true,"passLength":16,"hasFrom":true}
+[2026-04-27T13:32:55.423Z] INFO: Email service initialized successfully {"host":"smtp.gmail.com","port":587,"user":"santoshshimpankar.ukvalley@gmail.com"}
+[2026-04-27T13:32:56.309Z] INFO: [WhatsApp] Twilio client initialized successfully
+[2026-04-27T13:32:56.331Z] INFO: [Telegram] Bot token configured, service ready
