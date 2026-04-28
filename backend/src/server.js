@@ -29,6 +29,7 @@ const wifiRoutes = require('./routes/wifi/wifi.routes');
 const deviceRoutes = require('./routes/device/device.routes'); // [SIM-BASED WIFI ACCESS CONTROL]
 const landingContentRoutes = require('./routes/landingContent/landingContent.routes');
 const pageContentRoutes = require('./routes/pageContent/pageContent.routes');
+const callAutomationRoutes = require('./routes/callAutomation/callAutomation.routes'); // [CALL AUTOMATION]
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -129,6 +130,7 @@ app.use('/api/wifi', wifiRoutes);
 app.use('/api/device', deviceRoutes); // [SIM-BASED WIFI ACCESS CONTROL]
 app.use('/api/landing-content', landingContentRoutes);
 app.use('/api/pages', pageContentRoutes);
+app.use('/api/call-automation', callAutomationRoutes); // [CALL AUTOMATION]
 
 // 404 handler
 app.use((req, res, next) => {

@@ -34,6 +34,30 @@ const WifiDeviceSchema = new Schema({
     type: Date,
     default: null,
   },
+  // Track last successful metrics submission
+  lastMetricAt: {
+    type: Date,
+    default: null,
+  },
+  // Track WiFi connection status
+  lastWifiConnected: {
+    type: Boolean,
+    default: null,
+  },
+  // Offline tracking
+  isOffline: {
+    type: Boolean,
+    default: false,
+  },
+  offlineSince: {
+    type: Date,
+    default: null,
+  },
+  // Alert sent tracking for offline alerts
+  offlineAlertSent: {
+    type: Boolean,
+    default: false,
+  },
   registeredAt: {
     type: Date,
     default: Date.now,

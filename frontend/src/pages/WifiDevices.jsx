@@ -271,11 +271,25 @@ export default function WifiDevices() {
     if (!device.wifiId) return { variant: 'warning', label: 'Pending Approval' }
     if (!device.isActive) return { variant: 'secondary', label: 'Disabled' }
 
-    // Check if online (last seen within 10 minutes)
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
-    if (device.lastSeen && new Date(device.lastSeen) > tenMinutesAgo) {
+    // Use isOffline field if available, otherwise check lastSeen
+    if (device.isOffline) {
+      return { variant: 'danger', label: 'Offline' }
+    }
+
+    // Check if online (last seen within 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+    if (device.lastMetricAt && new Date(device.lastMetricAt) > fifteenMinutesAgo) {
       return { variant: 'success', label: 'Online' }
     }
+    if (device.lastSeen && new Date(device.lastSeen) > fifteenMinutesAgo) {
+      return { variant: 'success', label: 'Online' }
+    }
+
+    // Check lastWifiConnected for WiFi status
+    if (device.lastWifiConnected === false) {
+      return { variant: 'warning', label: 'WiFi Disconnected' }
+    }
+
     return { variant: 'default', label: 'Offline' }
   }
 

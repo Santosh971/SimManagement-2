@@ -24,6 +24,7 @@ import TelegramMessages from './pages/TelegramMessages'
 import SmsLogs from './pages/SmsLogs'
 import WifiMonitor from './pages/WifiMonitor'
 import WifiDevices from './pages/WifiDevices'
+import CallAutomation from './pages/CallAutomation' // [CALL AUTOMATION]
 import LandingContent from './pages/LandingContent'
 import PaymentHistory from './pages/PaymentHistory'
 import LegalPage from './pages/LegalPage'
@@ -198,6 +199,7 @@ function App() {
             <Route path="telegram" element={<TelegramMessages />} />
             <Route path="wifi-monitor" element={<WifiMonitor />} />
             <Route path="wifi-devices" element={<WifiDevices />} />
+            <Route path="call-automation" element={<CallAutomation />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

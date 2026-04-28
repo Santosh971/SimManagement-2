@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Sim = require('../../models/sim/sim.model');
 const WifiNetwork = require('../../models/wifi/wifiNetwork.model');
 const WifiMetric = require('../../models/wifi/wifiMetric.model');
@@ -211,11 +212,35 @@ class DeviceService {
       throw new ValidationError('Invalid WiFi router (BSSID mismatch)');
     }
 
-    // 9. Update SIM last seen
+    // 9. Update SIM last seen and metrics tracking
     sim.deviceLastSeen = new Date();
+    sim.lastMetricAt = new Date();
     await sim.save();
 
-    // 10. Store metrics
+    // 10. Update WifiDevice tracking if available
+    try {
+      const WifiDevice = mongoose.model('WifiDevice');
+      const wifiDevice = await WifiDevice.findOne({ deviceId });
+      if (wifiDevice) {
+        wifiDevice.lastMetricAt = new Date();
+        wifiDevice.lastSeen = new Date();
+        wifiDevice.lastWifiConnected = true;
+        // Reset offline status if device comes back online
+        if (wifiDevice.isOffline) {
+          wifiDevice.isOffline = false;
+          wifiDevice.offlineSince = null;
+          wifiDevice.offlineAlertSent = false;
+        }
+        await wifiDevice.save();
+      }
+    } catch (deviceError) {
+      logger.warn('[WIFI METRICS] Could not update WifiDevice tracking', {
+        deviceId,
+        error: deviceError.message
+      });
+    }
+
+    // 11. Store metrics
     const metric = new WifiMetric({
       wifiId: wifi._id,
       companyId: sim.companyId,

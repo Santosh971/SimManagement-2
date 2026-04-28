@@ -901,18 +901,56 @@ export default function WifiMonitor() {
               Active Alerts
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {alerts.map((alert) => (
-                <div key={alert._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: '#fef2f2', borderRadius: '8px' }}>
-                  <div>
-                    <div style={{ fontWeight: '500' }}>{alert.wifiId?.wifiName || 'Unknown WiFi'}</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280' }}>{alert.message}</div>
-                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>{new Date(alert.createdAt).toLocaleString()}</div>
+              {alerts.map((alert) => {
+                const alertType = alert.alertType || 'low_speed';
+                const alertConfig = {
+                  low_speed: { icon: '⚠️', bgColor: '#fef2f2', borderColor: '#fecaca', label: 'Low Speed' },
+                  high_latency: { icon: '⏱️', bgColor: '#fff7ed', borderColor: '#fed7aa', label: 'High Latency' },
+                  wifi_off: { icon: '📡', bgColor: '#f3e8ff', borderColor: '#c4b5fd', label: 'WiFi Offline' },
+                  wifi_disconnected: { icon: '📱', bgColor: '#fff7ed', borderColor: '#fed7aa', label: 'WiFi Disconnected' },
+                  device_offline: { icon: '📵', bgColor: '#fef2f2', borderColor: '#fecaca', label: 'Device Offline' },
+                  mobile_switched_off: { icon: '📵', bgColor: '#fef2f2', borderColor: '#fecaca', label: 'Mobile Off' },
+                }[alertType] || { icon: '⚠️', bgColor: '#fef2f2', borderColor: '#fecaca', label: 'Alert' };
+
+                return (
+                  <div key={alert._id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    backgroundColor: alertConfig.bgColor,
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${alertConfig.borderColor}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ fontSize: '24px' }}>{alertConfig.icon}</div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: '500' }}>{alert.wifiId?.wifiName || 'Unknown WiFi'}</span>
+                          <Badge variant={alertType.includes('offline') || alertType.includes('off') ? 'danger' : 'warning'} style={{ fontSize: '10px' }}>
+                            {alertConfig.label}
+                          </Badge>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#374151' }}>{alert.message}</div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                          {new Date(alert.createdAt).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => handleResolveAlert(alert._id)}>
+                      Resolve
+                    </Button>
                   </div>
-                  <Button size="sm" variant="secondary" onClick={() => handleResolveAlert(alert._id)}>
-                    Resolve
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardBody>
         </Card>

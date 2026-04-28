@@ -417,12 +417,14 @@ class NotificationHelper {
    * @param {Object} user - User to notify
    * @param {Object} wifiNetwork - WiFi network document
    * @param {Object} alert - Alert document
+   * @param {string} alertType - Type of alert (low_speed, wifi_off, wifi_disconnected, device_offline)
+   * @param {Object} device - Device document (optional, for device-specific alerts)
    */
-  async sendWifiAlertEmail(user, wifiNetwork, alert) {
+  async sendWifiAlertEmail(user, wifiNetwork, alert, alertType = 'low_speed', device = null) {
     const emailData = {
       to: user.email,
-      subject: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
-      html: this._generateWifiAlertHtml(user, wifiNetwork, alert),
+      subject: this._getWifiAlertSubject(wifiNetwork, alertType, device),
+      html: this._generateWifiAlertHtml(user, wifiNetwork, alert, alertType, device),
     };
 
     // Create in-app notification as well
@@ -430,19 +432,49 @@ class NotificationHelper {
       companyId: wifiNetwork.companyId,
       userId: user._id,
       type: 'wifi_alert',
-      title: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
-      message: `Average speed ${alert.avgSpeed.toFixed(2)} Mbps is below threshold ${wifiNetwork.alertThreshold} Mbps`,
+      title: this._getWifiAlertTitle(wifiNetwork, alertType, device),
+      message: alert.message,
       priority: 'high',
       metadata: {
         wifiName: wifiNetwork.wifiName,
         avgSpeed: alert.avgSpeed,
         threshold: wifiNetwork.alertThreshold,
-        alertType: alert.alertType,
+        alertType: alertType,
+        deviceName: device?.deviceName,
+        deviceId: device?.deviceId,
       },
-      data: { wifiId: wifiNetwork._id, alertId: alert._id },
+      data: { wifiId: wifiNetwork._id, alertId: alert._id, deviceId: device?._id },
     };
 
     return this.createWithNotification(notificationData, emailData);
+  }
+
+  /**
+   * Get alert subject based on alert type
+   */
+  _getWifiAlertSubject(wifiNetwork, alertType, device) {
+    const subjects = {
+      low_speed: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
+      wifi_off: `WiFi Offline Alert - ${wifiNetwork.wifiName}`,
+      wifi_disconnected: `WiFi Disconnected Alert - ${device?.deviceName || 'Device'}`,
+      device_offline: `Device Offline Alert - ${device?.deviceName || 'Device'}`,
+      high_latency: `High Latency Alert - ${wifiNetwork.wifiName}`,
+    };
+    return subjects[alertType] || `WiFi Alert - ${wifiNetwork.wifiName}`;
+  }
+
+  /**
+   * Get alert title for in-app notification
+   */
+  _getWifiAlertTitle(wifiNetwork, alertType, device) {
+    const titles = {
+      low_speed: `WiFi Speed Alert - ${wifiNetwork.wifiName}`,
+      wifi_off: `WiFi Offline - ${wifiNetwork.wifiName}`,
+      wifi_disconnected: `WiFi Disconnected - ${device?.deviceName || 'Device'}`,
+      device_offline: `Device Offline - ${device?.deviceName || 'Device'}`,
+      high_latency: `High Latency - ${wifiNetwork.wifiName}`,
+    };
+    return titles[alertType] || `WiFi Alert - ${wifiNetwork.wifiName}`;
   }
 
   /**
@@ -450,18 +482,11 @@ class NotificationHelper {
    * @param {Object} user - User document
    * @param {Object} wifiNetwork - WiFi network document
    * @param {Object} alert - Alert document
+   * @param {string} alertType - Type of alert
+   * @param {Object} device - Device document (optional)
    * @returns {string} HTML email content
    */
-  _generateWifiAlertHtml(user, wifiNetwork, alert) {
-    // const alertTime = new Date(alert.createdAt).toLocaleString('en-IN', {
-    //   day: 'numeric',
-    //   month: 'short',
-    //   year: 'numeric',
-    //   hour: '2-digit',
-    //   minute: '2-digit',
-    //   hour12: true
-    // });
-
+  _generateWifiAlertHtml(user, wifiNetwork, alert, alertType = 'low_speed', device = null) {
     const alertTime = new Date(alert.createdAt).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
       day: 'numeric',
@@ -472,6 +497,24 @@ class NotificationHelper {
       hour12: true
     });
 
+    // Choose email template based on alert type
+    switch (alertType) {
+      case 'wifi_off':
+        return this._generateWifiOffHtml(user, wifiNetwork, alert, alertTime);
+      case 'wifi_disconnected':
+        return this._generateWifiDisconnectedHtml(user, wifiNetwork, alert, device, alertTime);
+      case 'device_offline':
+        return this._generateDeviceOfflineHtml(user, wifiNetwork, alert, device, alertTime);
+      case 'low_speed':
+      default:
+        return this._generateLowSpeedHtml(user, wifiNetwork, alert, alertTime);
+    }
+  }
+
+  /**
+   * Generate low speed alert HTML
+   */
+  _generateLowSpeedHtml(user, wifiNetwork, alert, alertTime) {
     return `
       <!DOCTYPE html>
       <html>
@@ -553,6 +596,275 @@ class NotificationHelper {
                 Please check your network connection and take necessary steps to resolve the issue.
                 If this issue persists, consider contacting your internet service provider.
               </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+              This is an automated alert from <strong>SIM Management</strong>
+            </p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              © ${new Date().getFullYear()} SIM Management. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate WiFi OFF alert HTML
+   */
+  _generateWifiOffHtml(user, wifiNetwork, alert, alertTime) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); padding: 40px 30px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📡</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">WiFi Network Offline</h1>
+          </div>
+
+          <!-- WiFi Name Banner -->
+          <div style="background: #1f2937; color: white; padding: 20px 30px; text-align: center;">
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 5px;">Network Name</div>
+            <div style="font-size: 24px; font-weight: 600;">${wifiNetwork.wifiName}</div>
+            ${wifiNetwork.ssid ? `<div style="font-size: 14px; color: #d1d5db; margin-top: 5px;">SSID: ${wifiNetwork.ssid}</div>` : ''}
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #111827;">Hello ${user.name},</h2>
+            <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 16px;">
+              Your WiFi network appears to be offline. No speed data has been received from any connected devices.
+            </p>
+
+            <!-- Alert Box -->
+            <div style="background: #f3e8ff; border: 2px solid #c4b5fd; border-radius: 12px; padding: 25px; margin-bottom: 25px; text-align: center;">
+              <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Status</div>
+              <div style="font-size: 32px; font-weight: 700; color: #7c3aed; margin: 10px 0;">OFFLINE</div>
+              <div style="font-size: 14px; color: #7c3aed;">No data received for 10+ minutes</div>
+            </div>
+
+            <!-- Network Details -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #374151;">Network Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">WiFi Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.wifiName}</td>
+                </tr>
+                ${wifiNetwork.ssid ? `<tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">SSID:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.ssid}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Alert Time:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${alertTime}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Possible Causes -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                <li>WiFi router/modem is turned off or disconnected</li>
+                <li>Power outage affecting the network equipment</li>
+                <li>Router is experiencing issues and needs restart</li>
+                <li>ISP (Internet Service Provider) outage</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+              This is an automated alert from <strong>SIM Management</strong>
+            </p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              © ${new Date().getFullYear()} SIM Management. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate WiFi Disconnected alert HTML
+   */
+  _generateWifiDisconnectedHtml(user, wifiNetwork, alert, device, alertTime) {
+    const deviceName = device?.deviceName || device?.deviceId || 'Unknown Device';
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); padding: 40px 30px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📱</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Device Disconnected from WiFi</h1>
+          </div>
+
+          <!-- Device Info Banner -->
+          <div style="background: #1f2937; color: white; padding: 20px 30px; text-align: center;">
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 5px;">Device</div>
+            <div style="font-size: 24px; font-weight: 600;">${deviceName}</div>
+            <div style="font-size: 14px; color: #d1d5db; margin-top: 5px;">was connected to ${wifiNetwork.wifiName}</div>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #111827;">Hello ${user.name},</h2>
+            <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 16px;">
+              A device has disconnected from the WiFi network. This could indicate the user has left the WiFi coverage area or manually disconnected.
+            </p>
+
+            <!-- Alert Box -->
+            <div style="background: #fff7ed; border: 2px solid #fed7aa; border-radius: 12px; padding: 25px; margin-bottom: 25px; text-align: center;">
+              <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Connection Status</div>
+              <div style="font-size: 32px; font-weight: 700; color: #ea580c; margin: 10px 0;">DISCONNECTED</div>
+              <div style="font-size: 14px; color: #ea580c;">No data for 10+ minutes</div>
+            </div>
+
+            <!-- Details -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #374151;">Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Device Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${deviceName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">WiFi Network:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.wifiName}</td>
+                </tr>
+                ${wifiNetwork.ssid ? `<tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">SSID:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.ssid}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Alert Time:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${alertTime}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Possible Causes -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                <li>User moved out of WiFi coverage area</li>
+                <li>WiFi was manually disabled on the device</li>
+                <li>Device WiFi antenna is turned off</li>
+                <li>Device is in airplane mode</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+              This is an automated alert from <strong>SIM Management</strong>
+            </p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              © ${new Date().getFullYear()} SIM Management. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generate Device Offline alert HTML
+   */
+  _generateDeviceOfflineHtml(user, wifiNetwork, alert, device, alertTime) {
+    const deviceName = device?.deviceName || device?.deviceId || 'Unknown Device';
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📵</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Device Offline Alert</h1>
+          </div>
+
+          <!-- Device Info Banner -->
+          <div style="background: #1f2937; color: white; padding: 20px 30px; text-align: center;">
+            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin-bottom: 5px;">Device</div>
+            <div style="font-size: 24px; font-weight: 600;">${deviceName}</div>
+            <div style="font-size: 14px; color: #d1d5db; margin-top: 5px;">is currently offline</div>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 40px 30px;">
+            <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #111827;">Hello ${user.name},</h2>
+            <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 16px;">
+              A monitoring device has gone offline. This could indicate the mobile device is switched off, has no battery, or has lost network connectivity.
+            </p>
+
+            <!-- Alert Box -->
+            <div style="background: #fef2f2; border: 2px solid #fecaca; border-radius: 12px; padding: 25px; margin-bottom: 25px; text-align: center;">
+              <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Device Status</div>
+              <div style="font-size: 32px; font-weight: 700; color: #dc2626; margin: 10px 0;">OFFLINE</div>
+              <div style="font-size: 14px; color: #dc2626;">No communication for 15+ minutes</div>
+            </div>
+
+            <!-- Details -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #374151;">Device Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Device Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${deviceName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Assigned WiFi:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${wifiNetwork.wifiName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Last Seen:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${device?.lastMetricAt ? new Date(device.lastMetricAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Unknown'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Alert Time:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500; text-align: right;">${alertTime}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- Possible Causes -->
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                <li>Mobile device battery has drained</li>
+                <li>Device is powered off intentionally</li>
+                <li>No cellular/mobile network coverage</li>
+                <li>App is not running or was force-stopped</li>
+                <li>Device is in a location with poor connectivity</li>
+              </ul>
             </div>
           </div>
 

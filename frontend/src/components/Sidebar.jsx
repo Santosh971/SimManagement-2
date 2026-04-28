@@ -200,6 +200,7 @@ import {
   FiLayout,
   FiDollarSign,
   FiFile,
+  FiPhoneOutgoing, // [CALL AUTOMATION]
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -233,6 +234,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Telegram', href: '/app/telegram', icon: FiSend },
           { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi },
           // { name: 'WiFi Devices', href: '/app/wifi-devices', icon: FiSmartphone },
+          { name: 'Call Automation', href: '/app/call-automation', icon: FiPhoneOutgoing }, // [CALL AUTOMATION]
           { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },

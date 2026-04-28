@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, query } = require('express-validator');
 const deviceController = require('../../controllers/device/device.controller');
+const callAutomationController = require('../../controllers/callAutomation/callAutomation.controller'); // [CALL AUTOMATION]
 const { validate } = require('../../middleware/validate');
 
 // ==================== VALIDATION RULES ====================
@@ -123,5 +124,31 @@ router.get('/validate', validateDeviceValidation, validate, deviceController.val
  * POST /api/device/refresh-token
  */
 router.post('/refresh-token', refreshTokenValidation, validate, deviceController.refreshToken);
+
+// ==================== CALL AUTOMATION ROUTES ====================
+
+/**
+ * Get call automation config for device
+ * GET /api/device/call-config
+ *
+ * Query params:
+ * - simNumber: The SIM number to check role for
+ *
+ * Response:
+ * {
+ *   "role": "CALLER" | "RECEIVER" | "NONE",
+ *   "targets": ["+91XXXXXXXXX1", "+91XXXXXXXXX2"],
+ *   "callDuration": 5,
+ *   "frequency": "daily",
+ *   "isActive": true
+ * }
+ */
+router.get('/call-config', callAutomationController.getDeviceConfig);
+
+/**
+ * Update last call run timestamp
+ * POST /api/device/call-complete
+ */
+router.post('/call-complete', callAutomationController.updateLastRun);
 
 module.exports = router;

@@ -114,6 +114,10 @@ const SimSchema = new Schema({
     type: Date,
     default: null,
   },
+  lastMetricAt: {
+    type: Date,
+    default: null,
+  },
   isActive: {
     type: Boolean,
     default: true,

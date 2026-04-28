@@ -30,8 +30,19 @@ const WifiAlertSchema = new Schema({
   },
   alertType: {
     type: String,
-    enum: ['low_speed', 'high_latency', 'device_offline'],
+    enum: ['low_speed', 'high_latency', 'device_offline', 'wifi_off', 'wifi_disconnected', 'mobile_switched_off'],
     default: 'low_speed',
+  },
+  // Reference to the device that triggered this alert (for device-specific alerts)
+  deviceId: {
+    type: Schema.Types.ObjectId,
+    ref: 'WifiDevice',
+    default: null,
+  },
+  // Device identifier string for quick lookup
+  deviceStringId: {
+    type: String,
+    default: null,
   },
   message: {
     type: String,
@@ -56,6 +67,8 @@ WifiAlertSchema.index({ wifiId: 1, status: 1 });
 WifiAlertSchema.index({ companyId: 1, status: 1 });
 WifiAlertSchema.index({ createdAt: -1 });
 WifiAlertSchema.index({ status: 1, createdAt: -1 });
+WifiAlertSchema.index({ alertType: 1, status: 1 });
+WifiAlertSchema.index({ deviceId: 1, status: 1 });
 
 // Virtual for duration
 WifiAlertSchema.virtual('duration').get(function () {
