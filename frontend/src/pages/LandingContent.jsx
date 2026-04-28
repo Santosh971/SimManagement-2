@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import {
@@ -12,9 +12,30 @@ import {
   FiMonitor,
   FiMenu,
   FiX,
+  FiUpload,
+  FiImage,
 } from 'react-icons/fi'
+import { clearBrandingCache } from '../components/Logo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
+// Get the base URL for static files (remove /api from the end)
+const getBaseUrl = () => {
+  if (API_URL.endsWith('/api')) {
+    return API_URL.slice(0, -4)
+  }
+  return API_URL
+}
+const BASE_URL = getBaseUrl()
+
+// Helper to get full URL for logo
+const getLogoUrl = (url) => {
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`
+}
 
 // Available icons for features
 const availableIcons = [
@@ -22,14 +43,172 @@ const availableIcons = [
   'FiStar', 'FiCheck', 'FiArrowRight', 'FiPlay', 'FiMonitor', 'FiSettings'
 ]
 
+// Branding Section Component
+const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only PNG, JPG, SVG, and WebP images are allowed')
+      return
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('File size must be less than 2MB')
+      return
+    }
+
+    try {
+      setUploading(true)
+      const formData = new FormData()
+      formData.append('logo', file)
+      formData.append('type', 'logo')
+
+      const response = await api.post('/landing-content/upload-logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      if (response.data.success) {
+        toast.success('Logo uploaded successfully')
+        onLogoUpdate(response.data.data.logoUrl)
+      } else {
+        toast.error(response.data.message || 'Failed to upload logo')
+      }
+    } catch (error) {
+      console.error('Error uploading logo:', error)
+      toast.error('Failed to upload logo')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteLogo = async () => {
+    if (!window.confirm('Are you sure you want to remove the logo?')) return
+
+    try {
+      const response = await api.delete('/landing-content/logo/logo')
+      if (response.data.success) {
+        toast.success('Logo removed')
+        onLogoUpdate('')
+      }
+    } catch (error) {
+      toast.error('Failed to remove logo')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-secondary-900">Branding & Logo</h2>
+      <p className="text-sm text-secondary-600">Customize your site branding. The logo appears in the navbar, sidebar, login pages, and footer.</p>
+
+      {/* Site Name */}
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">Site Name</label>
+        <input
+          type="text"
+          value={content.branding?.siteName || ''}
+          onChange={(e) => {
+            if (!content.branding) {
+              updateField('branding', 'branding', { siteName: e.target.value, logoUrl: '', logoDarkUrl: '' })
+            } else {
+              const newBranding = { ...content.branding, siteName: e.target.value }
+              updateField('branding', 'branding', newBranding)
+            }
+          }}
+          className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="SIM Manager"
+        />
+        <p className="text-xs text-secondary-500 mt-1">This name appears next to the logo icon when no custom logo is uploaded.</p>
+      </div>
+
+      {/* Logo Upload */}
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-2">Logo Image</label>
+
+        {/* Current Logo Preview */}
+        {content.branding?.logoUrl && (
+          <div className="mb-4 p-4 bg-secondary-50 rounded-lg border border-secondary-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <img
+                  src={getLogoUrl(content.branding.logoUrl)}
+                  alt="Current Logo"
+                  className="h-12 w-auto object-contain"
+                />
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">Current Logo</p>
+                  <p className="text-xs text-secondary-500">Recommended: PNG or SVG with transparent background</p>
+                </div>
+              </div>
+              <button
+                onClick={handleDeleteLogo}
+                className="text-red-600 hover:text-red-700 text-sm font-medium"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Area */}
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed border-secondary-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-500 transition-colors"
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              <p className="text-sm text-secondary-600">Uploading...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <FiUpload className="w-8 h-8 text-secondary-400" />
+              <p className="text-sm text-secondary-600">
+                <span className="text-primary-600 font-medium">Click to upload</span> or drag and drop
+              </p>
+              <p className="text-xs text-secondary-500">PNG, JPG, SVG, or WebP (max 2MB)</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tips */}
+      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h4 className="text-sm font-medium text-blue-900 mb-2">Logo Tips</h4>
+        <ul className="text-xs text-blue-700 space-y-1">
+          <li>• Use PNG or SVG with transparent background for best results</li>
+          <li>• Recommended logo height: 32-48px</li>
+          <li>• The logo appears on light and dark backgrounds - ensure contrast</li>
+          <li>• Square logos work best with the rounded icon container</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 const LandingContent = () => {
-  const { user } = useAuth()
+  const { user, api } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeSection, setActiveSection] = useState('hero')
+  const [activeSection, setActiveSection] = useState('branding')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [content, setContent] = useState(null)
   const [expandedSections, setExpandedSections] = useState({
+    branding: true,
     hero: true,
     stats: true,
     features: true,
@@ -62,6 +241,20 @@ const LandingContent = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleLogoUpdate = async (logoUrl) => {
+    // Clear the logo cache so it fetches fresh data
+    clearBrandingCache()
+
+    // Update content with new branding
+    setContent(prev => ({
+      ...prev,
+      branding: {
+        ...prev.branding,
+        logoUrl: logoUrl
+      }
+    }))
   }
 
   const handleSave = async () => {
@@ -194,6 +387,7 @@ const LandingContent = () => {
 
   // Section configuration
   const sections = [
+    { id: 'branding', label: 'Branding & Logo' },
     { id: 'hero', label: 'Hero Section' },
     { id: 'stats', label: 'Statistics' },
     { id: 'features', label: 'Features' },
@@ -291,6 +485,16 @@ const LandingContent = () => {
         <div className="flex-1 min-w-0">
           {content && (
             <div className="bg-white rounded-xl shadow-sm border border-secondary-200 p-4 sm:p-6">
+              {/* Branding Section */}
+              {activeSection === 'branding' && (
+                <BrandingSection
+                  content={content}
+                  updateField={updateField}
+                  api={api}
+                  onLogoUpdate={handleLogoUpdate}
+                />
+              )}
+
               {/* Hero Section */}
               {activeSection === 'hero' && (
                 <div className="space-y-6">
@@ -1232,6 +1436,7 @@ const LandingContent = () => {
                     </div>
                   </div>
 
+                  {/* Product Links */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-sm font-medium text-secondary-700">Product Links</label>
@@ -1296,134 +1501,44 @@ const LandingContent = () => {
                     </div>
                   </div>
 
-                  {/* Company Links */}
+                  {/* Contact Info */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Company Links</label>
-                      <button
-                        onClick={() => {
-                          const newLinks = [...(content.footer?.companyLinks || []), { text: 'New Link', url: '#' }]
-                          setContent(prev => ({
-                            ...prev,
-                            footer: { ...prev.footer, companyLinks: newLinks }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Link
-                      </button>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Contact Information</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-secondary-500 mb-1">Phone Number</label>
+                        <input
+                          type="text"
+                          value={content.footer?.contact?.phone || ''}
+                          onChange={(e) => {
+                            const newContact = { ...(content.footer?.contact || {}), phone: e.target.value }
+                            setContent(prev => ({
+                              ...prev,
+                              footer: { ...prev.footer, contact: newContact }
+                            }))
+                          }}
+                          className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="+91 9876543210"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-secondary-500 mb-1">Email Address</label>
+                        <input
+                          type="email"
+                          value={content.footer?.contact?.email || ''}
+                          onChange={(e) => {
+                            const newContact = { ...(content.footer?.contact || {}), email: e.target.value }
+                            setContent(prev => ({
+                              ...prev,
+                              footer: { ...prev.footer, contact: newContact }
+                            }))
+                          }}
+                          className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="contact@example.com"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {content.footer?.companyLinks?.map((link, index) => (
-                        <div key={index} className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={link.text}
-                            onChange={(e) => {
-                              const newLinks = [...content.footer.companyLinks]
-                              newLinks[index].text = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, companyLinks: newLinks }
-                              }))
-                            }}
-                            className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Link Text"
-                          />
-                          <input
-                            type="text"
-                            value={link.url}
-                            onChange={(e) => {
-                              const newLinks = [...content.footer.companyLinks]
-                              newLinks[index].url = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, companyLinks: newLinks }
-                              }))
-                            }}
-                            className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="URL"
-                          />
-                          <button
-                            onClick={() => {
-                              const newLinks = content.footer.companyLinks.filter((_, i) => i !== index)
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, companyLinks: newLinks }
-                              }))
-                            }}
-                            className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Support Links */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Support Links</label>
-                      <button
-                        onClick={() => {
-                          const newLinks = [...(content.footer?.supportLinks || []), { text: 'New Link', url: '#' }]
-                          setContent(prev => ({
-                            ...prev,
-                            footer: { ...prev.footer, supportLinks: newLinks }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Link
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {content.footer?.supportLinks?.map((link, index) => (
-                        <div key={index} className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={link.text}
-                            onChange={(e) => {
-                              const newLinks = [...content.footer.supportLinks]
-                              newLinks[index].text = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, supportLinks: newLinks }
-                              }))
-                            }}
-                            className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Link Text"
-                          />
-                          <input
-                            type="text"
-                            value={link.url}
-                            onChange={(e) => {
-                              const newLinks = [...content.footer.supportLinks]
-                              newLinks[index].url = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, supportLinks: newLinks }
-                              }))
-                            }}
-                            className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="URL"
-                          />
-                          <button
-                            onClick={() => {
-                              const newLinks = content.footer.supportLinks.filter((_, i) => i !== index)
-                              setContent(prev => ({
-                                ...prev,
-                                footer: { ...prev.footer, supportLinks: newLinks }
-                              }))
-                            }}
-                            className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-xs text-secondary-500 mt-2">These contact details will appear in the footer.</p>
                   </div>
                 </div>
               )}

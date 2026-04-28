@@ -15,6 +15,8 @@ import {
   FiChevronUp,
   FiMenu,
   FiX,
+  FiPhone,
+  FiMail,
 } from "react-icons/fi";
 import {
   FaWhatsapp,
@@ -26,6 +28,7 @@ import {
   FaYoutube,
   FaGithub,
 } from "react-icons/fa";
+import Logo from "../components/Logo";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -235,22 +238,11 @@ const defaultContent = {
       { text: "Pricing", url: "#pricing" },
       { text: "Integrations", url: "#integrations" },
       { text: "Mobile App", url: "#" },
-      { text: "Updates", url: "#" },
     ],
-    companyLinks: [
-      { text: "About Us", url: "#" },
-      { text: "Features", url: "#features" },
-      { text: "How It Works", url: "#howItWorks" },
-      { text: "Pricing", url: "#pricing" },
-      { text: "Reviews", url: "#testimonials" },
-    ],
-    supportLinks: [
-      { text: "Help Center", url: "#" },
-      { text: "Contact Us", url: "#" },
-      { text: "Privacy Policy", url: "#" },
-      { text: "Terms of Service", url: "#" },
-      { text: "Status", url: "#" },
-    ],
+    contact: {
+      phone: "+91 9876543210",
+      email: "contact@simtrackr.com",
+    },
     copyright: "© 2026 SIM Manager. All rights reserved.",
   },
 };
@@ -336,14 +328,11 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <FiSmartphone className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xl font-bold text-secondary-900">
-                SIM Manager
-              </span>
-            </Link>
+            <Logo
+              linkTo="/"
+              size="default"
+              variant="dark"
+            />
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
@@ -1068,11 +1057,12 @@ const Landing = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {/* Brand */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                  <FiSmartphone className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold">SIM Manager</span>
+              <div className="mb-4">
+                <Logo
+                  linkTo="/"
+                  size="default"
+                  variant="light"
+                />
               </div>
               <p className="text-secondary-400 mb-6">
                 {content.footer?.brandDescription}
@@ -1120,20 +1110,32 @@ const Landing = () => {
               </ul>
             </div>
 
-            {/* Support Links */}
+            {/* Contact Us */}
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
+              <h4 className="font-semibold mb-4">Contact Us</h4>
               <ul className="space-y-3">
-                {content.footer?.supportLinks?.map((link, i) => (
-                  <li key={i}>
+                {content.footer?.contact?.phone && (
+                  <li>
                     <a
-                      href={link.url}
-                      className="text-secondary-400 hover:text-white transition-colors"
+                      href={`tel:${content.footer.contact.phone.replace(/\s/g, '')}`}
+                      className="text-secondary-400 hover:text-white transition-colors flex items-center gap-2"
                     >
-                      {link.text}
+                      <FiPhone className="w-4 h-4" />
+                      {content.footer.contact.phone}
                     </a>
                   </li>
-                ))}
+                )}
+                {content.footer?.contact?.email && (
+                  <li>
+                    <a
+                      href={`mailto:${content.footer.contact.email}`}
+                      className="text-secondary-400 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                      <FiMail className="w-4 h-4" />
+                      {content.footer.contact.email}
+                    </a>
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -1143,24 +1145,18 @@ const Landing = () => {
               {content.footer?.copyright}
             </p>
             <div className="flex gap-6">
-              <a
-                href="#"
+              <Link
+                to="/privacy-policy"
                 className="text-secondary-400 hover:text-white text-sm transition-colors"
               >
                 Privacy Policy
-              </a>
-              <a
-                href="#"
+              </Link>
+              <Link
+                to="/terms-of-service"
                 className="text-secondary-400 hover:text-white text-sm transition-colors"
               >
                 Terms of Service
-              </a>
-              <a
-                href="#"
-                className="text-secondary-400 hover:text-white text-sm transition-colors"
-              >
-                Cookie Policy
-              </a>
+              </Link>
             </div>
           </div>
         </div>

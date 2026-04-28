@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { FiMail, FiLock, FiEye, FiEyeOff, FiSmartphone } from 'react-icons/fi'
+import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi'
+import Logo from '../components/Logo'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -30,8 +31,13 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-            <FiSmartphone className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-4">
+            <Logo
+              linkTo="/"
+              size="xlarge"
+              variant="dark"
+              showText={false}
+            />
           </div>
           <h1 className="text-2xl font-bold text-secondary-900">Welcome Back</h1>
           <p className="text-secondary-500 mt-2">Sign in to your account</p>

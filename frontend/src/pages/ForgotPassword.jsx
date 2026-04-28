@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FiMail, FiLock, FiEye, FiEyeOff, FiSmartphone, FiCheck, FiArrowLeft } from 'react-icons/fi'
+import { FiMail, FiLock, FiEye, FiEyeOff, FiCheck, FiArrowLeft } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import axios from 'axios'
+import Logo from '../components/Logo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -189,8 +190,13 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-            <FiSmartphone className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-4">
+            <Logo
+              linkTo="/"
+              size="xlarge"
+              variant="dark"
+              showText={false}
+            />
           </div>
           <h1 className="text-2xl font-bold text-secondary-900">
             {step === 1 && 'Forgot Password'}

@@ -52,7 +52,7 @@ class LandingContentService {
    */
   async updateSection(section, data, userId) {
     const allowedSections = [
-      'hero', 'stats', 'features', 'howItWorks',
+      'branding', 'hero', 'stats', 'features', 'howItWorks',
       'pricing', 'testimonials', 'integrations',
       'faq', 'cta', 'footer'
     ];
@@ -71,6 +71,85 @@ class LandingContentService {
     content[section] = data;
     content.updatedBy = userId;
     await content.save();
+
+    return content;
+  }
+
+  /**
+   * Update logo URL
+   */
+  async updateLogo(logoType, logoUrl, userId) {
+    let content = await LandingContent.getActiveContent();
+
+    if (!content) {
+      const defaultContent = LandingContent.getDefaultContent();
+      content = new LandingContent(defaultContent);
+    }
+
+    // Ensure branding object exists
+    if (!content.branding) {
+      content.branding = {
+        siteName: 'SIM Manager',
+        logoUrl: '',
+        logoDarkUrl: '',
+        faviconUrl: '',
+      };
+    }
+
+    // Map logo type to field name
+    const fieldMap = {
+      logo: 'logoUrl',
+      logoDark: 'logoDarkUrl',
+      favicon: 'faviconUrl',
+    };
+
+    const fieldName = fieldMap[logoType] || 'logoUrl';
+    content.branding[fieldName] = logoUrl;
+    content.updatedBy = userId;
+    await content.save();
+
+    return content;
+  }
+
+  /**
+   * Delete logo
+   */
+  async deleteLogo(logoType, userId) {
+    let content = await LandingContent.getActiveContent();
+
+    if (!content) {
+      throw new NotFoundError('Landing content not found');
+    }
+
+    // Map logo type to field name
+    const fieldMap = {
+      logo: 'logoUrl',
+      logoDark: 'logoDarkUrl',
+      favicon: 'faviconUrl',
+    };
+
+    const fieldName = fieldMap[logoType] || 'logoUrl';
+
+    if (content.branding && content.branding[fieldName]) {
+      // Try to delete the file from filesystem
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const logoUrl = content.branding[fieldName];
+        const filename = logoUrl.split('/').pop();
+        const filePath = path.join(__dirname, '../../../uploads/branding', filename);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Error deleting logo file:', err);
+      }
+
+      content.branding[fieldName] = '';
+      content.updatedBy = userId;
+      await content.save();
+    }
 
     return content;
   }
@@ -109,6 +188,12 @@ class LandingContentService {
     const content = await this.getActiveContent();
 
     return {
+      branding: content.branding || {
+        siteName: 'SIM Manager',
+        logoUrl: '',
+        logoDarkUrl: '',
+        faviconUrl: '',
+      },
       hero: content.hero,
       stats: content.stats,
       features: content.features,

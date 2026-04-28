@@ -77,6 +77,71 @@ class LandingContentController {
   }
 
   /**
+   * Upload logo (Super Admin only)
+   */
+  async uploadLogo(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No file uploaded',
+        });
+      }
+
+      const { type } = req.body; // 'logo' or 'logoDark' or 'favicon'
+      const logoType = type || 'logo';
+
+      // Construct the URL - use relative path that works with the frontend API URL
+      // The frontend will prepend the API base URL
+      const logoUrl = `/uploads/branding/${req.file.filename}`;
+
+      // Update the landing content with the new logo URL
+      const content = await landingContentService.updateLogo(logoType, logoUrl, req.user._id);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'LOGO_UPLOAD',
+        module: 'LANDING_CONTENT',
+        description: `Uploaded ${logoType} logo`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        metadata: { logoType, filename: req.file.filename },
+        req,
+      });
+
+      return successResponse(res, { logoUrl, branding: content.branding }, 'Logo uploaded successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Delete logo (Super Admin only)
+   */
+  async deleteLogo(req, res, next) {
+    try {
+      const { type } = req.params; // 'logo' or 'logoDark' or 'favicon'
+
+      const content = await landingContentService.deleteLogo(type, req.user._id);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'LOGO_DELETE',
+        module: 'LANDING_CONTENT',
+        description: `Deleted ${type} logo`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        metadata: { logoType: type },
+        req,
+      });
+
+      return successResponse(res, content, 'Logo deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Reset to default content (Super Admin only)
    */
   async resetToDefault(req, res, next) {

@@ -12,6 +12,7 @@ import {
   FiAlertCircle,
   FiClock,
   FiInfo,
+  FiDownload,
 } from 'react-icons/fi'
 
 export default function Header({ setSidebarOpen }) {
@@ -152,8 +153,32 @@ export default function Header({ setSidebarOpen }) {
         </button>
       </div>
 
-      {/* Right - Notifications & Profile */}
+      {/* Right - Download App (admin only) & Notifications & Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} ref={dropdownRef}>
+        {/* Download App - For admin and super_admin */}
+        {(user?.role === 'admin' || user?.role === 'super_admin') && (
+          <a
+            href="http://node.simtrackr.b100x.in/public/apk/simtrack.apk"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background-color 0.2s'
+            }}
+            className="hover:bg-blue-700"
+          >
+            <FiDownload style={{ width: '16px', height: '16px' }} />
+            <span className="hidden sm:inline">Download App</span>
+          </a>
+        )}
+
         {/* Notifications */}
         <div style={{ position: 'relative' }}>
           <button
@@ -445,6 +470,13 @@ export default function Header({ setSidebarOpen }) {
         }
         @media (max-width: 768px) {
           .md\\:block { display: none; }
+        }
+        .sm\\:inline { display: none; }
+        @media (min-width: 640px) {
+          .sm\\:inline { display: inline; }
+        }
+        .hover\\:bg-blue-700:hover {
+          background-color: #1d4ed8;
         }
       `}</style>
     </header>

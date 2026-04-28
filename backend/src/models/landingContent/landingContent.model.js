@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const LandingContentSchema = new Schema({
+  // Branding
+  branding: {
+    siteName: { type: String, default: 'SIM Manager' },
+    logoUrl: { type: String, default: '' },
+    logoDarkUrl: { type: String, default: '' }, // For dark backgrounds
+    faviconUrl: { type: String, default: '' },
+  },
+
   // Hero Section
   hero: {
     badge: { type: String, default: 'Trusted by 500+ Companies' },
@@ -109,14 +117,10 @@ const LandingContentSchema = new Schema({
       text: { type: String, default: '' },
       url: { type: String, default: '' }
     }],
-    companyLinks: [{
-      text: { type: String, default: '' },
-      url: { type: String, default: '' }
-    }],
-    supportLinks: [{
-      text: { type: String, default: '' },
-      url: { type: String, default: '' }
-    }],
+    contact: {
+      phone: { type: String, default: '' },
+      email: { type: String, default: '' },
+    },
     copyright: { type: String, default: '© 2026 SIM Manager. All rights reserved.' }
   },
 
@@ -244,23 +248,12 @@ LandingContentSchema.statics.getDefaultContent = function() {
         { text: 'Features', url: '#features' },
         { text: 'Pricing', url: '#pricing' },
         { text: 'Integrations', url: '#integrations' },
-        { text: 'Mobile App', url: '#' },
-        { text: 'Updates', url: '#' }
+        { text: 'Mobile App', url: '#' }
       ],
-      companyLinks: [
-        { text: 'About Us', url: '#' },
-        { text: 'Careers', url: '#' },
-        { text: 'Blog', url: '#' },
-        { text: 'Press', url: '#' },
-        { text: 'Partners', url: '#' }
-      ],
-      supportLinks: [
-        { text: 'Help Center', url: '#' },
-        { text: 'Contact Us', url: '#' },
-        { text: 'Privacy Policy', url: '#' },
-        { text: 'Terms of Service', url: '#' },
-        { text: 'Status', url: '#' }
-      ],
+      contact: {
+        phone: '+91 9876543210',
+        email: 'contact@simtrackr.com',
+      },
       copyright: '© 2026 SIM Manager. All rights reserved.'
     }
   };

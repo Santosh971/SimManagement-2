@@ -932,7 +932,7 @@ export default function WifiMonitor() {
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Alert Threshold</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Current Speed</th>
                     {/* <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Devices</th> */}
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>SIMs</th>
+                    {/* <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>SIMs</th> */}
                     {/* <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Status</th> */}
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Actions</th>
                   </tr>
@@ -966,7 +966,7 @@ export default function WifiMonitor() {
                           </span>
                         </td>
                         {/* <td style={{ padding: '12px 16px' }}>{network.deviceCount || 0}</td> */}
-                        <td style={{ padding: '12px 16px' }}>
+                        {/* <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <FiUsers style={{ width: '14px', height: '14px', color: '#6b7280' }} />
                             <span style={{
@@ -980,7 +980,7 @@ export default function WifiMonitor() {
                               <span style={{ fontSize: '10px', color: '#9ca3af' }}>(all)</span>
                             )}
                           </div>
-                        </td>
+                        </td> */}
                         {/* <td style={{ padding: '12px 16px' }}>
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </td> */}

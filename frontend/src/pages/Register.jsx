@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiSmartphone, FiPhone, FiBriefcase, FiArrowRight, FiLoader } from 'react-icons/fi'
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone, FiBriefcase, FiArrowRight, FiLoader } from 'react-icons/fi'
+import Logo from '../components/Logo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID
@@ -212,8 +213,13 @@ export default function Register() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-            <FiSmartphone className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-4">
+            <Logo
+              linkTo="/"
+              size="xlarge"
+              variant="dark"
+              showText={false}
+            />
           </div>
           <h1 className="text-2xl font-bold text-secondary-900">Create Account</h1>
           <p className="text-secondary-500 mt-2">

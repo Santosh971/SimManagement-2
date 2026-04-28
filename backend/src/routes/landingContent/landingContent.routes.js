@@ -1,9 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const landingContentController = require('../../controllers/landingContent/landingContent.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
 const { validate } = require('../../middleware/validate');
+
+// Multer configuration for logo upload
+const logoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads/branding');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, 'logo-' + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const logoUpload = multer({
+  storage: logoStorage,
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, SVG, WebP) are allowed'), false);
+    }
+  },
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+});
 
 // Validation rules for hero section
 const heroValidation = [
@@ -34,6 +65,14 @@ const faqValidation = [
   body('faq.items.*.answer').optional().trim().isLength({ max: 2000 }),
 ];
 
+// Validation rules for branding
+const brandingValidation = [
+  body('branding.siteName').optional().trim().isLength({ max: 100 }),
+  body('branding.logoUrl').optional().trim().isLength({ max: 500 }),
+  body('branding.logoDarkUrl').optional().trim().isLength({ max: 500 }),
+  body('branding.faviconUrl').optional().trim().isLength({ max: 500 }),
+];
+
 // Public route - no authentication required
 router.get('/public', landingContentController.getPublicContent);
 
@@ -45,10 +84,16 @@ router.use(authorize('super_admin'));
 router.get('/', landingContentController.getFullContent);
 
 // Update entire content (Super Admin only)
-router.put('/', heroValidation, testimonialValidation, faqValidation, validate, landingContentController.updateContent);
+router.put('/', heroValidation, testimonialValidation, faqValidation, brandingValidation, validate, landingContentController.updateContent);
 
 // Update specific section (Super Admin only)
 router.put('/:section', landingContentController.updateSection);
+
+// Upload logo (Super Admin only)
+router.post('/upload-logo', logoUpload.single('logo'), landingContentController.uploadLogo);
+
+// Delete logo (Super Admin only)
+router.delete('/logo/:type', landingContentController.deleteLogo);
 
 // Reset to default (Super Admin only)
 router.post('/reset', landingContentController.resetToDefault);

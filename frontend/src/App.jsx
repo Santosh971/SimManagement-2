@@ -26,6 +26,8 @@ import WifiMonitor from './pages/WifiMonitor'
 import WifiDevices from './pages/WifiDevices'
 import LandingContent from './pages/LandingContent'
 import PaymentHistory from './pages/PaymentHistory'
+import LegalPage from './pages/LegalPage'
+import LegalPages from './pages/LegalPages'
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -100,6 +102,8 @@ function App() {
         />
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/privacy-policy" element={<LegalPage slug="privacy-policy" />} />
+          <Route path="/terms-of-service" element={<LegalPage slug="terms-of-service" />} />
           <Route
             path="/login"
             element={
@@ -179,6 +183,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
                   <PaymentHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="legal-pages"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <LegalPages />
                 </ProtectedRoute>
               }
             />

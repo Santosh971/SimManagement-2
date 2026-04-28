@@ -180,6 +180,7 @@
 
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Logo from './Logo'
 import {
   FiHome,
   FiCreditCard,
@@ -198,6 +199,7 @@ import {
   FiWifi,
   FiLayout,
   FiDollarSign,
+  FiFile,
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
@@ -214,6 +216,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Subscriptions', href: '/app/subscriptions', icon: FiPackage },
           { name: 'Payment History', href: '/app/payment-history', icon: FiDollarSign },
           { name: 'Landing Content', href: '/app/landing-content', icon: FiLayout },
+          { name: 'Legal Pages', href: '/app/legal-pages', icon: FiFile },
           { name: 'Audit Logs', href: '/app/audit-logs', icon: FiActivity },
           { name: 'Notifications', href: '/app/notifications', icon: FiBell },
           { name: 'Settings', href: '/app/settings', icon: FiSettings },
@@ -278,15 +281,11 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200">
-          <Link to="/app/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
-              <FiSmartphone className="text-white text-lg" />
-            </div>
-
-            <span className="text-xl font-bold text-slate-900">
-              SIM Manager
-            </span>
-          </Link>
+          <Logo
+            linkTo="/app/dashboard"
+            size="default"
+            variant="dark"
+          />
 
           <button
             onClick={() => setSidebarOpen(false)}

@@ -28,20 +28,24 @@ const smsRoutes = require('./routes/sms/sms.routes');
 const wifiRoutes = require('./routes/wifi/wifi.routes');
 const deviceRoutes = require('./routes/device/device.routes'); // [SIM-BASED WIFI ACCESS CONTROL]
 const landingContentRoutes = require('./routes/landingContent/landingContent.routes');
+const pageContentRoutes = require('./routes/pageContent/pageContent.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 
 // Import services
 const cronService = require('./jobs');
+const pageContentService = require('./services/pageContent.service');
 
 // Create Express app
 const app = express();
 
 // Connect to database
-connectDB().then(() => {
+connectDB().then(async () => {
   // Initialize cron jobs after database connection
   cronService.initJobs();
+  // Initialize default legal pages
+  await pageContentService.initializeDefaultPages();
 });
 
 // Middleware
@@ -124,6 +128,7 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/wifi', wifiRoutes);
 app.use('/api/device', deviceRoutes); // [SIM-BASED WIFI ACCESS CONTROL]
 app.use('/api/landing-content', landingContentRoutes);
+app.use('/api/pages', pageContentRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
