@@ -34,12 +34,12 @@ const CallAutomationConfigSchema = new Schema({
     required: true,
   }],
 
-  // Call duration in seconds (3-60)
+  // Call duration in seconds (10-60)
   callDuration: {
     type: Number,
     required: [true, 'Call duration is required'],
-    default: 5,
-    min: [3, 'Call duration must be at least 3 seconds'],
+    default: 10,
+    min: [10, 'Call duration must be at least 10 seconds'],
     max: [60, 'Call duration cannot exceed 60 seconds'],
   },
 
@@ -88,6 +88,20 @@ const CallAutomationConfigSchema = new Schema({
 
   // Rotation tracking for round-robin target selection
   lastTargetIndex: {
+    type: Number,
+    default: 0,
+  },
+
+  // Last run metadata
+  lastCallerSim: {
+    type: String,
+    default: null,
+  },
+  lastSuccessCount: {
+    type: Number,
+    default: 0,
+  },
+  lastFailCount: {
     type: Number,
     default: 0,
   },

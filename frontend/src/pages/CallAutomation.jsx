@@ -202,7 +202,7 @@ export default function CallAutomation() {
   // Form state
   const [callerSimIds, setCallerSimIds] = useState([])
   const [targetSimIds, setTargetSimIds] = useState([])
-  const [callDuration, setCallDuration] = useState(5)
+  const [callDuration, setCallDuration] = useState(10)
   const [frequency, setFrequency] = useState('daily')
   const [scheduledTime, setScheduledTime] = useState('09:00') // Time in HH:MM format
   const [scheduledDay, setScheduledDay] = useState('monday') // Day of week for weekly
@@ -229,7 +229,7 @@ export default function CallAutomation() {
         setConfig(existingConfig)
         setCallerSimIds(existingConfig.callerSimIds?.map(s => s._id || s) || [])
         setTargetSimIds(existingConfig.targetSimIds?.map(s => s._id || s) || [])
-        setCallDuration(existingConfig.callDuration || 5)
+        setCallDuration(existingConfig.callDuration || 10)
         setFrequency(existingConfig.frequency || 'daily')
         setScheduledTime(existingConfig.scheduledTime || '09:00')
         setScheduledDay(existingConfig.scheduledDay || 'monday')
@@ -255,8 +255,8 @@ export default function CallAutomation() {
       return
     }
 
-    if (callDuration < 3 || callDuration > 60) {
-      toast.error('Call duration must be between 3 and 60 seconds')
+    if (callDuration < 10 || callDuration > 60) {
+      toast.error('Call duration must be between 10 and 60 seconds')
       return
     }
 
@@ -450,7 +450,7 @@ export default function CallAutomation() {
                 type="number"
                 value={callDuration}
                 onChange={(e) => setCallDuration(e.target.value)}
-                min={3}
+                min={10}
                 max={60}
                 disabled={!isActive}
                 style={{
@@ -464,7 +464,7 @@ export default function CallAutomation() {
                 }}
               />
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                Min: 3 seconds, Max: 60 seconds
+                Min: 10 seconds, Max: 60 seconds
               </div>
             </div>
 
@@ -603,7 +603,7 @@ export default function CallAutomation() {
                 if (config) {
                   setCallerSimIds(config.callerSimIds?.map(s => s._id || s) || [])
                   setTargetSimIds(config.targetSimIds?.map(s => s._id || s) || [])
-                  setCallDuration(config.callDuration || 5)
+                  setCallDuration(config.callDuration || 10)
                   setFrequency(config.frequency || 'daily')
                   setScheduledTime(config.scheduledTime || '09:00')
                   setScheduledDay(config.scheduledDay || 'monday')

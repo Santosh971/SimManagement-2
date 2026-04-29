@@ -23,8 +23,8 @@ const saveConfigValidation = [
     .isArray({ min: 1 })
     .withMessage('At least one target SIM is required'),
   body('callDuration')
-    .isInt({ min: 3, max: 60 })
-    .withMessage('Call duration must be between 3 and 60 seconds'),
+    .isInt({ min: 10, max: 60 })
+    .withMessage('Call duration must be between 10 and 60 seconds'),
   body('frequency')
     .optional()
     .isIn(['hourly', 'daily', 'weekly'])

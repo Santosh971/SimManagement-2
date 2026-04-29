@@ -39,8 +39,8 @@ class CallAutomationService {
     }
 
     // Validate call duration
-    if (callDuration < 3 || callDuration > 60) {
-      throw new ValidationError('Call duration must be between 3 and 60 seconds');
+    if (callDuration < 10 || callDuration > 60) {
+      throw new ValidationError('Call duration must be between 10 and 60 seconds');
     }
 
     // Validate scheduled time format
@@ -153,7 +153,7 @@ class CallAutomationService {
       return {
         role: 'NONE',
         targets: [],
-        callDuration: 5,
+        callDuration: 10,
         frequency: 'daily',
         isActive: false,
       };
@@ -167,7 +167,7 @@ class CallAutomationService {
       return {
         role: 'NONE',
         targets: [],
-        callDuration: 5,
+        callDuration: 10,
         frequency: 'daily',
         isActive: false,
       };
@@ -178,7 +178,7 @@ class CallAutomationService {
       return {
         role: 'NONE',
         targets: [],
-        callDuration: 5,
+        callDuration: 10,
         frequency: 'daily',
         isActive: false,
       };
@@ -195,7 +195,7 @@ class CallAutomationService {
       return {
         role: 'NONE',
         targets: [],
-        callDuration: 5,
+        callDuration: 10,
         frequency: 'daily',
         isActive: false,
         simId: sim._id,
@@ -270,21 +270,46 @@ class CallAutomationService {
   /**
    * Update last run timestamp
    * @param {String} configId - Configuration ID
+   * @param {Object} metadata - Additional metadata (simNumber, successCount, failCount)
    */
-  async updateLastRun(configId) {
+  async updateLastRun(configId, metadata = {}) {
     const config = await CallAutomationConfig.findById(configId);
 
-    if (config) {
-      config.lastRunAt = new Date();
-      config.lastTargetIndex = config.getNextTargetIndex();
-      config.nextRunAt = config.calculateNextRunTime();
-      await config.save();
-
-      logger.info('[CALL AUTOMATION] Last run updated', {
-        configId,
-        nextRunAt: config.nextRunAt
-      });
+    if (!config) {
+      logger.warn('[CALL AUTOMATION] Config not found for updateLastRun', { configId });
+      return { lastRunAt: null, nextRunAt: null };
     }
+
+    config.lastRunAt = new Date();
+    config.lastTargetIndex = config.getNextTargetIndex();
+    config.nextRunAt = config.calculateNextRunTime();
+
+    // Store metadata about the last run
+    if (metadata.simNumber) {
+      config.lastCallerSim = metadata.simNumber;
+    }
+    if (metadata.successCount !== undefined) {
+      config.lastSuccessCount = metadata.successCount;
+    }
+    if (metadata.failCount !== undefined) {
+      config.lastFailCount = metadata.failCount;
+    }
+
+    await config.save();
+
+    logger.info('[CALL AUTOMATION] Last run updated', {
+      configId,
+      simNumber: metadata.simNumber,
+      successCount: metadata.successCount,
+      failCount: metadata.failCount,
+      lastRunAt: config.lastRunAt,
+      nextRunAt: config.nextRunAt
+    });
+
+    return {
+      lastRunAt: config.lastRunAt,
+      nextRunAt: config.nextRunAt
+    };
   }
 
   /**

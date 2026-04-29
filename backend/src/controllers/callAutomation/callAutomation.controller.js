@@ -118,7 +118,7 @@ class CallAutomationController {
         return successResponse(res, {
           role: 'NONE',
           targets: [],
-          callDuration: 5,
+          callDuration: 10,
           frequency: 'daily',
           isActive: false,
         });
@@ -139,13 +139,32 @@ class CallAutomationController {
    */
   async updateLastRun(req, res, next) {
     try {
-      const { configId } = req.body;
+      const { configId, simNumber, successCount, failCount } = req.body;
 
-      if (configId) {
-        await callAutomationService.updateLastRun(configId);
+      logger.info('[CALL AUTOMATION CONTROLLER] Call complete notification received', {
+        configId,
+        simNumber,
+        successCount,
+        failCount
+      });
+
+      if (!configId) {
+        return successResponse(res, { success: false, message: 'configId is required' });
       }
 
-      return successResponse(res, { success: true });
+      const result = await callAutomationService.updateLastRun(configId, {
+        simNumber,
+        successCount: successCount || 0,
+        failCount: failCount || 0
+      });
+
+      return successResponse(res, {
+        success: true,
+        data: {
+          lastRunAt: result.lastRunAt,
+          nextRunAt: result.nextRunAt
+        }
+      });
     } catch (error) {
       logger.error('[CALL AUTOMATION CONTROLLER] Update last run error', { error: error.message });
       next(error);

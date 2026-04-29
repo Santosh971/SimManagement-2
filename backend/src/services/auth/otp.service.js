@@ -13,6 +13,8 @@ class OTPService {
     this.MAX_OTP_ATTEMPTS = 5;
     this.OTP_COOLDOWN_SECONDS = 10;
     this.OTP_SALT_ROUNDS = 10; // For hashing OTP
+    // Bypass email for testing (set BYPASS_EMAIL_OTP=true in environment)
+    this.BYPASS_EMAIL = process.env.BYPASS_EMAIL_OTP === 'true';
   }
 
   /**
@@ -103,6 +105,21 @@ class OTPService {
         expiresAt: otpExpires
       });
 
+      // Check if email bypass is enabled (for testing without SMTP)
+      const isDevelopment = config.app.env === 'development';
+      const bypassEmail = this.BYPASS_EMAIL || isDevelopment;
+
+      if (bypassEmail) {
+        logger.info('[EMAIL OTP FIX] Email bypass enabled - returning OTP directly', { email });
+        return {
+          success: true,
+          message: 'OTP generated (email bypassed)',
+          otp: otp, // Only when bypass is enabled
+          expiresAt: otpExpires,
+          bypassed: true,
+        };
+      }
+
       // Send OTP via email
       try {
         const emailResult = await emailService.sendOTPEmail(email, otp, user.mobileNumber || user.phone || '');
@@ -114,7 +131,6 @@ class OTPService {
           });
 
           // For development, return OTP in response
-          const isDevelopment = config.app.env === 'development';
           if (isDevelopment) {
             return {
               success: true,
@@ -147,7 +163,6 @@ class OTPService {
         });
 
         // Fallback for development
-        const isDevelopment = config.app.env === 'development';
         if (isDevelopment) {
           return {
             success: true,

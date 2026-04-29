@@ -138,7 +138,7 @@ router.post('/refresh-token', refreshTokenValidation, validate, deviceController
  * {
  *   "role": "CALLER" | "RECEIVER" | "NONE",
  *   "targets": ["+91XXXXXXXXX1", "+91XXXXXXXXX2"],
- *   "callDuration": 5,
+ *   "callDuration": 10,
  *   "frequency": "daily",
  *   "isActive": true
  * }
