@@ -69,6 +69,54 @@ class TelegramService {
   }
 
   /**
+   * Send Telegram message with keyboard (buttons)
+   * @param {string} chatId - Telegram chat ID
+   * @param {string} message - Message content
+   * @param {Object} keyboard - Reply keyboard markup
+   * @returns {Object} - Result with success status and message ID
+   */
+  async sendTelegramMessageWithKeyboard(chatId, message, keyboard) {
+    // If not configured, simulate success (for development)
+    if (!this.isConfigured) {
+      logger.info(`[Telegram SIMULATION] Would send to chat ${chatId} with keyboard: ${message.substring(0, 50)}...`);
+      return {
+        success: true,
+        messageId: Date.now(),
+        simulated: true,
+      };
+    }
+
+    try {
+      const response = await axios.post(`${TELEGRAM_API_BASE}/sendMessage`, {
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+      });
+
+      logger.info(`[Telegram] Message with keyboard sent to chat ${chatId}`, {
+        messageId: response.data.result.message_id,
+      });
+
+      return {
+        success: true,
+        messageId: response.data.result.message_id,
+        status: 'sent',
+      };
+    } catch (error) {
+      logger.error(`[Telegram] Failed to send message with keyboard to chat ${chatId}`, {
+        error: error.response?.data || error.message,
+      });
+
+      return {
+        success: false,
+        error: error.response?.data?.description || error.message,
+        errorCode: error.response?.data?.error_code,
+      };
+    }
+  }
+
+  /**
    * Send Telegram messages to multiple SIMs
    * @param {Object} data - { simIds, message, updateSimStatus }
    * @param {Object} user - Current authenticated user
@@ -211,6 +259,10 @@ class TelegramService {
 
     // Handle message updates
     if (update.message) {
+      // Handle contact sharing (phone number)
+      if (update.message.contact) {
+        return this.handleContact(update.message);
+      }
       return this.handleMessage(update.message);
     }
 
@@ -287,31 +339,40 @@ class TelegramService {
       return { success: false, message: 'SIM not found' };
     }
 
-    // Check if already linked to another chat
-    if (sim.telegramChatId && sim.telegramChatId !== String(chatId)) {
-      // Optionally update to new chat or warn
-      logger.warn(`[Telegram] SIM ${sim.mobileNumber} already linked to another chat`, {
-        oldChatId: sim.telegramChatId,
-        newChatId: chatId,
-      });
+    // Check if already linked and verified
+    if (sim.telegramChatId && sim.telegramPhoneVerified) {
+      // Already verified - just confirm
+      await this.sendTelegramMessage(chatId,
+        `✅ <b>Already Verified!</b>\n\n` +
+        `📱 SIM: <b>${sim.mobileNumber}</b>\n` +
+        `📱 Your Number: <b>${sim.telegramPhoneNumber || 'N/A'}</b>\n\n` +
+        `This SIM is already linked and verified. You will continue to receive activity check messages.`
+      );
+      return { success: true, message: 'Already linked and verified', simId: sim._id };
     }
 
-    // Link SIM with Telegram chat
+    // Store Telegram user info temporarily (pending phone verification)
     sim.telegramChatId = String(chatId);
-    sim.telegramEnabled = true;
+    sim.telegramUsername = userName;
+    sim.telegramUserId = from.id;
+    sim.telegramFirstName = from.first_name;
+    sim.telegramLastName = from.last_name || null;
+    sim.telegramEnabled = false; // Will be enabled after phone verification
+    sim.telegramPhoneVerified = false;
     sim.telegramLastActive = new Date();
     await sim.save();
 
-    logger.info(`[Telegram] SIM ${sim.mobileNumber} linked to chat ${chatId}`, {
+    logger.info(`[Telegram] SIM ${sim.mobileNumber} - pending phone verification`, {
       simId: sim._id,
-      linkedBy: userName,
+      chatId: chatId,
+      username: userName,
     });
 
-    // Create audit log for SIM linking
+    // Create audit log for initial link attempt
     await auditLogService.logAction({
-      action: 'TELEGRAM_SIM_LINK',
+      action: 'TELEGRAM_SIM_LINK_INITIATED',
       module: 'TELEGRAM',
-      description: `SIM ${sim.mobileNumber} linked to Telegram via bot by ${userName}`,
+      description: `SIM ${sim.mobileNumber} - Telegram link initiated by ${userName}, awaiting phone verification`,
       companyId: sim.companyId,
       entityId: sim._id,
       entityType: 'SIM',
@@ -320,24 +381,238 @@ class TelegramService {
         chatId: String(chatId),
         telegramUsername: userName,
         telegramUserId: from.id,
+        status: 'pending_verification',
       },
     });
 
-    // Send confirmation message
-    await this.sendTelegramMessage(chatId,
-      `✅ <b>Successfully Linked!</b>\n\n` +
-      `📱 SIM: <b>${sim.mobileNumber}</b>\n` +
+    // Ask user to share phone number for verification
+    await this.sendTelegramMessageWithKeyboard(chatId,
+      `🔗 <b>Link Your SIM</b>\n\n` +
+      `📱 SIM Number: <b>${sim.mobileNumber}</b>\n` +
       `📡 Operator: ${sim.operator}\n\n` +
-      `You will receive activity check messages for this SIM. ` +
-      `Reply to any message within 1 hour to mark the SIM as active.`
+      `⚠️ <b>Verification Required</b>\n\n` +
+      `To complete the link, please share your phone number.\n\n` +
+      `Your phone number must match the SIM number above.\n\n` +
+      `Tap the button below to share your contact:`,
+      {
+        keyboard: [[{
+          text: '📱 Share Phone Number',
+          request_contact: true,
+        }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      }
     );
 
     return {
       success: true,
-      message: 'SIM linked successfully',
+      message: 'Waiting for phone verification',
       simId: sim._id,
       mobileNumber: sim.mobileNumber,
+      status: 'pending_verification',
     };
+  }
+
+  /**
+   * Handle contact shared by user (phone number)
+   * @param {Object} message - Telegram message with contact
+   */
+  async handleContact(message) {
+    const chatId = message.chat.id;
+    const contact = message.contact;
+    const from = message.from;
+
+    if (!contact || !contact.phone_number) {
+      await this.sendTelegramMessage(chatId,
+        '❌ Could not receive your phone number. Please try again.'
+      );
+      return { success: false, message: 'No contact data received' };
+    }
+
+    // Get phone number and normalize it
+    let phoneNumber = contact.phone_number;
+    // Remove any non-digit characters except +
+    phoneNumber = '+' + phoneNumber.replace(/\D/g, '');
+
+    // Find the SIM linked to this chat
+    const sim = await Sim.findOne({
+      telegramChatId: String(chatId),
+      isActive: true,
+    }).populate('companyId');
+
+
+    const userName = from.username || `${from.first_name} ${from.last_name || ''}`.trim();
+
+    logger.info(`[Telegram] Contact received from chat ${chatId}`, {
+      phoneNumber,
+      telegramUsername: userName,
+      simMobileNumber: sim?.mobileNumber,
+    });
+
+    if (!sim) {
+      await this.sendTelegramMessage(chatId,
+        '❌ No SIM linked to this chat. Please use the link provided by your administrator.'
+      );
+      return { success: false, message: 'No SIM linked to this chat' };
+    }
+
+    // ============================================
+    // VERIFY PHONE NUMBER MATCHES SIM
+    // ============================================
+
+    // Normalize both numbers for comparison
+    const normalizedTelegramPhone = phoneNumber.replace(/\D/g, ''); // Remove all non-digits
+    const normalizedSimPhone = sim.mobileNumber.replace(/\D/g, ''); // Remove all non-digits
+
+    // Also try with country code variations
+    // e.g., if SIM is "9876543210" and Telegram sends "+919876543210"
+    // We need to handle both 10-digit and with country code formats
+
+    const phonesMatch = this.comparePhoneNumbers(normalizedTelegramPhone, normalizedSimPhone);
+
+    logger.info(`[Telegram] Phone verification for SIM ${sim.mobileNumber}`, {
+      telegramPhone: phoneNumber,
+      simPhone: sim.mobileNumber,
+      normalizedTelegram: normalizedTelegramPhone,
+      normalizedSim: normalizedSimPhone,
+      phonesMatch: phonesMatch,
+    });
+
+    if (!phonesMatch) {
+      // Phone numbers don't match - show error
+      await this.sendTelegramMessage(chatId,
+        `❌ <b>Phone Number Mismatch!</b>\n\n` +
+        `The phone number you shared (<b>${phoneNumber}</b>) does not match the SIM number (<b>${sim.mobileNumber}</b>).\n\n` +
+        `This Telegram account is not authorized to manage this SIM.\n\n` +
+        `If you believe this is an error, please contact your administrator.`
+      );
+
+      // Create audit log for failed verification
+      await auditLogService.logAction({
+        action: 'TELEGRAM_PHONE_VERIFICATION_FAILED',
+        module: 'TELEGRAM',
+        description: `Phone verification failed for SIM ${sim.mobileNumber}. Shared: ${phoneNumber}, Expected: ${sim.mobileNumber}`,
+        companyId: sim.companyId,
+        entityId: sim._id,
+        entityType: 'SIM',
+        metadata: {
+          simMobileNumber: sim.mobileNumber,
+          sharedPhoneNumber: phoneNumber,
+          chatId: String(chatId),
+          telegramUsername: userName,
+          telegramUserId: from.id,
+        },
+      });
+
+      return {
+        success: false,
+        message: 'Phone number mismatch',
+        simId: sim._id,
+        mobileNumber: sim.mobileNumber,
+        sharedPhoneNumber: phoneNumber,
+      };
+    }
+
+    // ============================================
+    // PHONE VERIFIED - COMPLETE LINKING
+    // ============================================
+
+    // Store the verified phone number and Telegram user info
+    sim.telegramPhoneNumber = phoneNumber;
+    sim.telegramPhoneVerified = true;
+    sim.telegramEnabled = true; // Enable after successful verification
+    sim.telegramLastActive = new Date();
+    sim.telegramUsername = userName;
+    sim.telegramUserId = from.id;
+    sim.telegramFirstName = from.first_name;
+    sim.telegramLastName = from.last_name || null;
+    await sim.save();
+
+    // Create audit log for successful phone verification
+    await auditLogService.logAction({
+      action: 'TELEGRAM_PHONE_VERIFIED',
+      module: 'TELEGRAM',
+      description: `Phone number ${phoneNumber} verified and linked for SIM ${sim.mobileNumber} by ${userName}`,
+      companyId: sim.companyId,
+      entityId: sim._id,
+      entityType: 'SIM',
+      metadata: {
+        simMobileNumber: sim.mobileNumber,
+        verifiedPhoneNumber: phoneNumber,
+        chatId: String(chatId),
+        telegramUsername: userName,
+        telegramUserId: from.id,
+      },
+    });
+
+    // Send confirmation
+    await this.sendTelegramMessage(chatId,
+      `✅ <b>Verification Successful!</b>\n\n` +
+      `📱 Your Number: <b>${phoneNumber}</b>\n` +
+      `📋 Linked SIM: <b>${sim.mobileNumber}</b>\n` +
+      `📡 Operator: ${sim.operator}\n\n` +
+      `✨ Your Telegram is now linked to this SIM.\n\n` +
+      `You will receive activity check messages for this SIM.\n` +
+      `Reply to any message within 1 hour to mark the SIM as active.`
+    );
+
+    logger.info(`[Telegram] Phone verified and SIM linked`, {
+      simId: sim._id,
+      mobileNumber: sim.mobileNumber,
+      phoneNumber: phoneNumber,
+      chatId: chatId,
+    });
+
+    return {
+      success: true,
+      message: 'Phone number verified successfully',
+      simId: sim._id,
+      mobileNumber: sim.mobileNumber,
+      verifiedPhoneNumber: phoneNumber,
+    };
+  }
+
+  /**
+   * Compare two phone numbers for equality
+   * Handles various formats and country codes
+   * @param {string} phone1 - First phone number (digits only)
+   * @param {string} phone2 - Second phone number (digits only)
+   * @returns {boolean} - True if numbers match
+   */
+  comparePhoneNumbers(phone1, phone2) {
+    // Remove all non-digits
+    let p1 = phone1.replace(/\D/g, '');
+    let p2 = phone2.replace(/\D/g, '');
+
+    // If both are empty, they don't match
+    if (!p1 || !p2) return false;
+
+    // Direct match
+    if (p1 === p2) return true;
+
+    // Handle country code: if one has country code and other doesn't
+    // Common Indian format: +91XXXXXXXXXX (12 digits with country code)
+    // or just XXXXXXXXXX (10 digits)
+
+    // Remove leading 91 if both are Indian numbers
+    if (p1.startsWith('91') && p1.length === 12) {
+      p1 = p1.substring(2);
+    }
+    if (p2.startsWith('91') && p2.length === 12) {
+      p2 = p2.substring(2);
+    }
+
+    // Try match again after removing country code
+    if (p1 === p2) return true;
+
+    // Last 10 digits match (most reliable for Indian numbers)
+    if (p1.length >= 10 && p2.length >= 10) {
+      const last10_1 = p1.slice(-10);
+      const last10_2 = p2.slice(-10);
+      if (last10_1 === last10_2) return true;
+    }
+
+    return false;
   }
 
   /**

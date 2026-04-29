@@ -96,6 +96,32 @@ const SimSchema = new Schema({
     default: null,
     index: true,
   },
+  // Telegram user info
+  telegramUsername: {
+    type: String,
+    default: null,
+  },
+  telegramUserId: {
+    type: Number,
+    default: null,
+  },
+  telegramFirstName: {
+    type: String,
+    default: null,
+  },
+  telegramLastName: {
+    type: String,
+    default: null,
+  },
+  // Telegram phone verification
+  telegramPhoneNumber: {
+    type: String,
+    default: null,
+  },
+  telegramPhoneVerified: {
+    type: Boolean,
+    default: false,
+  },
   // [SIM-BASED WIFI ACCESS CONTROL] - Device binding fields
   deviceId: {
     type: String,
