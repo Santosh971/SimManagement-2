@@ -130,12 +130,13 @@ class OTPService {
             error: emailResult.error
           });
 
-          // For development, return OTP in response
-          if (isDevelopment) {
+          // For development or when email timeout/connection fails, return OTP in response
+          // This helps when SMTP ports are blocked (like on Render free tier)
+          if (isDevelopment || emailResult.error === 'Connection timeout' || bypassEmail) {
             return {
               success: true,
               message: 'OTP generated (email delivery failed - check SMTP config)',
-              otp: otp, // Only in development
+              otp: otp, // Return OTP directly for testing
               expiresAt: otpExpires,
             };
           }
@@ -162,11 +163,11 @@ class OTPService {
           error: emailError.message
         });
 
-        // Fallback for development
-        if (isDevelopment) {
+        // Fallback for development or connection errors (like SMTP port blocked on Render)
+        if (isDevelopment || emailError.code === 'ETIMEDOUT' || bypassEmail) {
           return {
             success: true,
-            message: 'OTP generated (email service error)',
+            message: 'OTP generated (email service error - connection timeout)',
             otp: otp,
             expiresAt: otpExpires,
           };
