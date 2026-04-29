@@ -29,11 +29,11 @@ import {
 } from '../components/ui'
 
 // Toggle Switch Component
-function ToggleSwitch({ enabled, onChange, loading }) {
+// [WHATSAPP/TELEGRAM TOGGLE SYNC] - Made read-only, status derived from message logs
+function ToggleSwitch({ enabled, loading, readOnly }) {
   return (
     <button
-      onClick={onChange}
-      disabled={loading}
+      disabled={loading || readOnly}
       style={{
         position: 'relative',
         width: '44px',
@@ -41,7 +41,7 @@ function ToggleSwitch({ enabled, onChange, loading }) {
         borderRadius: '12px',
         backgroundColor: enabled ? '#16a34a' : '#d1d5db',
         border: 'none',
-        cursor: loading ? 'not-allowed' : 'pointer',
+        cursor: readOnly ? 'default' : (loading ? 'not-allowed' : 'pointer'),
         opacity: loading ? 0.7 : 1,
         transition: 'background-color 0.2s',
         padding: 0,
@@ -1105,9 +1105,10 @@ function SimListModal({ isOpen, onClose, title, sims }) {
       header: 'Messaging',
       render: (row) => (
         <div style={{ display: 'flex', gap: '8px' }}>
-          {row.whatsappEnabled && <span style={{ fontSize: '12px', color: '#25d366' }}>WhatsApp</span>}
-          {row.telegramEnabled && <span style={{ fontSize: '12px', color: '#0088cc' }}>Telegram</span>}
-          {!row.whatsappEnabled && !row.telegramEnabled && <span style={{ fontSize: '12px', color: '#6b7280' }}>None</span>}
+          {/* [WHATSAPP/TELEGRAM TOGGLE SYNC] - Use derived active status */}
+          {row.whatsappActiveStatus === true && <span style={{ fontSize: '12px', color: '#25d366' }}>WhatsApp</span>}
+          {row.telegramActiveStatus === true && <span style={{ fontSize: '12px', color: '#0088cc' }}>Telegram</span>}
+          {row.whatsappActiveStatus !== true && row.telegramActiveStatus !== true && <span style={{ fontSize: '12px', color: '#6b7280' }}>None</span>}
         </div>
       )
     },
@@ -1630,22 +1631,23 @@ export default function SIMs() {
     let filteredSims = []
     let title = ''
 
+    // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Use derived active status from message logs
     switch (type) {
       case 'whatsapp':
-        filteredSims = sims.filter(sim => sim.whatsappEnabled === true)
-        title = 'WhatsApp Enabled SIMs'
+        filteredSims = sims.filter(sim => sim.whatsappActiveStatus === true)
+        title = 'WhatsApp Active SIMs'
         break
       case 'telegram':
-        filteredSims = sims.filter(sim => sim.telegramEnabled === true)
-        title = 'Telegram Enabled SIMs'
+        filteredSims = sims.filter(sim => sim.telegramActiveStatus === true)
+        title = 'Telegram Active SIMs'
         break
       case 'both':
-        filteredSims = sims.filter(sim => sim.whatsappEnabled === true && sim.telegramEnabled === true)
-        title = 'Both WhatsApp & Telegram Enabled SIMs'
+        filteredSims = sims.filter(sim => sim.whatsappActiveStatus === true && sim.telegramActiveStatus === true)
+        title = 'Both WhatsApp & Telegram Active SIMs'
         break
       case 'none':
-        filteredSims = sims.filter(sim => sim.whatsappEnabled === false && sim.telegramEnabled === false)
-        title = 'SIMs with No Messaging Enabled'
+        filteredSims = sims.filter(sim => sim.whatsappActiveStatus !== true && sim.telegramActiveStatus !== true)
+        title = 'SIMs with No Messaging Active'
         break
       default:
         return
@@ -1681,9 +1683,9 @@ export default function SIMs() {
       render: (row) => (
         <div style={{ textAlign: 'center' }}>
           <ToggleSwitch
-            enabled={row.whatsappEnabled}
-            onChange={() => handleMessagingToggle(row._id, 'whatsapp', row.whatsappEnabled)}
+            enabled={row.whatsappActiveStatus === true}
             loading={togglingId === row._id + 'whatsapp'}
+            readOnly={true}
           />
         </div>
       )
@@ -1694,9 +1696,9 @@ export default function SIMs() {
       render: (row) => (
         <div style={{ textAlign: 'center' }}>
           <ToggleSwitch
-            enabled={row.telegramEnabled}
-            onChange={() => handleMessagingToggle(row._id, 'telegram', row.telegramEnabled)}
+            enabled={row.telegramActiveStatus === true}
             loading={togglingId === row._id + 'telegram'}
+            readOnly={true}
           />
         </div>
       )

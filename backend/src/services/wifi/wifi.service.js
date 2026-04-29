@@ -97,7 +97,14 @@ class WifiService {
 
     const networks = await WifiNetwork.find(filter)
       .populate('createdBy', 'name email')
-      .populate('assignedSims', 'mobileNumber operator status')
+      .populate({
+        path: 'assignedSims',
+        select: 'mobileNumber operator status assignedTo',
+        populate: {
+          path: 'assignedTo',
+          select: 'name email'
+        }
+      })
       .skip(skip)
       .limit(parseInt(limit))
       .sort(sort);
@@ -139,7 +146,14 @@ class WifiService {
 
     const network = await WifiNetwork.findOne(filter)
       .populate('createdBy', 'name email')
-      .populate('assignedSims', 'mobileNumber operator status assignedTo');
+      .populate({
+        path: 'assignedSims',
+        select: 'mobileNumber operator status assignedTo',
+        populate: {
+          path: 'assignedTo',
+          select: 'name email'
+        }
+      });
 
     if (!network) {
       throw new NotFoundError('WiFi network');

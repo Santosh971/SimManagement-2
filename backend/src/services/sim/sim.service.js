@@ -1,6 +1,8 @@
 const Sim = require('../../models/sim/sim.model');
 const User = require('../../models/auth/user.model');
 const Company = require('../../models/company/company.model');
+const WhatsAppMessage = require('../../models/whatsapp/whatsapp.model');
+const TelegramMessage = require('../../models/telegram/telegram.model');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../../utils/errors');
@@ -644,10 +646,13 @@ class SimService {
     const filter = { isActive: true };
 
     // Data isolation
+    let companyId = null;
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
+      companyId = user.companyId;
     } else if (query.companyId) {
       filter.companyId = query.companyId;
+      companyId = query.companyId;
     }
 
     // [PHONE SEARCH FIX] - Escape special regex characters in search
@@ -676,7 +681,85 @@ class SimService {
 
     const total = await Sim.countDocuments(filter);
 
-    return { data: sims, total, page: parseInt(page), limit: parseInt(limit) };
+    // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Fetch latest active status from message logs
+    let simsDerivedStatus = sims;
+    if (companyId && sims.length > 0) {
+      simsDerivedStatus = await this.enrichSimsWithMessagingStatus(sims, companyId);
+    }
+
+    return { data: simsDerivedStatus, total, page: parseInt(page), limit: parseInt(limit) };
+  }
+
+  /**
+   * [WHATSAPP/TELEGRAM TOGGLE SYNC]
+   * Enrich SIMs with their latest WhatsApp/Telegram active status from message logs
+   * @param {Array} sims - Array of SIM documents
+   * @param {ObjectId} companyId - Company ID
+   * @returns {Array} - SIMs with derived whatsappActiveStatus and telegramActiveStatus
+   */
+  async enrichSimsWithMessagingStatus(sims, companyId) {
+    const simIds = sims.map(s => s._id);
+
+    // [PHONE NUMBER FIX] - Get all WhatsApp messages for this company and match in JS
+    // This handles phone number format variations (with/without +, country codes, etc.)
+    const whatsappMessages = await WhatsAppMessage.find({
+      companyId: new mongoose.Types.ObjectId(companyId),
+      isActive: { $ne: null }, // Only consider messages with definitive isActive status
+    }).sort({ sentAt: -1 }).lean();
+
+    // Build a map by last 10 digits of phone number
+    const whatsappMap = {};
+    whatsappMessages.forEach(msg => {
+      const last10Digits = msg.phoneNumber.replace(/\D/g, '').slice(-10);
+      if (!whatsappMap[last10Digits]) {
+        whatsappMap[last10Digits] = { isActive: msg.isActive, lastMessageAt: msg.sentAt };
+      }
+    });
+
+    // Get latest Telegram message for each SIM
+    const telegramPipeline = [
+      {
+        $match: {
+          companyId: new mongoose.Types.ObjectId(companyId),
+          simId: { $in: simIds.map(id => new mongoose.Types.ObjectId(id)) },
+          isActive: { $ne: null }, // Only consider messages with definitive isActive status
+        }
+      },
+      {
+        $sort: { sentAt: -1 }
+      },
+      {
+        $group: {
+          _id: '$simId',
+          isActive: { $first: '$isActive' },
+          lastMessageAt: { $first: '$sentAt' }
+        }
+      }
+    ];
+
+    const telegramStatuses = await TelegramMessage.aggregate(telegramPipeline);
+    const telegramMap = {};
+    telegramStatuses.forEach(t => {
+      telegramMap[t._id.toString()] = { isActive: t.isActive, lastMessageAt: t.lastMessageAt };
+    });
+
+    // Enrich SIMs with derived status
+    return sims.map(sim => {
+      const simObj = sim.toObject ? sim.toObject() : sim;
+
+      // [PHONE NUMBER FIX] - WhatsApp: Match by last 10 digits of phone number
+      const simLast10Digits = sim.mobileNumber.replace(/\D/g, '').slice(-10);
+      const whatsappStatus = whatsappMap[simLast10Digits];
+      simObj.whatsappActiveStatus = whatsappStatus ? whatsappStatus.isActive : false;
+      simObj.whatsappLastMessageAt = whatsappStatus ? whatsappStatus.lastMessageAt : null;
+
+      // Telegram: Check by SIM ID, default to false if no message found
+      const telegramStatus = telegramMap[sim._id.toString()];
+      simObj.telegramActiveStatus = telegramStatus ? telegramStatus.isActive : false;
+      simObj.telegramLastMessageAt = telegramStatus ? telegramStatus.lastMessageAt : null;
+
+      return simObj;
+    });
   }
 
   async getSimById(simId, user) {
@@ -1017,89 +1100,106 @@ class SimService {
   }
 
   async getMessagingStats(companyId) {
-    const stats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
+    // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Get all SIMs for this company
+    const sims = await Sim.find({ companyId: new mongoose.Types.ObjectId(companyId), isActive: true })
+      .select('mobileNumber whatsappEnabled telegramEnabled whatsappLastActive telegramLastActive');
+
+    const simIds = sims.map(s => s._id);
+
+    // [PHONE NUMBER FIX] - Get all WhatsApp messages and match by last 10 digits
+    const whatsappMessages = await WhatsAppMessage.find({
+      companyId: new mongoose.Types.ObjectId(companyId),
+      isActive: { $ne: null },
+    }).sort({ sentAt: -1 }).lean();
+
+    // Build a map by last 10 digits of phone number
+    const whatsappMap = {};
+    whatsappMessages.forEach(msg => {
+      const last10Digits = msg.phoneNumber.replace(/\D/g, '').slice(-10);
+      if (!whatsappMap[last10Digits]) {
+        whatsappMap[last10Digits] = msg.isActive;
+      }
+    });
+
+    // Get latest Telegram active status per SIM
+    const telegramPipeline = [
+      {
+        $match: {
+          companyId: new mongoose.Types.ObjectId(companyId),
+          simId: { $in: simIds.map(id => new mongoose.Types.ObjectId(id)) },
+          isActive: { $ne: null },
+        }
+      },
+      { $sort: { sentAt: -1 } },
       {
         $group: {
-          _id: null,
-          totalSims: { $sum: 1 },
-          whatsappEnabled: { $sum: { $cond: ['$whatsappEnabled', 1, 0] } },
-          telegramEnabled: { $sum: { $cond: ['$telegramEnabled', 1, 0] } },
-          bothEnabled: {
-            $sum: {
-              $cond: [
-                { $and: ['$whatsappEnabled', '$telegramEnabled'] },
-                1,
-                0,
-              ],
-            },
-          },
-          neitherEnabled: {
-            $sum: {
-              $cond: [
-                { $and: [{ $not: '$whatsappEnabled' }, { $not: '$telegramEnabled' }] },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]);
+          _id: '$simId',
+          isActive: { $first: '$isActive' }
+        }
+      }
+    ];
+    const telegramStatuses = await TelegramMessage.aggregate(telegramPipeline);
+    const telegramMap = {};
+    telegramStatuses.forEach(t => {
+      telegramMap[t._id.toString()] = t.isActive;
+    });
 
-    // Get active messaging SIMs (with last active in last 24 hours)
+    // Calculate stats based on derived status
+    let whatsappActive = 0;
+    let telegramActive = 0;
+    let bothActive = 0;
+    let neitherActive = 0;
+
+    const simsDerivedStatus = sims.map(sim => {
+      // [PHONE NUMBER FIX] - Match by last 10 digits
+      const simLast10Digits = sim.mobileNumber.replace(/\D/g, '').slice(-10);
+      const whatsappActiveStatus = whatsappMap[simLast10Digits] === true;
+      const telegramActiveStatus = telegramMap[sim._id.toString()] === true;
+
+      if (whatsappActiveStatus) whatsappActive++;
+      if (telegramActiveStatus) telegramActive++;
+      if (whatsappActiveStatus && telegramActiveStatus) bothActive++;
+      if (!whatsappActiveStatus && !telegramActiveStatus) neitherActive++;
+
+      return {
+        _id: sim._id,
+        mobileNumber: sim.mobileNumber,
+        whatsapp: {
+          enabled: whatsappActiveStatus,
+          lastActive: sim.whatsappLastActive,
+        },
+        telegram: {
+          enabled: telegramActiveStatus,
+          lastActive: sim.telegramLastActive,
+        },
+      };
+    });
+
+    // Also get "recently active" stats (active in last 24 hours)
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
 
-    const activeStats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
-      {
-        $group: {
-          _id: null,
-          whatsappActiveRecently: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    '$whatsappEnabled',
-                    { $gte: ['$whatsappLastActive', twentyFourHoursAgo] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-          telegramActiveRecently: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    '$telegramEnabled',
-                    { $gte: ['$telegramLastActive', twentyFourHoursAgo] },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]);
+    const whatsappActiveRecently = sims.filter(s =>
+      s.whatsappLastActive && s.whatsappLastActive >= twentyFourHoursAgo
+    ).length;
+
+    const telegramActiveRecently = sims.filter(s =>
+      s.telegramLastActive && s.telegramLastActive >= twentyFourHoursAgo
+    ).length;
 
     return {
-      total: stats[0]?.totalSims || 0,
+      total: sims.length,
       whatsapp: {
-        enabled: stats[0]?.whatsappEnabled || 0,
-        activeRecently: activeStats[0]?.whatsappActiveRecently || 0,
+        enabled: whatsappActive,
+        activeRecently: whatsappActiveRecently,
       },
       telegram: {
-        enabled: stats[0]?.telegramEnabled || 0,
-        activeRecently: activeStats[0]?.telegramActiveRecently || 0,
+        enabled: telegramActive,
+        activeRecently: telegramActiveRecently,
       },
-      both: stats[0]?.bothEnabled || 0,
-      neither: stats[0]?.neitherEnabled || 0,
+      both: bothActive,
+      neither: neitherActive,
+      sims: simsDerivedStatus,
     };
   }
 

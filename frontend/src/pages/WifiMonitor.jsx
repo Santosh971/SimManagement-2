@@ -587,6 +587,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
                       <div>
                         <div style={{ fontWeight: '500', fontSize: '14px' }}>{sim.mobileNumber}</div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>{sim.operator}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>{sim.assignedTo?.email || '-'}</div>
                       </div>
                     </div>
                     <Badge variant={sim.status === 'active' ? 'success' : 'default'}>

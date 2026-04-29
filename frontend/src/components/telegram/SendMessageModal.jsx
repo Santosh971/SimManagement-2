@@ -211,8 +211,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Send links to all UNLINKED SIMs via email
   const sendEmailToAllUnlinked = async () => {
-    // Get all unlinked SIMs with email
-    const unlinkedSIMs = allSIMs.filter((sim) => !sim.telegramChatId && sim.assignedTo?.email)
+    // Get all unlinked SIMs with email (unlinked = not phone verified)
+    const unlinkedSIMs = allSIMs.filter((sim) => (!sim.telegramChatId || !sim.telegramPhoneVerified) && sim.assignedTo?.email)
 
     if (unlinkedSIMs.length === 0) {
       toast.error('No unlinked SIMs with assigned email found')
@@ -618,7 +618,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
               {/* Unlinked Stats */}
               {(() => {
-                const unlinkedSIMs = allSIMs.filter((sim) => !sim.telegramChatId)
+                // Unlinked = no telegramChatId OR not phone verified
+                const unlinkedSIMs = allSIMs.filter((sim) => !sim.telegramChatId || !sim.telegramPhoneVerified)
                 const unlinkedWithEmail = unlinkedSIMs.filter((sim) => sim.assignedTo?.email)
                 const unlinkedNoEmail = unlinkedSIMs.filter((sim) => !sim.assignedTo?.email)
                 return (
@@ -660,7 +661,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         borderBottom: '1px solid #f3f4f6',
-                        backgroundColor: sim.telegramChatId ? '#f9fafb' : '#fff',
+                        // Show as linked only if phone verified
+                        backgroundColor: (sim.telegramChatId && sim.telegramPhoneVerified) ? '#f9fafb' : '#fff',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -672,19 +674,21 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: sim.telegramChatId ? '#dcfce7' : '#fef3c7',
+                            // Show green only if phone verified
+                            backgroundColor: (sim.telegramChatId && sim.telegramPhoneVerified) ? '#dcfce7' : '#fef3c7',
                           }}
                         >
-                          {sim.telegramChatId ? (
+                          {(sim.telegramChatId && sim.telegramPhoneVerified) ? (
                             <FiCheck style={{ color: '#16a34a' }} />
                           ) : (
-                            <FiLink style={{ color: '#d97706' }} />
+                            <FiLink style={{ color: '#d97706' } } />
                           )}
                         </div>
                         <div>
                           <div style={{ fontWeight: '500', fontSize: '13px' }}>
                             {sim.mobileNumber}
-                            {sim.telegramChatId && (
+                            {/* Show LINKED badge only if phone verified */}
+                            {sim.telegramChatId && sim.telegramPhoneVerified && (
                               <span style={{
                                 marginLeft: '8px',
                                 padding: '2px 6px',
@@ -695,6 +699,20 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                                 fontWeight: '600',
                               }}>
                                 LINKED
+                              </span>
+                            )}
+                            {/* Show PENDING badge if chatId exists but not verified */}
+                            {sim.telegramChatId && !sim.telegramPhoneVerified && (
+                              <span style={{
+                                marginLeft: '8px',
+                                padding: '2px 6px',
+                                backgroundColor: '#fef3c7',
+                                color: '#d97706',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                              }}>
+                                PENDING
                               </span>
                             )}
                           </div>

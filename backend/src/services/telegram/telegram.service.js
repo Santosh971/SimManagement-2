@@ -351,6 +351,28 @@ class TelegramService {
       return { success: true, message: 'Already linked and verified', simId: sim._id };
     }
 
+    // [FIX] Clear telegramChatId from any OTHER SIMs that have this chatId (unverified ones)
+    // This prevents the issue where multiple SIMs have the same telegramChatId
+    await Sim.updateMany(
+      {
+        telegramChatId: String(chatId),
+        telegramPhoneVerified: { $ne: true }, // Only clear unverified ones
+        _id: { $ne: sim._id } // Don't clear the current SIM
+      },
+      {
+        $set: {
+          telegramChatId: null,
+          telegramEnabled: false,
+          telegramPhoneVerified: false,
+          telegramUsername: null,
+          telegramUserId: null,
+          telegramFirstName: null,
+          telegramLastName: null,
+          telegramPhoneNumber: null,
+        }
+      }
+    );
+
     // Store Telegram user info temporarily (pending phone verification)
     sim.telegramChatId = String(chatId);
     sim.telegramUsername = userName;
@@ -434,11 +456,21 @@ class TelegramService {
     // Remove any non-digit characters except +
     phoneNumber = '+' + phoneNumber.replace(/\D/g, '');
 
-    // Find the SIM linked to this chat
-    const sim = await Sim.findOne({
+    // [FIX] Find the SIM linked to this chat that is PENDING verification
+    // Priority: Find unverified SIM first, fall back to any SIM with this chatId
+    let sim = await Sim.findOne({
       telegramChatId: String(chatId),
+      telegramPhoneVerified: { $ne: true }, // Not yet verified
       isActive: true,
     }).populate('companyId');
+
+    // If no pending SIM found, try to find any SIM with this chatId
+    if (!sim) {
+      sim = await Sim.findOne({
+        telegramChatId: String(chatId),
+        isActive: true,
+      }).populate('companyId');
+    }
 
 
     const userName = from.username || `${from.first_name} ${from.last_name || ''}`.trim();
@@ -864,17 +896,18 @@ class TelegramService {
 
   /**
    * Get SIMs eligible for Telegram messaging
-   * Returns SIMs with telegramChatId linked
+   * Returns SIMs with telegramChatId linked AND phone verified
    */
   async getEligibleSIMs(user) {
     const filter = {
       companyId: user.companyId,
       isActive: true,
       telegramChatId: { $ne: null },
+      telegramPhoneVerified: true, // Only return verified SIMs
     };
 
     const sims = await Sim.find(filter)
-      .select('mobileNumber operator status telegramChatId telegramEnabled telegramLastActive assignedTo')
+      .select('mobileNumber operator status telegramChatId telegramEnabled telegramPhoneVerified telegramLastActive assignedTo')
       .populate('assignedTo', 'name email')
       .sort({ mobileNumber: 1 });
 
