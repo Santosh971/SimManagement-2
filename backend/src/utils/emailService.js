@@ -318,7 +318,8 @@ class EmailService {
       this.transporter = nodemailer.createTransport({
         host: emailHost,
         port: emailPort,
-        secure: emailPort === 465,
+        //secure: emailPort === 465,
+        secure: false, // Use STARTTLS on port 587
         auth: { user: emailUser, pass: emailPass },
         connectionTimeout: 5000,
         socketTimeout: 5000,
