@@ -284,6 +284,10 @@ class EmailService {
     this.transporter = null;
     this.isConfigured = false;
     this.connectionVerified = false;
+    // HTTP API support (works on port 443, not blocked by Render)
+    this.useHttpApi = false;
+    this.httpApiKey = null;
+    this.httpApiProvider = null; // 'brevo' or 'sendgrid'
     this.init();
   }
 
@@ -294,6 +298,10 @@ class EmailService {
     const emailPass = config.email.pass ? config.email.pass.replace(/\s/g, '') : null;
     const emailFrom = config.email.from;
 
+    // Check for HTTP API (Brevo/SendGrid) - works on port 443
+    const emailApiKey = process.env.EMAIL_API_KEY;
+    const emailApiProvider = process.env.EMAIL_API_PROVIDER || 'brevo'; // 'brevo' or 'sendgrid'
+
     logger.info('Email configuration check', {
       hasHost: !!emailHost,
       host: emailHost,
@@ -301,15 +309,29 @@ class EmailService {
       hasUser: !!emailUser,
       user: emailUser,
       hasPass: !!emailPass,
-      passLength: emailPass ? emailPass.length : 0,
       hasFrom: !!emailFrom,
+      hasApiKey: !!emailApiKey,
+      apiProvider: emailApiKey ? emailApiProvider : null,
     });
 
+    // Prefer HTTP API if API key is set (works on port 443)
+    if (emailApiKey) {
+      this.useHttpApi = true;
+      this.httpApiKey = emailApiKey;
+      this.httpApiProvider = emailApiProvider.toLowerCase();
+      this.fromEmail = emailFrom || emailUser;
+      this.isConfigured = true;
+      logger.info(`Email service configured with HTTP API (${this.httpApiProvider}) - will work on Render`);
+      return;
+    }
+
+    // Fall back to SMTP if no API key
     if (!emailHost || !emailUser || !emailPass) {
       logger.warn('Email configuration is incomplete. Email notifications will be disabled.', {
         hasHost: !!emailHost,
         hasUser: !!emailUser,
         hasPass: !!emailPass,
+        hint: 'Set EMAIL_API_KEY for Brevo/SendGrid (works on Render) or configure SMTP',
       });
       return;
     }
@@ -318,8 +340,7 @@ class EmailService {
       this.transporter = nodemailer.createTransport({
         host: emailHost,
         port: emailPort,
-        //secure: emailPort === 465,
-        secure: false, // Use STARTTLS on port 587
+        secure: false,
         auth: { user: emailUser, pass: emailPass },
         connectionTimeout: 5000,
         socketTimeout: 5000,
@@ -327,7 +348,7 @@ class EmailService {
       });
 
       this.isConfigured = true;
-      logger.info('Email service initialized successfully', { host: emailHost, port: emailPort, user: emailUser });
+      logger.info('Email service initialized successfully (SMTP)', { host: emailHost, port: emailPort, user: emailUser });
       this.verifyConnectionAsync();
     } catch (error) {
       logger.error('Failed to initialize email service', { error: error.message });
@@ -335,16 +356,26 @@ class EmailService {
   }
 
   verifyConnectionAsync() {
+    // Skip for HTTP API
+    if (this.useHttpApi) {
+      logger.info('Using HTTP API for email - no connection verification needed');
+      return;
+    }
+
     this.verifyConnection().catch(err => {
       logger.warn('Email connection could not be established. Email delivery may fail.', {
         error: err.message,
         code: err.code,
-        note: 'On cloud platforms (Render, Heroku, etc.), SMTP ports are often blocked. Consider using SendGrid, Mailgun, or Amazon SES for production.',
+        note: 'On cloud platforms (Render, Heroku, etc.), SMTP ports are often blocked. Set EMAIL_API_KEY for Brevo/SendGrid HTTP API.',
       });
     });
   }
 
   async verifyConnection() {
+    if (this.useHttpApi) {
+      return true;
+    }
+
     if (!this.transporter) {
       logger.warn('Cannot verify email connection: transporter not initialized');
       return false;
@@ -360,7 +391,7 @@ class EmailService {
         logger.warn('Email connection timeout - SMTP may be blocked on this platform', {
           host: config.email.host,
           port: config.email.port,
-          solution: 'Consider using SendGrid, Mailgun, Amazon SES, or Gmail API instead of SMTP for production',
+          solution: 'Set EMAIL_API_KEY for Brevo (smtp-relay.brevo.com) or SendGrid HTTP API',
         });
       } else if (error.message.includes('Invalid login') || error.message.includes('535') || error.code === 'EAUTH') {
         logger.error('GMAIL AUTHENTICATION ERROR - Please fix:');
@@ -377,7 +408,117 @@ class EmailService {
     }
   }
 
+  /**
+   * Send email using HTTP API (Brevo/SendGrid)
+   * Works on port 443 - not blocked by Render
+   */
+  async sendEmailViaHttpApi({ to, subject, html, text }) {
+    const https = require('https');
+
+    if (this.httpApiProvider === 'sendgrid') {
+      // SendGrid API
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: this.fromEmail },
+          subject,
+          content: [
+            { type: 'text/html', value: html },
+            { type: 'text/plain', value: text || html.replace(/<[^>]*>/g, '') }
+          ]
+        });
+
+        const options = {
+          hostname: 'api.sendgrid.com',
+          port: 443,
+          path: '/v3/mail/send',
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.httpApiKey}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(data)
+          }
+        };
+
+        const req = https.request(options, (res) => {
+          let body = '';
+          res.on('data', chunk => body += chunk);
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              logger.info('Email sent via SendGrid API', { to, subject, statusCode: res.statusCode });
+              resolve({ success: true, messageId: `sendgrid-${Date.now()}` });
+            } else {
+              logger.error('SendGrid API error', { to, subject, statusCode: res.statusCode, body });
+              resolve({ success: false, error: `SendGrid error: ${res.statusCode}` });
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          logger.error('SendGrid API request error', { error: error.message, to, subject });
+          resolve({ success: false, error: error.message });
+        });
+
+        req.write(data);
+        req.end();
+      });
+    } else {
+      // Brevo (formerly Sendinblue) API
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify({
+          sender: { email: this.fromEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text || html.replace(/<[^>]*>/g, '')
+        });
+
+        const options = {
+          hostname: 'api.brevo.com',
+          port: 443,
+          path: '/v3/smtp/email',
+          method: 'POST',
+          headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'api-key': this.httpApiKey,
+            'Content-Length': Buffer.byteLength(data)
+          }
+        };
+
+        const req = https.request(options, (res) => {
+          let body = '';
+          res.on('data', chunk => body += chunk);
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              logger.info('Email sent via Brevo API', { to, subject, statusCode: res.statusCode });
+              resolve({ success: true, messageId: `brevo-${Date.now()}` });
+            } else {
+              logger.error('Brevo API error', { to, subject, statusCode: res.statusCode, body });
+              resolve({ success: false, error: `Brevo error: ${res.statusCode}` });
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          logger.error('Brevo API request error', { error: error.message, to, subject });
+          resolve({ success: false, error: error.message });
+        });
+
+        req.write(data);
+        req.end();
+      });
+    }
+  }
+
   async sendEmail({ to, subject, html, text }) {
+    // Use HTTP API if configured
+    if (this.useHttpApi && this.httpApiKey) {
+      logger.info('Sending email via HTTP API', { to, subject, provider: this.httpApiProvider });
+      return await this.sendEmailViaHttpApi({ to, subject, html, text });
+    }
+
+    // Fall back to SMTP
     if (!this.isConfigured || !this.transporter) {
       logger.warn('Email not sent: Email service not configured', { to, subject });
       return { success: false, error: 'Email service not configured' };
@@ -394,7 +535,7 @@ class EmailService {
         html,
         text: text || html.replace(/<[^>]*>/g, ''),
       };
-      logger.info('Sending email', { to, subject });
+      logger.info('Sending email via SMTP', { to, subject });
       const info = await this.transporter.sendMail(mailOptions);
       logger.info('Email sent successfully', { messageId: info.messageId, to, subject, response: info.response });
       return { success: true, messageId: info.messageId };

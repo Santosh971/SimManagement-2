@@ -334,30 +334,53 @@ class TelegramController {
         throw new AppError('SIM not found', 404);
       }
 
-      if (!sim.assignedTo || !sim.assignedTo.email) {
-        throw new AppError('No user assigned to this SIM or user has no email', 400);
-      }
-
       // Generate Telegram link
       const telegramLink = telegramService.generateDeepLink(simId);
 
-      // Send email
-      const emailResult = await emailService.sendTelegramLinkEmail(
-        sim.assignedTo,
-        sim,
-        telegramLink,
-        user
-      );
+      // Check if user is assigned and has email
+      const recipientEmail = sim.assignedTo?.email;
+      const recipientName = sim.assignedTo?.name || 'User';
 
-      if (!emailResult.success) {
-        throw new AppError(`Failed to send email: ${emailResult.error}`, 500);
+      // Try to send email, but don't fail if it doesn't work
+      let emailSent = false;
+      let emailError = null;
+
+      if (recipientEmail) {
+        try {
+          const emailResult = await emailService.sendTelegramLinkEmail(
+            { email: recipientEmail, name: recipientName },
+            sim,
+            telegramLink,
+            user
+          );
+          emailSent = emailResult.success;
+          if (!emailResult.success) {
+            emailError = emailResult.error;
+            logger.warn('[Telegram] Email sending failed, returning link directly', {
+              error: emailResult.error,
+              simId: sim._id,
+            });
+          }
+        } catch (err) {
+          emailError = err.message;
+          logger.error('[Telegram] Email sending error', {
+            error: err.message,
+            simId: sim._id,
+          });
+        }
+      } else {
+        logger.info('[Telegram] No email assigned to SIM, returning link directly', {
+          simId: sim._id,
+        });
       }
 
       // Create audit log
       await auditLogService.logAction({
-        action: 'TELEGRAM_LINK_SEND',
+        action: emailSent ? 'TELEGRAM_LINK_SEND' : 'TELEGRAM_LINK_GENERATED',
         module: 'TELEGRAM',
-        description: `Telegram link email sent for SIM ${sim.mobileNumber} to ${sim.assignedTo.email}`,
+        description: emailSent
+          ? `Telegram link email sent for SIM ${sim.mobileNumber} to ${recipientEmail}`
+          : `Telegram link generated for SIM ${sim.mobileNumber} (email not sent: ${emailError || 'no email'})`,
         performedBy: user._id,
         role: user.role,
         companyId: user.companyId,
@@ -365,25 +388,30 @@ class TelegramController {
         entityType: 'SIM',
         metadata: {
           simMobileNumber: sim.mobileNumber,
-          recipientEmail: sim.assignedTo.email,
-          recipientName: sim.assignedTo.name,
+          recipientEmail: recipientEmail || null,
+          recipientName: recipientName,
+          emailSent,
+          link: telegramLink,
         },
         req,
       });
 
-      logger.info(`[Telegram] Link email sent for SIM ${sim.mobileNumber}`, {
-        simId: sim._id,
-        toEmail: sim.assignedTo.email,
-      });
-
+      // Always return the link (even if email failed)
       res.status(200).json({
         success: true,
-        message: `Telegram link sent to ${sim.assignedTo.email}`,
+        message: emailSent
+          ? `Telegram link sent to ${recipientEmail}`
+          : `Telegram link generated. ${emailError ? `Email failed: ${emailError}. ` : ''}Share the link manually.`,
         data: {
           simId: sim._id,
           mobileNumber: sim.mobileNumber,
-          email: sim.assignedTo.email,
+          operator: sim.operator,
+          email: recipientEmail || null,
+          emailSent,
+          emailError: emailSent ? null : emailError,
           link: telegramLink,
+          // Include QR code link for easy sharing
+          qrLink: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(telegramLink)}`,
         },
       });
     } catch (error) {
@@ -416,7 +444,30 @@ class TelegramController {
         throw new AppError('No valid SIMs found', 404);
       }
 
-      // Group SIMs by user email
+      // Prepare results with links (always return links)
+      const results = {
+        sent: 0,
+        failed: 0,
+        skipped: 0,
+        details: [],
+        links: [], // Always include links for manual sharing
+      };
+
+      // Generate links for all SIMs
+      for (const sim of sims) {
+        const link = telegramService.generateDeepLink(sim._id);
+        results.links.push({
+          simId: sim._id,
+          mobileNumber: sim.mobileNumber,
+          operator: sim.operator,
+          assignedTo: sim.assignedTo?.name || null,
+          email: sim.assignedTo?.email || null,
+          link,
+          qrLink: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}`,
+        });
+      }
+
+      // Group SIMs by user email for bulk emails
       const userSimMap = new Map();
 
       for (const sim of sims) {
@@ -441,14 +492,7 @@ class TelegramController {
         }
       }
 
-      // Send emails
-      const results = {
-        sent: 0,
-        failed: 0,
-        skipped: 0,
-        details: [],
-      };
-
+      // Try to send emails (but don't fail if email doesn't work)
       for (const [email, { simLinks }] of userSimMap) {
         try {
           const emailResult = await emailService.sendBulkTelegramLinkEmail(
@@ -471,6 +515,8 @@ class TelegramController {
               status: 'failed',
               error: emailResult.error,
               simCount: simLinks.length,
+              // Include links for manual sharing
+              links: simLinks.map(sl => ({ mobileNumber: sl.sim.mobileNumber, link: sl.link })),
             });
           }
         } catch (error) {
@@ -480,6 +526,8 @@ class TelegramController {
             status: 'failed',
             error: error.message,
             simCount: simLinks.length,
+            // Include links for manual sharing
+            links: simLinks.map(sl => ({ mobileNumber: sl.sim.mobileNumber, link: sl.link })),
           });
         }
       }
@@ -492,7 +540,7 @@ class TelegramController {
       await auditLogService.logAction({
         action: 'TELEGRAM_LINK_SEND_BULK',
         module: 'TELEGRAM',
-        description: `Bulk Telegram link emails sent: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`,
+        description: `Bulk Telegram link: ${results.sent} emails sent, ${results.failed} failed, ${results.skipped} skipped. Links generated for ${results.links.length} SIMs.`,
         performedBy: user._id,
         role: user.role,
         companyId: user.companyId,
@@ -501,20 +549,23 @@ class TelegramController {
           emailsSent: results.sent,
           emailsFailed: results.failed,
           skipped: results.skipped,
-          details: results.details.slice(0, 20), // Limit details for storage
+          linksGenerated: results.links.length,
         },
         req,
       });
 
-      logger.info(`[Telegram] Bulk link emails sent`, {
+      logger.info(`[Telegram] Bulk link processed`, {
         sent: results.sent,
         failed: results.failed,
         skipped: results.skipped,
+        linksGenerated: results.links.length,
       });
 
       res.status(200).json({
         success: true,
-        message: `Emails sent: ${results.sent}, Failed: ${results.failed}, Skipped (no email): ${results.skipped}`,
+        message: results.failed > 0
+          ? `Processed: ${results.sent} emails sent, ${results.failed} failed. Links available for manual sharing.`
+          : `Emails sent: ${results.sent}, Skipped: ${results.skipped}`,
         data: results,
       });
     } catch (error) {
