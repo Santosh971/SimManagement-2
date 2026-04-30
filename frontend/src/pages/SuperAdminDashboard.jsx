@@ -414,7 +414,7 @@ export default function SuperAdminDashboard() {
             <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
               Recently Registered Companies
             </h3>
-            <Link to="/companies" style={{ color: '#2563eb', textDecoration: 'none', fontSize: '14px' }}>
+            <Link to="/app/companies" style={{ color: '#2563eb', textDecoration: 'none', fontSize: '14px' }}>
               View All →
             </Link>
           </div>

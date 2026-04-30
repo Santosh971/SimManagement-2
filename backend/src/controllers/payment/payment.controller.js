@@ -1,5 +1,7 @@
 const paymentService = require('../../services/payment/payment.service');
+const auditLogService = require('../../services/auditLog/auditLog.service');
 const { successResponse } = require('../../utils/response');
+const logger = require('../../utils/logger');
 
 class PaymentController {
   /**
@@ -22,6 +24,27 @@ class PaymentController {
         billingCycle
       );
 
+      // Audit log: PAYMENT_INITIATE
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_INITIATE',
+          module: 'PAYMENT',
+          description: `Payment order created for subscription ${subscriptionId}`,
+          performedBy: userId,
+          role: req.user.role,
+          companyId: companyId,
+          metadata: {
+            orderId: result.order?.id || result.orderId,
+            subscriptionId,
+            billingCycle,
+            amount: result.order?.amount || result.amount,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_INITIATE', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Order created successfully', 201);
     } catch (error) {
       next(error);
@@ -41,6 +64,27 @@ class PaymentController {
         billingCycle,
         { name, email, password, companyName, phone }
       );
+
+      // Audit log: PAYMENT_INITIATE (registration)
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_INITIATE',
+          module: 'PAYMENT',
+          description: `Payment order created for new registration: ${companyName}`,
+          role: 'public',
+          metadata: {
+            orderId: result.order?.id || result.orderId,
+            subscriptionId,
+            billingCycle,
+            email,
+            companyName,
+            amount: result.order?.amount || result.amount,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_INITIATE', { error: auditError.message });
+      }
 
       return successResponse(res, result, 'Order created successfully', 201);
     } catch (error) {
@@ -66,8 +110,44 @@ class PaymentController {
         razorpay_signature,
       });
 
+      // Audit log: PAYMENT_SUCCESS
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_SUCCESS',
+          module: 'PAYMENT',
+          description: `Payment verified and registration completed for ${result.company?.name || 'new company'}`,
+          role: 'public',
+          companyId: result.company?._id,
+          metadata: {
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            amount: result.payment?.amount || result.subscription?.price,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_SUCCESS', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Registration completed successfully', 201);
     } catch (error) {
+      // Audit log: PAYMENT_FAILED
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_FAILED',
+          module: 'PAYMENT',
+          description: `Payment verification failed: ${error.message}`,
+          role: 'public',
+          metadata: {
+            orderId: req.body.razorpay_order_id,
+            error: error.message,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_FAILED', { error: auditError.message });
+      }
+
       next(error);
     }
   }
@@ -90,8 +170,47 @@ class PaymentController {
         razorpay_signature,
       });
 
+      // Audit log: PAYMENT_SUCCESS
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_SUCCESS',
+          module: 'PAYMENT',
+          description: `Payment verified for company subscription`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: {
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            amount: result.payment?.amount || result.subscription?.price,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_SUCCESS', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Payment verified successfully');
     } catch (error) {
+      // Audit log: PAYMENT_FAILED
+      try {
+        await auditLogService.logAction({
+          action: 'PAYMENT_FAILED',
+          module: 'PAYMENT',
+          description: `Payment verification failed: ${error.message}`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: {
+            orderId: req.body.razorpay_order_id,
+            error: error.message,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT_FAILED', { error: auditError.message });
+      }
+
       next(error);
     }
   }
@@ -178,6 +297,28 @@ class PaymentController {
     try {
       const signature = req.headers['x-razorpay-signature'];
       const result = await paymentService.handleWebhook(req.body, signature);
+
+      // Audit log: PAYMENT_SUCCESS or PAYMENT_FAILED (webhook)
+      try {
+        const webhookEvent = req.body.event || 'unknown';
+        const isSuccess = webhookEvent.includes('captured') || webhookEvent.includes('paid');
+        await auditLogService.logAction({
+          action: isSuccess ? 'PAYMENT_SUCCESS' : 'PAYMENT_FAILED',
+          module: 'PAYMENT',
+          description: `Webhook received: ${webhookEvent}`,
+          role: 'webhook',
+          companyId: result?.companyId,
+          metadata: {
+            event: webhookEvent,
+            paymentId: req.body.payload?.payment?.entity?.id,
+            orderId: req.body.payload?.order?.entity?.id,
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log PAYMENT webhook', { error: auditError.message });
+      }
+
       return successResponse(res, result);
     } catch (error) {
       next(error);

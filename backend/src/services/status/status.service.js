@@ -2,8 +2,9 @@ const Sim = require('../../models/sim/sim.model');
 const { NotFoundError, ForbiddenError } = require('../../utils/errors');
 
 class StatusService {
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async getStatus(simId, user) {
-    const filter = { _id: simId, isActive: true };
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -27,8 +28,9 @@ class StatusService {
     };
   }
 
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async updateWhatsAppStatus(simId, enabled, user) {
-    const filter = { _id: simId, isActive: true };
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -53,8 +55,9 @@ class StatusService {
     };
   }
 
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async updateTelegramStatus(simId, enabled, user) {
-    const filter = { _id: simId, isActive: true };
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -80,8 +83,9 @@ class StatusService {
 
   }
 
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async getStatusHistory(simId, user) {
-    const filter = { _id: simId, isActive: true };
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -109,8 +113,9 @@ class StatusService {
     };
   }
 
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async bulkUpdateStatus(simIds, platform, enabled, user) {
-    const filter = { _id: { $in: simIds }, isActive: true };
+    const filter = { _id: { $in: simIds } };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -135,8 +140,9 @@ class StatusService {
     };
   }
 
+  // [HARD DELETE] Removed isActive filter - SIMs are now hard deleted
   async getAllStatusOverview(companyId) {
-    const sims = await Sim.find({ companyId, isActive: true }).select(
+    const sims = await Sim.find({ companyId }).select(
       'mobileNumber whatsappEnabled telegramEnabled whatsappLastActive telegramLastActive'
     );
 

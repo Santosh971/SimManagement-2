@@ -323,6 +323,7 @@ const AuditLogs = () => {
                   className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   dateFormat="dd MMM yyyy"
                   isClearable
+                  maxDate={new Date()}
                 />
               </div>
 
@@ -388,9 +389,9 @@ const AuditLogs = () => {
                     <th className="px-6 py-3.5 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3.5 text-left text-xs font-semibold text-secondary-600 uppercase tracking-wider">
                       IP Address
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-secondary-100">
@@ -435,9 +436,9 @@ const AuditLogs = () => {
                           {log.description}
                         </p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
+                      {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
                         {log.ipAddress || '-'}
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>

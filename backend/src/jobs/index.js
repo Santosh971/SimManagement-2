@@ -1,8 +1,10 @@
 const cron = require('node-cron');
 const rechargeService = require('../services/recharge/recharge.service');
 const notificationService = require('../services/notification/notification.service');
+const notificationHelper = require('../utils/notificationHelper');
 const Sim = require('../models/sim/sim.model');
 const Company = require('../models/company/company.model');
+const User = require('../models/auth/user.model');
 const logger = require('../utils/logger');
 
 class CronService {
@@ -83,7 +85,16 @@ class CronService {
           );
 
           for (const recharge of upcomingRecharges) {
-            await notificationService.sendRechargeReminder(recharge);
+            // Populate SIM and company for notification
+            const sim = await Sim.findById(recharge.simId).populate('companyId');
+            if (!sim || !sim.companyId) continue;
+
+            const daysLeft = Math.ceil(
+              (recharge.nextRechargeDate - new Date()) / (1000 * 60 * 60 * 24)
+            );
+
+            // Send notification using notification helper (sends both in-app and email)
+            await notificationHelper.notifyRechargeReminder(recharge, sim, sim.companyId, daysLeft);
           }
         }
 
@@ -107,7 +118,12 @@ class CronService {
           const inactiveSims = await Sim.findInactive(company._id, inactiveDays);
 
           for (const sim of inactiveSims) {
-            await notificationService.sendInactiveSimAlert(sim);
+            // Populate company for notification
+            const simWithCompany = await Sim.findById(sim._id).populate('companyId');
+            if (!simWithCompany || !simWithCompany.companyId) continue;
+
+            // Send notification using notification helper (sends both in-app and email)
+            await notificationHelper.notifyInactiveSim(simWithCompany, simWithCompany.companyId, inactiveDays);
           }
         }
 
@@ -140,7 +156,32 @@ class CronService {
           }).populate('subscriptionId');
 
           for (const company of companies) {
-            await notificationService.sendSubscriptionExpiryNotice(company, days);
+            // Send notification using notification helper (sends both in-app and email)
+            await notificationHelper.notifySubscriptionExpiry(company, days);
+
+            // Also notify company admin via email
+            const admin = await User.findOne({
+              companyId: company._id,
+              role: 'admin'
+            });
+
+            if (admin) {
+              // Create additional notification for admin
+              await notificationHelper.createNotification({
+                companyId: company._id,
+                userId: admin._id,
+                type: 'subscription_expiry',
+                title: 'Subscription Expiring Soon',
+                message: `Your subscription will expire in ${days} days. Please renew to continue using all features.`,
+                priority: days <= 3 ? 'critical' : 'high',
+                metadata: {
+                  companyName: company.name,
+                  planName: company.subscriptionId?.name,
+                  daysLeft: days,
+                  expiryDate: company.subscriptionEndDate,
+                },
+              });
+            }
           }
         }
 

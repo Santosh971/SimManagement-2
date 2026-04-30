@@ -288,7 +288,7 @@ export default function PaymentHistory() {
                   <tbody>
                     {payments.map((payment) => (
                       <tr key={payment._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#374151' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>
                           {formatDateTime(payment.paidAt || payment.createdAt)}
                         </td>
                         <td style={{ padding: '12px 16px' }}>

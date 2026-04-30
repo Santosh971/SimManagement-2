@@ -65,15 +65,19 @@ export function PageHeader({ title, description, action }) {
 }
 
 // Card - reusable card component
-export function Card({ children, style, className }) {
+export function Card({ children, style, className, onClick }) {
   return (
-    <div style={{
-      backgroundColor: '#ffffff',
-      borderRadius: '12px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      overflow: 'hidden',
-      ...style,
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        overflow: 'hidden',
+        cursor: onClick ? 'pointer' : 'default',
+        ...style,
+      }}
+    >
       {children}
     </div>
   )

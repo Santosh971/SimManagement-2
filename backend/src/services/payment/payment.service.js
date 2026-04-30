@@ -8,6 +8,7 @@ const { AppError, NotFoundError, ConflictError } = require('../../utils/errors')
 const config = require('../../config');
 const jwt = require('jsonwebtoken');
 const emailService = require('../../utils/emailService');
+const notificationHelper = require('../../utils/notificationHelper');
 
 // Initialize Razorpay
 let razorpay = null;
@@ -212,6 +213,54 @@ class PaymentService {
       this.notifySuperadminsRenewal(company, user, payment, plan).catch(err => {
         console.error('Failed to send superadmin renewal notification:', err.message);
       });
+    }
+
+    // Send payment success notification to company admin (non-blocking)
+    try {
+      const companyAdmin = await User.findOne({ companyId: company._id, role: 'admin' });
+      if (companyAdmin) {
+        await notificationHelper.createWithNotification(
+          {
+            companyId: company._id,
+            userId: companyAdmin._id,
+            type: 'system',
+            title: 'Payment Successful',
+            message: `Your payment of ₹${payment.amount} for ${payment.planName} plan has been successfully processed. Subscription valid until ${new Date(company.subscriptionEndDate).toDateString()}.`,
+            priority: 'medium',
+            metadata: {
+              companyName: company.name,
+              amount: payment.amount,
+              planName: payment.planName,
+              expiryDate: company.subscriptionEndDate,
+            },
+          },
+          {
+            to: companyAdmin.email,
+            subject: `Payment Successful - ${payment.planName} Plan`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                  <h1 style="margin: 0;">Payment Successful!</h1>
+                </div>
+                <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                  <h2>Hello ${companyAdmin.name},</h2>
+                  <p>Your payment has been successfully processed.</p>
+                  <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                    <p style="margin: 0;"><strong>Plan:</strong> ${payment.planName}</p>
+                    <p style="margin: 10px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
+                    <p style="margin: 10px 0 0 0;"><strong>Billing Cycle:</strong> ${payment.billingCycle}</p>
+                    <p style="margin: 10px 0 0 0;"><strong>Valid Until:</strong> ${new Date(company.subscriptionEndDate).toDateString()}</p>
+                  </div>
+                  <p>Thank you for your subscription!</p>
+                  <p>Best regards,<br>SIM Management Team</p>
+                </div>
+              </div>
+            `,
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error('Failed to send payment success notification:', notificationError.message);
     }
 
     // Generate invoice number
@@ -648,6 +697,49 @@ class PaymentService {
     this.notifySuperadmins(company, user, payment, plan).catch(err => {
       console.error('Failed to send superadmin notification:', err.message);
     });
+
+    // Send welcome notification to the new user (non-blocking)
+    try {
+      await notificationHelper.createWithNotification(
+        {
+          companyId: company._id,
+          userId: user._id,
+          type: 'system',
+          title: 'Welcome to SIM Management!',
+          message: `Your account has been created successfully. Your ${payment.planName} plan subscription is valid until ${new Date(company.subscriptionEndDate).toDateString()}.`,
+          priority: 'medium',
+          metadata: {
+            companyName: company.name,
+            planName: payment.planName,
+            expiryDate: company.subscriptionEndDate,
+          },
+        },
+        {
+          to: user.email,
+          subject: `Welcome to SIM Management - ${company.name}`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="margin: 0;">Welcome to SIM Management!</h1>
+              </div>
+              <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2>Hello ${user.name},</h2>
+                <p>Your company <strong>${company.name}</strong> has been successfully registered!</p>
+                <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                  <p style="margin: 0;"><strong>Plan:</strong> ${payment.planName}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Subscription Valid Until:</strong> ${new Date(company.subscriptionEndDate).toDateString()}</p>
+                </div>
+                <p>You can now log in with your email: <strong>${user.email}</strong></p>
+                <p>Best regards,<br>SIM Management Team</p>
+              </div>
+            </div>
+          `,
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to send welcome notification:', notificationError.message);
+    }
 
     // Return user without sensitive data
     const userObj = user.toObject();

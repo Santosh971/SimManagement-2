@@ -1,4 +1,6 @@
-const pageContentService = require('../services/pageContent.service')
+const pageContentService = require('../services/pageContent.service');
+const auditLogService = require('../services/auditLog/auditLog.service');
+const logger = require('../utils/logger');
 
 /**
  * Get page content by slug (public)
@@ -97,6 +99,21 @@ const upsertPage = async (req, res) => {
       metaDescription,
     })
 
+    // Audit log: CONTENT_UPDATE
+    try {
+      await auditLogService.logAction({
+        action: 'CONTENT_UPDATE',
+        module: 'SETTINGS',
+        description: `Updated page content: ${slug}`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        metadata: { slug, title, operation: 'upsert' },
+        req,
+      });
+    } catch (auditError) {
+      logger.error('[AUDIT LOG] Failed to log CONTENT_UPDATE', { error: auditError.message });
+    }
+
     res.json({
       success: true,
       message: 'Page saved successfully',
@@ -117,6 +134,21 @@ const upsertPage = async (req, res) => {
 const initializePages = async (req, res) => {
   try {
     await pageContentService.initializeDefaultPages()
+
+    // Audit log: CONTENT_CREATE
+    try {
+      await auditLogService.logAction({
+        action: 'CONTENT_CREATE',
+        module: 'SETTINGS',
+        description: 'Initialized default pages',
+        performedBy: req.user._id,
+        role: req.user.role,
+        metadata: { operation: 'initialize_defaults' },
+        req,
+      });
+    } catch (auditError) {
+      logger.error('[AUDIT LOG] Failed to log CONTENT_CREATE', { error: auditError.message });
+    }
 
     res.json({
       success: true,

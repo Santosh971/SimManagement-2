@@ -46,11 +46,11 @@ class CallLogService {
     }
 
     // [SECURITY] - Verify SIM belongs to the logged-in user
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sim = await Sim.findOne({
       mobileNumber: simNumber,
       assignedTo: user._id,
       companyId: user.companyId,
-      isActive: true,
     });
 
     if (!sim) {

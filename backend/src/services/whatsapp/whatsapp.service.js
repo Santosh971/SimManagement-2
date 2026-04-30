@@ -127,10 +127,10 @@ class WhatsAppService {
 
     // Fetch SIMs and extract phone numbers
     if (simIds.length > 0) {
+      // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
       const sims = await Sim.find({
         _id: { $in: simIds },
         companyId,
-        isActive: true,
       }).populate('assignedTo', 'name email');
 
       sims.forEach((sim) => {
@@ -145,10 +145,10 @@ class WhatsAppService {
 
     // Fetch Users and extract phone numbers
     if (userIds.length > 0) {
+      // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
       const users = await User.find({
         _id: { $in: userIds },
         companyId,
-        isActive: true,
       });
 
       users.forEach((u) => {

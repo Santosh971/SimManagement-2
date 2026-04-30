@@ -10,8 +10,9 @@ const mongoose = require('mongoose');
 class DashboardService {
   async getOverview(companyId) {
     // Get SIM stats
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const simStats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId), isActive: true } },
+      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
       {
         $group: {
           _id: '$status',
@@ -20,7 +21,8 @@ class DashboardService {
       },
     ]);
 
-    const totalSims = await Sim.countDocuments({ companyId, isActive: true });
+    // [HARD DELETE] Removed isActive: true filter
+    const totalSims = await Sim.countDocuments({ companyId });
     const activeSims = simStats.find((s) => s._id === 'active')?.count || 0;
     const inactiveSims = simStats.find((s) => s._id === 'inactive')?.count || 0;
 
@@ -94,18 +96,20 @@ class DashboardService {
   }
 
   async getSimStats(companyId) {
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const statusStats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId), isActive: true } },
+      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 
     const operatorStats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId), isActive: true } },
+      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
       { $group: { _id: '$operator', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
 
-    const recentSims = await Sim.find({ companyId, isActive: true })
+    // [HARD DELETE] Removed isActive: true filter
+    const recentSims = await Sim.find({ companyId })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('mobileNumber operator status createdAt');
@@ -209,8 +213,9 @@ class DashboardService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const simStats = await Sim.aggregate([
-      { $match: { companyId: new mongoose.Types.ObjectId(companyId), isActive: true } },
+      { $match: { companyId: new mongoose.Types.ObjectId(companyId) } },
       {
         $group: {
           _id: '$operator',
@@ -271,6 +276,7 @@ class DashboardService {
 
     // Platform Statistics
     const totalCompanies = await Company.countDocuments();
+    // [HARD DELETE] Company isActive represents subscription status, not soft delete - KEEP
     const activeCompanies = await Company.countDocuments({ isActive: true });
     const inactiveCompanies = await Company.countDocuments({ isActive: false });
     const expiredSubscriptions = await Company.countDocuments({
@@ -278,15 +284,15 @@ class DashboardService {
       isActive: true,
     });
 
-    // User Statistics
-    const totalAdmins = await User.countDocuments({ role: 'admin', isActive: true });
-    const totalUsers = await User.countDocuments({ role: 'user', isActive: true });
-    const superAdminCount = await User.countDocuments({ role: 'super_admin', isActive: true });
+    // User Statistics - [HARD DELETE] Removed isActive filter - users are now hard deleted
+    const totalAdmins = await User.countDocuments({ role: 'admin' });
+    const totalUsers = await User.countDocuments({ role: 'user' });
+    const superAdminCount = await User.countDocuments({ role: 'super_admin' });
 
-    // SIM Statistics
-    const totalSims = await Sim.countDocuments({ isActive: true });
-    const activeSims = await Sim.countDocuments({ isActive: true, status: 'active' });
-    const inactiveSims = await Sim.countDocuments({ isActive: true, status: 'inactive' });
+    // SIM Statistics - [HARD DELETE] Removed isActive filter - SIMs are hard deleted
+    const totalSims = await Sim.countDocuments();
+    const activeSims = await Sim.countDocuments({ status: 'active' });
+    const inactiveSims = await Sim.countDocuments({ status: 'inactive' });
 
     // Revenue Statistics
     const monthlyRevenue = await Recharge.aggregate([
@@ -358,6 +364,7 @@ class DashboardService {
     ]);
 
     // Companies Expiring Soon (next 7 days)
+    // [HARD DELETE] Company isActive is subscription status - KEEP filter for active subscriptions only
     const expiringCompanies = await Company.find({
       isActive: true,
       subscriptionEndDate: {

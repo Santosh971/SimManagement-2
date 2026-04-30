@@ -38,6 +38,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
     phone: '',
     subscriptionId: '',
     subscriptionDuration: 30,
+    isActive: true,
     'address.street': '',
     'address.city': '',
     'address.state': '',
@@ -53,6 +54,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
         phone: company.phone || '',
         subscriptionId: company.subscriptionId?._id || company.subscriptionId || '',
         subscriptionDuration: 30,
+        isActive: company.isActive ?? true,
         'address.street': company.address?.street || '',
         'address.city': company.address?.city || '',
         'address.state': company.address?.state || '',
@@ -60,12 +62,16 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
         'address.zipCode': company.address?.zipCode || '',
       })
     } else {
+      // For new company, set default plan and its duration
+      const defaultPlan = subscriptions[0]
+      const defaultDuration = defaultPlan?.subscriptionDuration || 30
       setFormData({
         name: '',
         email: '',
         phone: '',
-        subscriptionId: subscriptions[0]?._id || '',
-        subscriptionDuration: 30,
+        subscriptionId: defaultPlan?._id || '',
+        subscriptionDuration: defaultDuration,
+        isActive: true,
         'address.street': '',
         'address.city': '',
         'address.state': '',
@@ -76,8 +82,18 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
   }, [company, subscriptions])
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+
+    // Auto-populate subscriptionDuration when plan is selected
+    if (name === 'subscriptionId') {
+      const selectedPlan = subscriptions.find((sub) => sub._id === value)
+      const duration = selectedPlan?.subscriptionDuration || 30
+      setFormData((prev) => ({ ...prev, subscriptionDuration: duration }))
+    }
   }
 
   const handlePhoneChange = (phone) => {
@@ -100,6 +116,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
       phone: formData.phone,
       subscriptionId: formData.subscriptionId,
       subscriptionDuration: formData.subscriptionDuration,
+      isActive: formData.isActive,
       address: {
         street: formData['address.street'],
         city: formData['address.city'],
@@ -240,7 +257,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
                 <option value="">Select plan</option>
                 {subscriptions.map((sub) => (
                   <option key={sub._id} value={sub._id}>
-                    {sub.name} - ${sub.price?.monthly || 0}/mo
+                    {sub.name} - ₹{sub.price?.monthly || 0}/mo ({sub.subscriptionDuration || 30} days)
                   </option>
                 ))}
               </select>
@@ -259,6 +276,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
                 onChange={handleChange}
                 min="1"
                 max="365"
+                placeholder="Duration from selected plan"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -269,6 +287,32 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
                   boxSizing: 'border-box',
                 }}
               />
+              <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
+                Auto-filled from selected plan. You can modify if needed.
+              </p>
+            </div>
+          )}
+
+          {/* Active/Inactive Toggle - Only for Edit */}
+          {company && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  name="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                    Company Active
+                  </span>
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                    When inactive, company users cannot access the system regardless of subscription status
+                  </p>
+                </div>
+              </label>
             </div>
           )}
 
@@ -446,10 +490,10 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
           phone: formData.phone,
           isActive: formData.isActive,
         })
-        toast.success('Admin updated successfully')
+        // Toast is handled in handleSaveAdmin
       } else {
         await onSave(null, formData)
-        toast.success('Admin created successfully')
+        // Toast is handled in handleSaveAdmin
       }
       onClose()
     } catch (error) {
@@ -878,6 +922,8 @@ export default function Companies() {
   const openCompanyModal = (company = null) => {
     setEditingCompany(company)
     setShowCompanyModal(true)
+    // Refresh subscriptions to get latest data including subscriptionDuration
+    fetchSubscriptions()
   }
 
   const closeCompanyModal = () => {

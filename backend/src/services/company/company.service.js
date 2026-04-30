@@ -1,8 +1,19 @@
+const mongoose = require('mongoose');
 const Company = require('../../models/company/company.model');
 const User = require('../../models/auth/user.model');
 const Subscription = require('../../models/subscription/subscription.model');
 const Sim = require('../../models/sim/sim.model');
 const Recharge = require('../../models/recharge/recharge.model');
+const CallLog = require('../../models/callLog/callLog.model');
+const Notification = require('../../models/notification/notification.model');
+const WhatsAppMessage = require('../../models/whatsapp/whatsapp.model');
+const TelegramMessage = require('../../models/telegram/telegram.model');
+const Sms = require('../../models/sms/sms.model');
+const WifiNetwork = require('../../models/wifi/wifiNetwork.model');
+const WifiDevice = require('../../models/wifi/wifiDevice.model');
+const WifiMetric = require('../../models/wifi/wifiMetric.model');
+const WifiAlert = require('../../models/wifi/wifiAlert.model');
+const CallAutomationConfig = require('../../models/callAutomation/callAutomation.model');
 const { AppError, NotFoundError, ConflictError } = require('../../utils/errors');
 const emailService = require('../../utils/emailService');
 const notificationHelper = require('../../utils/notificationHelper');
@@ -124,7 +135,7 @@ class CompanyService {
   }
 
   async updateCompany(companyId, updateData) {
-    const allowedUpdates = ['name', 'phone', 'address', 'logo', 'settings'];
+    const allowedUpdates = ['name', 'email', 'phone', 'address', 'logo', 'settings', 'isActive'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -132,6 +143,27 @@ class CompanyService {
         updates[key] = updateData[key];
       }
     });
+
+    // Check if email is being updated and if it's already used by another company
+    if (updates.email) {
+      updates.email = updates.email.toLowerCase();
+      const existingCompany = await Company.findOne({
+        email: updates.email,
+        _id: { $ne: companyId }
+      });
+      if (existingCompany) {
+        throw new ConflictError('This email is already used by another company');
+      }
+
+      // Also check if email exists in users table
+      const existingUser = await User.findOne({
+        email: updates.email,
+        companyId: { $ne: companyId }
+      });
+      if (existingUser) {
+        throw new ConflictError('This email is already registered as a user in the system');
+      }
+    }
 
     const company = await Company.findByIdAndUpdate(companyId, updates, {
       new: true,
@@ -151,14 +183,63 @@ class CompanyService {
       throw new NotFoundError('Company');
     }
 
-    // Soft delete - deactivate instead of removing
-    company.isActive = false;
-    await company.save();
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Deactivate all company users
-    await User.updateMany({ companyId }, { isActive: false });
+    try {
+      // ========================================
+      // CASCADE DELETE - Company Data
+      // ========================================
+      // NOTE: We do NOT delete Payment data (financial records)
+      // NOTE: We do NOT delete AuditLog data (compliance records)
 
-    return true;
+      // 1. Delete CallAutomationConfig
+      await CallAutomationConfig.deleteMany({ companyId }).session(session);
+
+      // 2. Delete WiFi related data
+      await WifiAlert.deleteMany({ companyId }).session(session);
+      await WifiMetric.deleteMany({ companyId }).session(session);
+      await WifiDevice.deleteMany({ companyId }).session(session);
+      await WifiNetwork.deleteMany({ companyId }).session(session);
+
+      // 3. Delete messaging logs
+      await TelegramMessage.deleteMany({ companyId }).session(session);
+      await WhatsAppMessage.deleteMany({ companyId }).session(session);
+      await Sms.deleteMany({ companyId }).session(session);
+
+      // 4. Delete notifications
+      await Notification.deleteMany({ companyId }).session(session);
+
+      // 5. Delete call logs
+      await CallLog.deleteMany({ companyId }).session(session);
+
+      // 6. Delete recharges
+      await Recharge.deleteMany({ companyId }).session(session);
+
+      // 7. Delete SIMs
+      await Sim.deleteMany({ companyId }).session(session);
+
+      // 8. Delete Users (except super_admin - shouldn't have companyId anyway)
+      await User.deleteMany({ companyId }).session(session);
+
+      // 9. Finally delete the company
+      await Company.findByIdAndDelete(companyId).session(session);
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log(`[DELETE] Company ${company.name} (${companyId}) deleted with all related data`);
+
+      return true;
+    } catch (error) {
+      // Abort transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      console.error('[DELETE] Transaction aborted:', error.message);
+      throw new AppError(`Failed to delete company: ${error.message}`, 500);
+    }
   }
 
   async renewSubscription(companyId, subscriptionId, duration = 30) {
@@ -222,9 +303,10 @@ class CompanyService {
   }
 
   async getCompanyStats(companyId) {
-    const totalSims = await Sim.countDocuments({ companyId, isActive: true });
-    const activeSims = await Sim.countDocuments({ companyId, isActive: true, status: 'active' });
-    const inactiveSims = await Sim.countDocuments({ companyId, isActive: true, status: 'inactive' });
+    // [HARD DELETE] Removed isActive: true filter - records are now hard deleted
+    const totalSims = await Sim.countDocuments({ companyId });
+    const activeSims = await Sim.countDocuments({ companyId, status: 'active' });
+    const inactiveSims = await Sim.countDocuments({ companyId, status: 'inactive' });
 
     const totalRecharges = await Recharge.countDocuments({ companyId, status: 'completed' });
     const rechargeStats = await Recharge.getTotalSpent(companyId);
@@ -253,7 +335,9 @@ class CompanyService {
   }
 
   async getDashboardOverview() {
+    // [HARD DELETE] Count all companies since soft delete is removed
     const totalCompanies = await Company.countDocuments();
+    // Keep subscription-based status filtering (isActive = subscription active)
     const activeCompanies = await Company.countDocuments({ isActive: true });
     const expiredCompanies = await Company.countDocuments({
       isActive: true,
@@ -393,11 +477,39 @@ class CompanyService {
       throw new NotFoundError('Admin');
     }
 
-    // Soft delete - deactivate
-    admin.isActive = false;
-    await admin.save();
+    const companyId = admin.companyId;
 
-    return true;
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Unassign SIMs from this admin (if any)
+      await Sim.updateMany(
+        { assignedTo: adminId },
+        { assignedTo: null },
+        { session }
+      );
+
+      // Delete notifications for this user
+      await Notification.deleteMany({ userId: adminId }).session(session);
+
+      // Hard delete the admin user
+      await User.findByIdAndDelete(adminId).session(session);
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log(`[DELETE] Admin ${admin.email} (${adminId}) deleted`);
+
+      return true;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('[DELETE] Admin delete transaction aborted:', error.message);
+      throw new AppError(`Failed to delete admin: ${error.message}`, 500);
+    }
   }
 
   async resetAdminPassword(adminId, newPassword, resetBy = null) {
@@ -462,9 +574,10 @@ class CompanyService {
       throw new NotFoundError('Company');
     }
 
+    // [HARD DELETE] Removed isActive: true filter - records are now hard deleted
     // Get current SIM and User counts (exclude admin from user count)
-    const currentSims = await Sim.countDocuments({ companyId, isActive: true });
-    const currentUsers = await User.countDocuments({ companyId, isActive: true, role: { $ne: 'admin' } });
+    const currentSims = await Sim.countDocuments({ companyId });
+    const currentUsers = await User.countDocuments({ companyId, role: { $ne: 'admin' } });
 
     // Determine subscription status
     const now = new Date();

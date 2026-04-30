@@ -49,10 +49,10 @@ class CallAutomationService {
     }
 
     // Verify all SIMs belong to the company
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const callerSimDocs = await Sim.find({
       _id: { $in: callerSimIds },
       companyId,
-      isActive: true
     });
 
     if (callerSimDocs.length !== callerSimIds.length) {
@@ -62,7 +62,6 @@ class CallAutomationService {
     const targetSimDocs = await Sim.find({
       _id: { $in: targetSimIds },
       companyId,
-      isActive: true
     });
 
     if (targetSimDocs.length !== targetSimIds.length) {
@@ -255,9 +254,9 @@ class CallAutomationService {
     );
 
     // Fetch target SIMs to get phone numbers
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const targets = await Sim.find({
       _id: { $in: targetSimIds },
-      isActive: true
     }).select('mobileNumber');
 
     // Sort by _id for consistent ordering
@@ -324,9 +323,9 @@ class CallAutomationService {
       throw new ForbiddenError('Company ID is required');
     }
 
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sims = await Sim.find({
       companyId,
-      isActive: true,
       status: 'active'
     }).select('mobileNumber operator status assignedTo')
       .populate('assignedTo', 'name email')

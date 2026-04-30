@@ -271,6 +271,38 @@ class NotificationService {
     return { message: 'Read notifications cleared' };
   }
 
+  async deleteAllNotifications(userId, companyId, userRole) {
+    let filter;
+
+    if (userRole === 'super_admin') {
+      // Super admin deletes their own notifications
+      filter = { userId: userId };
+    } else {
+      // Company users delete all their company's notifications
+      filter = { companyId: companyId };
+    }
+
+    const result = await Notification.deleteMany(filter);
+
+    return { message: 'All notifications deleted', deletedCount: result.deletedCount };
+  }
+
+  async deleteSelectedNotifications(notificationIds, userId, companyId, userRole) {
+    let filter = { _id: { $in: notificationIds } };
+
+    if (userRole === 'super_admin') {
+      // Super admin can only delete their own notifications
+      filter.userId = userId;
+    } else {
+      // Company users can only delete their company's notifications
+      filter.companyId = companyId;
+    }
+
+    const result = await Notification.deleteMany(filter);
+
+    return { message: 'Selected notifications deleted', deletedCount: result.deletedCount };
+  }
+
   async updatePreferences(userId, preferences) {
     const user = await User.findByIdAndUpdate(
       userId,

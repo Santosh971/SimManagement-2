@@ -191,7 +191,46 @@ class NotificationHelper {
       data: { simId: sim._id, rechargeId: recharge._id },
     };
 
-    return this.createNotification(notificationData);
+    // Get company admin to send email
+    const User = require('../models/auth/user.model');
+    const admin = await User.findOne({ companyId: company._id, role: 'admin' });
+
+    if (admin) {
+      const emailData = {
+        to: admin.email,
+        subject: `Recharge Reminder - ${sim.mobileNumber} (${daysLeft} days left)`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="margin: 0;">⚡ Recharge Reminder</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+              <h2>Hello ${admin.name},</h2>
+              <p>This is a reminder that your SIM recharge is due soon.</p>
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">${daysLeft} days remaining</p>
+              </div>
+              <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Next Recharge Date:</strong> ${new Date(recharge.nextRechargeDate).toDateString()}</p>
+              </div>
+              <p>Please recharge your SIM to avoid service interruption.</p>
+              <p>Best regards,<br>SIM Management Team</p>
+            </div>
+          </div>
+        `,
+      };
+
+      // Create notification for admin with email
+      await this.createWithNotification(
+        { ...notificationData, userId: admin._id },
+        emailData
+      );
+    } else {
+      // Fallback: just create company-wide notification
+      await this.createNotification(notificationData);
+    }
   }
 
   /**
@@ -215,7 +254,46 @@ class NotificationHelper {
       data: { simId: sim._id },
     };
 
-    return this.createNotification(notificationData);
+    // Get company admin to send email
+    const User = require('../models/auth/user.model');
+    const admin = await User.findOne({ companyId: company._id, role: 'admin' });
+
+    if (admin) {
+      const emailData = {
+        to: admin.email,
+        subject: `Inactive SIM Alert - ${sim.mobileNumber}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+              <h1 style="margin: 0;">⚠️ Inactive SIM Alert</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+              <h2>Hello ${admin.name},</h2>
+              <p>A SIM card has been inactive for an extended period.</p>
+              <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991b1b;">Inactive for ${inactiveDays} days</p>
+              </div>
+              <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Last Active:</strong> ${sim.lastActiveDate ? new Date(sim.lastActiveDate).toDateString() : 'Unknown'}</p>
+              </div>
+              <p>Please check the SIM status and take necessary action.</p>
+              <p>Best regards,<br>SIM Management Team</p>
+            </div>
+          </div>
+        `,
+      };
+
+      // Create notification for admin with email
+      await this.createWithNotification(
+        { ...notificationData, userId: admin._id },
+        emailData
+      );
+    } else {
+      // Fallback: just create company-wide notification
+      await this.createNotification(notificationData);
+    }
   }
 
   /**

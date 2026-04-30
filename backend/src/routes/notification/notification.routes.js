@@ -34,6 +34,8 @@ router.patch('/:id/read', notificationController.markAsRead);
 router.post('/mark-all-read', notificationController.markAllAsRead);
 router.delete('/:id', notificationController.delete);
 router.post('/clear-read', notificationController.clearRead);
+router.delete('/all', notificationController.deleteAll);
+router.post('/delete-selected', notificationController.deleteSelected);
 router.put('/preferences', preferencesValidation, validate, notificationController.updatePreferences);
 
 module.exports = router;

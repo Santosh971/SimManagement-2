@@ -1,4 +1,5 @@
 const callLogService = require('../../services/callLog/callLog.service');
+const auditLogService = require('../../services/auditLog/auditLog.service');
 const { successResponse, paginatedResponse } = require('../../utils/response');
 // [PHONE NORMALIZATION FIX]
 const { normalizePhoneNumber } = require('../../utils/response');
@@ -11,6 +12,25 @@ class CallLogController {
       const { simId, callLogs } = req.body;
       const deviceId = req.headers['x-device-id'] || 'web';
       const result = await callLogService.syncCallLogs({ simId, callLogs }, req.user, deviceId);
+
+      // Audit log: CALL_LOG_SYNC
+      try {
+        await auditLogService.logAction({
+          action: 'CALL_LOG_SYNC',
+          module: 'CALL_LOG',
+          description: `Synced ${result.synced || 0} call logs`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          entityId: simId,
+          entityType: 'SIM',
+          metadata: { synced: result.synced || 0, duplicates: result.duplicates || 0, deviceId },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log CALL_LOG_SYNC', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Call logs synced successfully');
     } catch (error) {
       next(error);
@@ -47,6 +67,23 @@ class CallLogController {
         deviceId
       );
 
+      // Audit log: CALL_LOG_SYNC
+      try {
+        await auditLogService.logAction({
+          action: 'CALL_LOG_SYNC',
+          module: 'CALL_LOG',
+          description: `Synced ${result.synced || 0} call logs for SIM ${simNumber}`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          entityType: 'SIM',
+          metadata: { simNumber, synced: result.synced || 0, duplicates: result.duplicates || 0, deviceId },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log CALL_LOG_SYNC', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Call logs synced successfully');
     } catch (error) {
       logger.error('[CALL LOG SYNC] Error syncing user logs', {
@@ -67,6 +104,22 @@ class CallLogController {
       const deviceId = req.headers['x-device-id'] || req.body.deviceId || 'mobile-device';
 
       const result = await callLogService.deviceSync({ mobileNumber, callLogs }, deviceId);
+
+      // Audit log: CALL_LOG_SYNC (device - no user)
+      try {
+        await auditLogService.logAction({
+          action: 'CALL_LOG_SYNC',
+          module: 'CALL_LOG',
+          description: `Device synced ${result.synced || 0} call logs for ${mobileNumber}`,
+          role: 'device',
+          entityType: 'SIM',
+          metadata: { mobileNumber, synced: result.synced || 0, deviceId },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log CALL_LOG_SYNC', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Call logs synced successfully');
     } catch (error) {
       next(error);
@@ -132,6 +185,22 @@ class CallLogController {
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
+      // Audit log: CALL_LOG_EXPORT
+      try {
+        await auditLogService.logAction({
+          action: 'CALL_LOG_EXPORT',
+          module: 'CALL_LOG',
+          description: `Exported ${callLogs.length} call logs to Excel`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: { count: callLogs.length, filters: req.query },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log CALL_LOG_EXPORT', { error: auditError.message });
+      }
+
       res.setHeader('Content-Disposition', 'attachment; filename=call-logs-export.xlsx');
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.send(buffer);
@@ -144,6 +213,25 @@ class CallLogController {
     try {
       const { flagged, reason } = req.body;
       const callLog = await callLogService.flagCallLog(req.params.id, flagged, reason, req.user);
+
+      // Audit log: CALL_LOG_FLAG
+      try {
+        await auditLogService.logAction({
+          action: 'CALL_LOG_FLAG',
+          module: 'CALL_LOG',
+          description: `${flagged ? 'Flagged' : 'Unflagged'} call log ${req.params.id}`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          entityId: req.params.id,
+          entityType: 'CALL_LOG',
+          metadata: { flagged, reason: reason || null },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log CALL_LOG_FLAG', { error: auditError.message });
+      }
+
       return successResponse(res, callLog, 'Call log flagged');
     } catch (error) {
       next(error);

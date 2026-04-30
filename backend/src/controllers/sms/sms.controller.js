@@ -1,4 +1,5 @@
 const smsService = require('../../services/sms/sms.service');
+const auditLogService = require('../../services/auditLog/auditLog.service');
 const { successResponse, paginatedResponse } = require('../../utils/response');
 const logger = require('../../utils/logger');
 const xlsx = require('xlsx');
@@ -32,6 +33,28 @@ class SmsController {
         req.user,
         deviceId
       );
+
+      // Audit log: SMS_SYNC
+      try {
+        await auditLogService.logAction({
+          action: 'SMS_SYNC',
+          module: 'SMS',
+          description: `Synced ${result.synced || 0} SMS messages for SIM ${simNumber}`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          entityType: 'SIM',
+          metadata: {
+            simNumber,
+            synced: result.synced || 0,
+            inserted: result.inserted || 0,
+            deviceId
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log SMS_SYNC', { error: auditError.message });
+      }
 
       logger.info('[SMS SYNC] Successfully synced SMS', {
         userId: req.user._id,
@@ -122,6 +145,22 @@ class SmsController {
       xlsx.utils.book_append_sheet(workbook, sheet, 'SMS Logs');
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      // Audit log: REPORT_EXPORT
+      try {
+        await auditLogService.logAction({
+          action: 'REPORT_EXPORT',
+          module: 'REPORT',
+          description: `Exported ${smsLogs.length} SMS logs to Excel`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: { count: smsLogs.length, type: 'sms', filters: req.query },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log REPORT_EXPORT', { error: auditError.message });
+      }
 
       res.setHeader(
         'Content-Disposition',

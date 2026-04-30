@@ -1,6 +1,9 @@
+const mongoose = require('mongoose');
 const User = require('../../models/auth/user.model');
 const Company = require('../../models/company/company.model');
-const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../../utils/errors');
+const Sim = require('../../models/sim/sim.model');
+const Notification = require('../../models/notification/notification.model');
+const { NotFoundError, ConflictError, ForbiddenError, ValidationError, AppError } = require('../../utils/errors');
 const notificationHelper = require('../../utils/notificationHelper');
 const crypto = require('crypto');
 
@@ -197,19 +200,37 @@ class UserService {
       throw new NotFoundError('User');
     }
 
-    // Soft delete - deactivate
-    user.isActive = false;
-    await user.save();
+    // Start a session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Send deactivation notification
     try {
-      const company = await Company.findById(adminUser.companyId);
-      await notificationHelper.notifyUserDeactivated(user, company, adminUser);
-    } catch (notificationError) {
-      console.error('Failed to send user deactivation notification:', notificationError.message);
-    }
+      // Unassign SIMs from this user
+      await Sim.updateMany(
+        { assignedTo: userId },
+        { assignedTo: null },
+        { session }
+      );
 
-    return { message: 'User deactivated successfully' };
+      // Delete notifications for this user
+      await Notification.deleteMany({ userId }).session(session);
+
+      // Hard delete the user
+      await User.findByIdAndDelete(userId).session(session);
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      console.log(`[DELETE] User ${user.email} (${userId}) deleted`);
+
+      return { message: 'User deleted successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('[DELETE] User delete transaction aborted:', error.message);
+      throw new AppError(`Failed to delete user: ${error.message}`, 500);
+    }
   }
 
   async resetUserPassword(userId, newPassword, adminUser) {
@@ -235,8 +256,9 @@ class UserService {
   }
 
   async getCompanyUsers(companyId) {
+    // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
     // Get all users for a company (for dropdown in SIM assignment)
-    const users = await User.find({ companyId, isActive: true, role: 'user' })
+    const users = await User.find({ companyId, role: 'user' })
       .select('name email phone')
       .sort({ name: 1 });
 
@@ -244,9 +266,10 @@ class UserService {
   }
 
   async getUserStats(companyId) {
-    const totalUsers = await User.countDocuments({ companyId, isActive: true });
-    const activeUsers = await User.countDocuments({ companyId, isActive: true, lastLogin: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
-    const adminCount = await User.countDocuments({ companyId, role: 'admin', isActive: true });
+    // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
+    const totalUsers = await User.countDocuments({ companyId });
+    const activeUsers = await User.countDocuments({ companyId, lastLogin: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
+    const adminCount = await User.countDocuments({ companyId, role: 'admin' });
 
     return {
       total: totalUsers,

@@ -47,6 +47,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
     },
     customFeatures: [],
     trialDays: 14,
+    subscriptionDuration: 30,
     isPopular: false,
   })
   const [newCustomFeature, setNewCustomFeature] = useState('')
@@ -78,6 +79,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
         },
         customFeatures: plan.customFeatures || [],
         trialDays: plan.trialDays || 14,
+        subscriptionDuration: plan.subscriptionDuration || 30,
         isPopular: plan.isPopular || false,
       })
     } else {
@@ -99,6 +101,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
         },
         customFeatures: [],
         trialDays: 14,
+        subscriptionDuration: 30,
         isPopular: false,
       })
     }
@@ -295,7 +298,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
                 Max SIMs
@@ -348,6 +351,28 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 value={formData.trialDays}
                 onChange={handleChange}
                 min="0"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+                Subscription Duration (days)
+              </label>
+              <input
+                type="number"
+                name="subscriptionDuration"
+                value={formData.subscriptionDuration}
+                onChange={handleChange}
+                min="1"
+                placeholder="e.g., 30"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -1026,10 +1051,16 @@ export default function Subscriptions() {
                       {plan.limits?.maxSims === -1 ? 'Unlimited' : plan.limits?.maxSims}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
                     <span style={{ color: '#6b7280' }}>Max Users</span>
                     <span style={{ fontWeight: '600', color: '#111827' }}>
                       {plan.limits?.maxUsers === -1 ? 'Unlimited' : plan.limits?.maxUsers}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '12px' }}>
+                    <span style={{ color: '#6b7280' }}>Duration</span>
+                    <span style={{ fontWeight: '600', color: '#111827' }}>
+                      {plan.subscriptionDuration || 30} days
                     </span>
                   </div>
 

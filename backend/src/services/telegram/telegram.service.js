@@ -141,11 +141,10 @@ class TelegramService {
       throw new AppError('No SIMs provided', 400);
     }
 
-    // Fetch SIMs with telegramChatId
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sims = await Sim.find({
       _id: { $in: simIds },
       companyId,
-      isActive: true,
     }).populate('assignedTo', 'name email');
 
     results.total = sims.length;
@@ -458,17 +457,16 @@ class TelegramService {
 
     // [FIX] Find the SIM linked to this chat that is PENDING verification
     // Priority: Find unverified SIM first, fall back to any SIM with this chatId
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     let sim = await Sim.findOne({
       telegramChatId: String(chatId),
       telegramPhoneVerified: { $ne: true }, // Not yet verified
-      isActive: true,
     }).populate('companyId');
 
     // If no pending SIM found, try to find any SIM with this chatId
     if (!sim) {
       sim = await Sim.findOne({
         telegramChatId: String(chatId),
-        isActive: true,
       }).populate('companyId');
     }
 
@@ -654,9 +652,9 @@ class TelegramService {
    */
   async handleReply(chatId, text) {
     // Find the SIM linked to this chat
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sim = await Sim.findOne({
       telegramChatId: String(chatId),
-      isActive: true,
     });
 
     if (!sim) {
@@ -899,9 +897,9 @@ class TelegramService {
    * Returns SIMs with telegramChatId linked AND phone verified
    */
   async getEligibleSIMs(user) {
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const filter = {
       companyId: user.companyId,
-      isActive: true,
       telegramChatId: { $ne: null },
       telegramPhoneVerified: true, // Only return verified SIMs
     };

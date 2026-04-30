@@ -227,7 +227,8 @@ class ReportService {
     // Get additional stats for each company
     const companyStats = await Promise.all(
       companies.map(async (company) => {
-        const simCount = await Sim.countDocuments({ companyId: company._id, isActive: true });
+        // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+        const simCount = await Sim.countDocuments({ companyId: company._id });
         const rechargeTotal = await Recharge.aggregate([
           { $match: { companyId: company._id, status: 'completed' } },
           { $group: { _id: null, total: { $sum: '$amount' } } },
@@ -256,7 +257,8 @@ class ReportService {
     // Calculate total SIMs and revenue from all companies
     const allCompanyStats = await Promise.all(
       allCompanies.map(async (company) => {
-        const simCount = await Sim.countDocuments({ companyId: company._id, isActive: true });
+        // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+        const simCount = await Sim.countDocuments({ companyId: company._id });
         const rechargeTotal = await Recharge.aggregate([
           { $match: { companyId: company._id, status: 'completed' } },
           { $group: { _id: null, total: { $sum: '$amount' } } },

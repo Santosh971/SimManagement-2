@@ -115,10 +115,9 @@ class SimService {
     let userMap = {}; // [BULK UPLOAD FIX] Store full user objects for name lookup
     let emailsInOtherCompanies = new Set(); // [GLOBAL UNIQUE EMAIL] Track emails in OTHER companies
     if (uniqueEmails.length > 0) {
-      // [GLOBAL UNIQUE EMAIL] Find all users with these emails (regardless of company)
+      // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
       const existingUsers = await User.find({
         email: { $in: uniqueEmails },
-        isActive: true,
       }).select('_id email name companyId');
 
       existingUsers.forEach(u => {
@@ -433,10 +432,9 @@ class SimService {
         // [GLOBAL UNIQUE EMAIL] Handle assigned user - create if not exists
         if (assignedUserEmail && assignedUserEmail.trim() !== '') {
           const email = assignedUserEmail.toLowerCase();
-          // [GLOBAL UNIQUE EMAIL] Check for user by email globally
+          // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
           const existingUser = await User.findOne({
             email: email,
-            isActive: true,
           });
 
           if (existingUser) {
@@ -643,7 +641,8 @@ class SimService {
       sortOrder = 'desc',
     } = query;
 
-    const filter = { isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = {};
 
     // Data isolation
     let companyId = null;
@@ -763,7 +762,8 @@ class SimService {
   }
 
   async getSimById(simId, user) {
-    const filter = { _id: simId, isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -781,7 +781,8 @@ class SimService {
   }
 
   async updateSim(simId, updateData, user) {
-    const filter = { _id: simId, isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -891,7 +892,8 @@ class SimService {
   }
 
   async updateStatus(simId, status, user) {
-    const filter = { _id: simId, isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -915,7 +917,8 @@ class SimService {
   }
 
   async assignSim(simId, userId, user) {
-    const filter = { _id: simId, isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -950,7 +953,8 @@ class SimService {
   }
 
   async unassignSim(simId, user) {
-    const filter = { _id: simId, isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = { _id: simId };
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -987,7 +991,8 @@ class SimService {
   async exportSims(query, user) {
     const { search, status, operator } = query;
 
-    const filter = { isActive: true };
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const filter = {};
 
     if (user.role !== 'super_admin') {
       filter.companyId = user.companyId;
@@ -1016,13 +1021,14 @@ class SimService {
   }
 
   async getSimStats(companyId) {
-    const totalSims = await Sim.countDocuments({ companyId, isActive: true });
-    const activeSims = await Sim.countDocuments({ companyId, isActive: true, status: 'active' });
-    const inactiveSims = await Sim.countDocuments({ companyId, isActive: true, status: 'inactive' });
-    const suspendedSims = await Sim.countDocuments({ companyId, isActive: true, status: 'suspended' });
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const totalSims = await Sim.countDocuments({ companyId });
+    const activeSims = await Sim.countDocuments({ companyId, status: 'active' });
+    const inactiveSims = await Sim.countDocuments({ companyId, status: 'inactive' });
+    const suspendedSims = await Sim.countDocuments({ companyId, status: 'suspended' });
 
     const operatorStats = await Sim.aggregate([
-      { $match: { companyId: companyId, isActive: true } },
+      { $match: { companyId: companyId } },
       { $group: { _id: '$operator', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
@@ -1037,8 +1043,9 @@ class SimService {
   }
 
   async updateCompanyStats(companyId) {
-    const totalSims = await Sim.countDocuments({ companyId, isActive: true });
-    const activeSims = await Sim.countDocuments({ companyId, isActive: true, status: 'active' });
+    // [HARD DELETE] Removed isActive: true filter - SIMs are hard deleted
+    const totalSims = await Sim.countDocuments({ companyId });
+    const activeSims = await Sim.countDocuments({ companyId, status: 'active' });
 
     await Company.findByIdAndUpdate(companyId, {
       'stats.totalSims': totalSims,
@@ -1100,8 +1107,8 @@ class SimService {
   }
 
   async getMessagingStats(companyId) {
-    // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Get all SIMs for this company
-    const sims = await Sim.find({ companyId: new mongoose.Types.ObjectId(companyId), isActive: true })
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+    const sims = await Sim.find({ companyId: new mongoose.Types.ObjectId(companyId) })
       .select('mobileNumber whatsappEnabled telegramEnabled whatsappLastActive telegramLastActive');
 
     const simIds = sims.map(s => s._id);
@@ -1208,10 +1215,10 @@ class SimService {
    * [MULTI-SIM SUPPORT] - For mobile app to get user's assigned SIMs
    */
   async getAssignedSims(user) {
+    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const filter = {
       assignedTo: user._id,
       companyId: user.companyId,
-      isActive: true,
       status: 'active',
     };
 

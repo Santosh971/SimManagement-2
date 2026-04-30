@@ -8,6 +8,7 @@ import {
   FiClock,
   FiCreditCard,
   FiInfo,
+  FiX,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -19,6 +20,7 @@ import {
   Button,
   Spinner,
   Pagination,
+  Modal,
 } from '../components/ui'
 
 // Plan names to highlight (known from the app)
@@ -177,12 +179,29 @@ function HighlightSpan({ type, text }) {
   return <span style={style}>{text}</span>
 }
 
+// Format full date for modal
+function formatFullDate(dateString) {
+  const date = new Date(dateString)
+  return date.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 export default function Notifications() {
   const { api } = useAuth()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [viewingNotification, setViewingNotification] = useState(null)
 
   useEffect(() => {
     fetchNotifications()
@@ -196,6 +215,11 @@ export default function Notifications() {
       setPagination((prev) => ({ ...prev, page: 1 }))
     }
   }, [filter])
+
+  // Clear selection when notifications change
+  useEffect(() => {
+    setSelectedIds([])
+  }, [filter, pagination.page])
 
   const fetchNotifications = async () => {
     try {
@@ -224,9 +248,18 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       )
-      toast.success('Notification marked as read')
     } catch (error) {
-      toast.error('Failed to mark notification as read')
+      console.error('Failed to mark notification as read:', error)
+    }
+  }
+
+  // Open notification in modal and auto-mark as read
+  const openNotification = async (notification) => {
+    setViewingNotification(notification)
+
+    // Auto-mark as read if not already read
+    if (!notification.isRead) {
+      await markAsRead(notification._id)
     }
   }
 
@@ -244,20 +277,67 @@ export default function Notifications() {
     try {
       await api.delete(`/notifications/${id}`)
       setNotifications((prev) => prev.filter((n) => n._id !== id))
+      setPagination((prev) => ({ ...prev, total: prev.total - 1 }))
+      setSelectedIds((prev) => prev.filter((i) => i !== id))
+
+      // Close modal if viewing the deleted notification
+      if (viewingNotification && viewingNotification._id === id) {
+        setViewingNotification(null)
+      }
+
       toast.success('Notification deleted')
     } catch (error) {
       toast.error('Failed to delete notification')
     }
   }
 
+  // Checkbox handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(notifications.map((n) => n._id))
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleSelectOne = (id, e) => {
+    e.stopPropagation() // Prevent opening modal when clicking checkbox
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((i) => i !== id)
+      }
+      return [...prev, id]
+    })
+  }
+
+  const isAllSelected = notifications.length > 0 && selectedIds.length === notifications.length
+  const isIndeterminate = selectedIds.length > 0 && selectedIds.length < notifications.length
+
+  const deleteSelectedNotifications = async () => {
+    try {
+      setDeleting(true)
+      await api.post('/notifications/delete-selected', { notificationIds: selectedIds })
+      setNotifications((prev) => prev.filter((n) => !selectedIds.includes(n._id)))
+      setPagination((prev) => ({ ...prev, total: prev.total - selectedIds.length }))
+      const deletedCount = selectedIds.length
+      setSelectedIds([])
+      toast.success(`${deletedCount} notification${deletedCount > 1 ? 's' : ''} deleted`)
+      setShowDeleteModal(false)
+    } catch (error) {
+      toast.error('Failed to delete notifications')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const getTypeStyle = (type) => {
     const styles = {
-      recharge_due: { bg: '#fffbeb', color: '#d97706', icon: FiCreditCard },
-      inactive_sim: { bg: '#fef2f2', color: '#dc2626', icon: FiAlertCircle },
-      subscription_expiry: { bg: '#eff6ff', color: '#2563eb', icon: FiClock },
-      system: { bg: '#f1f5f9', color: '#475569', icon: FiInfo },
-      alert: { bg: '#fef2f2', color: '#dc2626', icon: FiAlertCircle },
-      info: { bg: '#eff6ff', color: '#2563eb', icon: FiInfo },
+      recharge_due: { bg: '#fffbeb', color: '#d97706', icon: FiCreditCard, label: 'Recharge Due' },
+      inactive_sim: { bg: '#fef2f2', color: '#dc2626', icon: FiAlertCircle, label: 'Inactive SIM' },
+      subscription_expiry: { bg: '#eff6ff', color: '#2563eb', icon: FiClock, label: 'Subscription' },
+      system: { bg: '#f1f5f9', color: '#475569', icon: FiInfo, label: 'System' },
+      alert: { bg: '#fef2f2', color: '#dc2626', icon: FiAlertCircle, label: 'Alert' },
+      info: { bg: '#eff6ff', color: '#2563eb', icon: FiInfo, label: 'Info' },
     }
     return styles[type] || styles.info
   }
@@ -300,34 +380,67 @@ export default function Notifications() {
         title="Notifications"
         description="View and manage your notifications"
         action={
-          <Button variant="secondary" icon={FiCheck} onClick={markAllAsRead}>
-            Mark All as Read
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button variant="secondary" icon={FiCheck} onClick={markAllAsRead}>
+              Mark All as Read
+            </Button>
+            <Button
+              variant="danger"
+              icon={FiTrash2}
+              onClick={() => setShowDeleteModal(true)}
+              disabled={selectedIds.length === 0}
+            >
+              Delete Selected {selectedIds.length > 0 && `(${selectedIds.length})`}
+            </Button>
+          </div>
         }
       />
 
-      {/* Filters */}
+      {/* Filters and Select All */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {['all', 'unread', 'read'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  backgroundColor: filter === f ? '#2563eb' : '#f1f5f9',
-                  color: filter === f ? '#ffffff' : '#475569',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {f}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {['all', 'unread', 'read'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  style={{
+                    padding: '8px 16px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    backgroundColor: filter === f ? '#2563eb' : '#f1f5f9',
+                    color: filter === f ? '#ffffff' : '#475569',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            {notifications.length > 0 && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = isIndeterminate
+                  }}
+                  onChange={handleSelectAll}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    cursor: 'pointer',
+                    accentColor: '#2563eb',
+                  }}
+                />
+                <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>
+                  Select All ({notifications.length})
+                </span>
+              </label>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -339,17 +452,36 @@ export default function Notifications() {
             const typeStyle = getTypeStyle(notification.type)
             const priorityStyle = getPriorityStyle(notification.priority)
             const IconComponent = typeStyle.icon
+            const isSelected = selectedIds.includes(notification._id)
 
             return (
               <Card
                 key={notification._id}
+                onClick={() => openNotification(notification)}
                 style={{
                   borderLeft: notification.isRead ? 'none' : '4px solid #2563eb',
-                  backgroundColor: notification.isRead ? '#ffffff' : '#f0f7ff',
+                  backgroundColor: isSelected ? '#eff6ff' : (notification.isRead ? '#ffffff' : '#f0f7ff'),
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
                 }}
               >
                 <CardBody>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                    {/* Checkbox */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '4px' }} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => handleSelectOne(notification._id, e)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          accentColor: '#2563eb',
+                        }}
+                      />
+                    </div>
+                    {/* Content */}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                         <span style={{
@@ -364,7 +496,7 @@ export default function Notifications() {
                           textTransform: 'capitalize',
                         }}>
                           <IconComponent style={{ width: '12px', height: '12px' }} />
-                          {notification.type.replace('_', ' ')}
+                          {typeStyle.label || notification.type.replace('_', ' ')}
                         </span>
                         <span style={{
                           padding: '4px 8px',
@@ -388,7 +520,7 @@ export default function Notifications() {
                       <h3 style={{ fontWeight: '600', color: '#111827', marginBottom: '4px', margin: 0 }}>
                         {notification.title}
                       </h3>
-                      <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.5, margin: '4px 0' }}>
+                      <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.5, margin: '4px 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {highlightMessage(notification.message, notification.metadata)}
                       </p>
                       <p style={{ color: '#9ca3af', fontSize: '12px', marginTop: '8px', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -396,13 +528,17 @@ export default function Notifications() {
                         {formatDate(notification.createdAt)}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {!notification.isRead && (
-                        <Button variant="secondary" size="sm" onClick={() => markAsRead(notification._id)} icon={FiCheck}>
-                          Mark Read
-                        </Button>
-                      )}
-                      <Button variant="danger" size="sm" onClick={() => deleteNotification(notification._id)} icon={FiTrash2}>
+                    {/* Actions */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteNotification(notification._id)
+                        }}
+                        icon={FiTrash2}
+                      >
                         Delete
                       </Button>
                     </div>
@@ -433,6 +569,161 @@ export default function Notifications() {
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}
+
+      {/* Delete Selected Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Selected Notifications"
+        size="sm"
+      >
+        <div style={{ padding: '16px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: '#fef2f2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <FiTrash2 style={{ width: '24px', height: '24px', color: '#dc2626' }} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontWeight: '600', color: '#111827' }}>Delete Selected Notifications?</h4>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.5, marginBottom: '24px' }}>
+            Are you sure you want to delete {selectedIds.length} selected notification{selectedIds.length !== 1 ? 's' : ''}?
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={deleteSelectedNotifications}
+              loading={deleting}
+            >
+              Delete {selectedIds.length} Notification{selectedIds.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Notification Detail Modal */}
+      <Modal
+        isOpen={!!viewingNotification}
+        onClose={() => setViewingNotification(null)}
+        title={viewingNotification?.title || 'Notification'}
+        size="md"
+      >
+        {viewingNotification && (() => {
+          const typeStyle = getTypeStyle(viewingNotification.type)
+          const priorityStyle = getPriorityStyle(viewingNotification.priority)
+          const IconComponent = typeStyle.icon
+
+          return (
+            <div style={{ padding: '8px 0' }}>
+              {/* Type and Priority Badges */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: typeStyle.bg,
+                  color: typeStyle.color,
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  textTransform: 'capitalize',
+                }}>
+                  <IconComponent style={{ width: '14px', height: '14px' }} />
+                  {typeStyle.label || viewingNotification.type.replace('_', ' ')}
+                </span>
+                <span style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: priorityStyle.bg,
+                  color: priorityStyle.color,
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  textTransform: 'capitalize',
+                }}>
+                  {viewingNotification.priority} Priority
+                </span>
+                {viewingNotification.isRead ? (
+                  <span style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#dcfce7',
+                    color: '#16a34a',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                  }}>
+                    ✓ Read
+                  </span>
+                ) : (
+                  <span style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                  }}>
+                    Unread
+                  </span>
+                )}
+              </div>
+
+              {/* Message Content */}
+              <div style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px',
+              }}>
+                <p style={{
+                  color: '#334155',
+                  fontSize: '15px',
+                  lineHeight: 1.7,
+                  margin: 0,
+                }}>
+                  {highlightMessage(viewingNotification.message, viewingNotification.metadata)}
+                </p>
+              </div>
+
+              {/* Timestamp */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '24px', color: '#64748b', fontSize: '13px' }}>
+                <FiClock style={{ width: '14px', height: '14px' }} />
+                <span>{formatFullDate(viewingNotification.createdAt)}</span>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                <Button variant="secondary" onClick={() => setViewingNotification(null)}>
+                  Close
+                </Button>
+                <Button
+                  variant="danger"
+                  icon={FiTrash2}
+                  onClick={() => {
+                    deleteNotification(viewingNotification._id)
+                  }}
+                >
+                  Delete Notification
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
     </PageContainer>
   )
 }
