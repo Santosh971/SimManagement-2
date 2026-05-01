@@ -135,6 +135,25 @@ export default function PaymentHistory() {
     const endDate = new Date(paidDate.getTime() + payment.planDuration * 24 * 60 * 60 * 1000)
     return formatDate(endDate)
   }
+  const filterLabelStyle = {
+  display: 'block',
+  fontSize: '12px',
+  fontWeight: '500',
+  color: '#374151',
+  marginBottom: '4px',
+}
+
+const filterInputStyle = {
+  width: '100%',
+  padding: '8px 10px',
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  fontSize: '13px',
+  outline: 'none',
+  boxSizing: 'border-box',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+}
 
   return (
     <PageContainer>
@@ -144,7 +163,7 @@ export default function PaymentHistory() {
       />
 
       {/* Filters */}
-      <Card style={{ marginBottom: '24px' }}>
+      {/* <Card style={{ marginBottom: '24px' }}>
         <CardBody>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <div>
@@ -190,37 +209,41 @@ export default function PaymentHistory() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Start Date</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                }}
-              />
-            </div>
+  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Start Date</label>
+  <input
+    type="date"
+    value={filters.startDate}
+    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+    onKeyDown={(e) => e.preventDefault()}
+    style={{
+      width: '100%',
+      padding: '8px 12px',
+      border: '1px solid #d1d5db',
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      cursor: 'pointer',
+    }}
+  />
+</div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>End Date</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                }}
-              />
-            </div>
+  <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>End Date</label>
+  <input
+    type="date"
+    value={filters.endDate}
+    onChange={(e) => handleFilterChange('endDate', e.target.value)}
+    onKeyDown={(e) => e.preventDefault()}
+    style={{
+      width: '100%',
+      padding: '8px 12px',
+      border: '1px solid #d1d5db',
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      cursor: 'pointer',
+    }}
+  />
+</div>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -255,7 +278,123 @@ export default function PaymentHistory() {
             </button>
           </div>
         </CardBody>
-      </Card>
+      </Card> */}
+
+      <Card style={{ marginBottom: '24px' }}>
+  <CardBody>
+
+    {/* Filters Grid */}
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+      gap: '12px',
+      marginBottom: '14px',
+    }}>
+
+      {/* Company */}
+      <div>
+        <label style={filterLabelStyle}>Company</label>
+        <select
+          value={filters.companyId}
+          onChange={(e) => handleFilterChange('companyId', e.target.value)}
+          style={filterInputStyle}
+        >
+          <option value="">All Companies</option>
+          {companies.map((company) => (
+            <option key={company._id} value={company._id}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Status */}
+      <div>
+        <label style={filterLabelStyle}>Status</label>
+        <select
+          value={filters.status}
+          onChange={(e) => handleFilterChange('status', e.target.value)}
+          style={filterInputStyle}
+        >
+          <option value="">All Status</option>
+          <option value="completed">Completed</option>
+          <option value="failed">Failed</option>
+          <option value="created">Pending</option>
+        </select>
+      </div>
+
+      {/* Start Date */}
+      <div>
+        <label style={filterLabelStyle}>Start Date</label>
+        <input
+          type="date"
+          value={filters.startDate}
+          onChange={(e) => handleFilterChange('startDate', e.target.value)}
+          onKeyDown={(e) => e.preventDefault()}
+          style={{ ...filterInputStyle, cursor: 'pointer' }}
+        />
+      </div>
+
+      {/* End Date */}
+      <div>
+        <label style={filterLabelStyle}>End Date</label>
+        <input
+          type="date"
+          value={filters.endDate}
+          onChange={(e) => handleFilterChange('endDate', e.target.value)}
+          onKeyDown={(e) => e.preventDefault()}
+          style={{ ...filterInputStyle, cursor: 'pointer' }}
+        />
+      </div>
+
+    </div>
+
+    {/* Action Buttons */}
+    <div style={{
+      display: 'flex',
+      gap: '10px',
+      flexWrap: 'wrap',
+    }}>
+      <button
+        onClick={applyFilters}
+        style={{
+          flex: '1 1 120px',
+          maxWidth: '180px',
+          padding: '8px 16px',
+          backgroundColor: '#2563eb',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Apply Filters
+      </button>
+      <button
+        onClick={clearFilters}
+        style={{
+          flex: '1 1 80px',
+          maxWidth: '120px',
+          padding: '8px 16px',
+          backgroundColor: 'white',
+          color: '#374151',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Clear
+      </button>
+    </div>
+
+  </CardBody>
+</Card>
 
       {/* Payment Table */}
       <Card>
@@ -271,27 +410,27 @@ export default function PaymentHistory() {
             </div>
           ) : (
             <>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Company</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>User</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Plan</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Billing</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Amount</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Valid Until</th>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '140px', whiteSpace: 'nowrap' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '180px' }}>Company</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '160px' }}>User</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '100px' }}>Plan</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '80px' }}>Billing</th>
+                      <th style={{ textAlign: 'right', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '100px' }}>Amount</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '110px', whiteSpace: 'nowrap' }}>Valid Until</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '90px' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.map((payment) => (
                       <tr key={payment._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap', minWidth: '140px' }}>
                           {formatDateTime(payment.paidAt || payment.createdAt)}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 16px', minWidth: '180px' }}>
                           <div style={{ fontWeight: '500', color: '#111827', fontSize: '14px' }}>
                             {payment.companyId?.name || '-'}
                           </div>
@@ -299,7 +438,7 @@ export default function PaymentHistory() {
                             {payment.companyId?.email || '-'}
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 16px', minWidth: '160px' }}>
                           <div style={{ fontWeight: '500', color: '#374151', fontSize: '14px' }}>
                             {payment.userId?.name || '-'}
                           </div>
@@ -307,19 +446,19 @@ export default function PaymentHistory() {
                             {payment.userId?.email || '-'}
                           </div>
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: '#111827', minWidth: '100px' }}>
                           {payment.planName}
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280', minWidth: '80px' }}>
                           {payment.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#111827', textAlign: 'right' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#111827', textAlign: 'right', minWidth: '100px' }}>
                           ₹{payment.amount?.toLocaleString()}
                         </td>
-                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap', minWidth: '110px' }}>
                           {getValidUntil(payment)}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
+                        <td style={{ padding: '12px 16px', minWidth: '90px' }}>
                           {getStatusBadge(payment.status)}
                         </td>
                       </tr>

@@ -42,6 +42,7 @@ export default function Reports() {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
 
   const isSuperAdmin = user?.role === 'super_admin'
+  const skipNextPageFetch = useRef(false)
 
   const reportTypes = [
     { id: 'sims', name: 'SIM Report', icon: FiSmartphone, description: 'Export SIM card data with status and details' },
@@ -93,6 +94,7 @@ export default function Reports() {
   // Fetch report when activeReport changes
   useEffect(() => {
     if (activeReport) {
+      skipNextPageFetch.current = true // Skip next page fetch to avoid double-fetch
       setPagination((prev) => ({ ...prev, page: 1, total: 0 }))
       fetchReport(1)
     }
@@ -100,7 +102,11 @@ export default function Reports() {
 
   // Fetch report when page changes
   useEffect(() => {
-    if (activeReport && pagination.page > 1) {
+    if (activeReport) {
+      if (skipNextPageFetch.current) {
+        skipNextPageFetch.current = false
+        return
+      }
       fetchReport(pagination.page)
     }
   }, [pagination.page])
@@ -207,7 +213,7 @@ export default function Reports() {
           </>
         )}
 
-        {activeReport === 'recharges' && (
+        {/* {activeReport === 'recharges' && (
           <>
             <StatCard
               title="Total Amount"
@@ -222,7 +228,43 @@ export default function Reports() {
               value={Object.entries(summary.byPaymentMethod || {}).map(([method, count]) => `${method}: ${count}`).join(' • ') || 'N/A'}
             />
           </>
-        )}
+        )} */}
+
+        {activeReport === 'recharges' && (
+  <>
+    <StatCard
+      title="Total Amount"
+      value={`₹${(summary.totalAmount || 0).toLocaleString()}`}
+    />
+    <StatCard
+      title="Average"
+      value={`₹${Math.round(summary.avgAmount || 0)}`}
+    />
+    <StatCard
+      title="Payment Methods"
+      value={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+          {Object.entries(summary.byPaymentMethod || {}).length > 0
+            ? Object.entries(summary.byPaymentMethod).map(([method, count]) => (
+                <div
+                  key={method}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
+                >
+                  <span style={{ fontSize: '14px', color: '#6b7280', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                    {method}
+                  </span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
+                    {count}
+                  </span>
+                </div>
+              ))
+            : <span style={{ fontSize: '13px', color: '#9ca3af' }}>N/A</span>
+          }
+        </div>
+      }
+    />
+  </>
+)}
 
         {activeReport === 'callLogs' && (
           <>

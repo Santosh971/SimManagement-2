@@ -13,8 +13,15 @@ export function PageContainer({ children, style }) {
       backgroundColor: '#f9fafb',
       ...style,
     }}>
-      <style>{animations.fadeIn}</style>
-      <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+      <style>{`
+        ${animations.fadeIn}
+        @media (max-width: 640px) {
+          .page-container-inner > div {
+            padding: 16px !important;
+          }
+        }
+      `}</style>
+      <div className="page-container-inner" style={{ animation: 'fadeIn 0.3s ease-out' }}>
         {children}
       </div>
     </div>
@@ -124,10 +131,23 @@ export function CardHeader({ title, subtitle, action, style }) {
 export function CardBody({ children, style }) {
   return (
     <div style={{
-      padding: '24px',
       ...style,
     }}>
-      {children}
+      <style>{`
+        @media (max-width: 640px) {
+          .card-body-responsive {
+            padding: 16px !important;
+          }
+        }
+        @media (min-width: 641px) {
+          .card-body-responsive {
+            padding: 24px !important;
+          }
+        }
+      `}</style>
+      <div className="card-body-responsive" style={{ padding: '24px' }}>
+        {children}
+      </div>
     </div>
   )
 }

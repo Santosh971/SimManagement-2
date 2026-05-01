@@ -361,50 +361,96 @@ export default function SuperAdminDashboard() {
 
         {/* Expiring Soon */}
         <Card>
-          <CardBody>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FiClock style={{ color: '#f59e0b' }} />
-                Expiring Subscriptions
-              </h3>
-              <Badge variant="warning">{data?.subscriptions?.expiringSoon?.length || 0} expiring</Badge>
+  <CardBody>
+    {/* Header */}
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '16px',
+      gap: '8px',
+      flexWrap: 'wrap',
+    }}>
+      <h3 style={{
+        fontSize: '15px',
+        fontWeight: '600',
+        color: '#111827',
+        margin: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '7px',
+      }}>
+        <FiClock style={{ color: '#f59e0b', width: '16px', height: '16px', flexShrink: 0 }} />
+        Expiring Subscriptions
+      </h3>
+      <Badge variant="warning">
+        {data?.subscriptions?.expiringSoon?.length || 0} expiring
+      </Badge>
+    </div>
+
+    {/* List */}
+    {data?.subscriptions?.expiringSoon && data.subscriptions.expiringSoon.length > 0 ? (
+      <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+        {data.subscriptions.expiringSoon.slice(0, 5).map((company) => {
+          const daysLeft = getDaysUntil(company.subscriptionEndDate)
+          return (
+            <div
+              key={company._id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 0',
+                borderBottom: '1px solid #f3f4f6',
+                gap: '10px',
+              }}
+            >
+              {/* Company info */}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{
+                  fontWeight: '500',
+                  color: '#111827',
+                  margin: 0,
+                  fontSize: '13px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {company.name}
+                </p>
+                <p style={{
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  margin: '2px 0 0 0',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {company.subscriptionId?.name || 'N/A'}
+                </p>
+              </div>
+
+              {/* Badge */}
+              <div style={{ flexShrink: 0 }}>
+                <Badge
+                  variant={daysLeft <= 1 ? 'danger' : daysLeft <= 3 ? 'warning' : 'success'}
+                  size="sm"
+                >
+                  {daysLeft <= 0 ? 'Expired' : `${daysLeft}d left`}
+                </Badge>
+              </div>
             </div>
-            {data?.subscriptions?.expiringSoon && data.subscriptions.expiringSoon.length > 0 ? (
-              <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                {data.subscriptions.expiringSoon.slice(0, 5).map((company) => {
-                  const daysLeft = getDaysUntil(company.subscriptionEndDate)
-                  return (
-                    <div
-                      key={company._id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '12px 0',
-                        borderBottom: '1px solid #f3f4f6',
-                      }}
-                    >
-                      <div>
-                        <p style={{ fontWeight: '500', color: '#111827', margin: 0 }}>{company.name}</p>
-                        <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                          {company.subscriptionId?.name || 'N/A'}
-                        </p>
-                      </div>
-                      <Badge variant={daysLeft <= 1 ? 'danger' : daysLeft <= 3 ? 'warning' : 'success'} size="sm">
-                        {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
-                      </Badge>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
-                <FiCheck style={{ width: '32px', height: '32px', marginBottom: '8px' }} />
-                <p>No expiring subscriptions</p>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+          )
+        })}
+      </div>
+    ) : (
+      <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af' }}>
+        {/* <FiClock style={{ width: '28px', height: '28px', marginBottom: '8px', opacity: 0.4 }} /> */}
+        <p style={{ margin: 0, fontSize: '13px' }}>No expiring subscriptions</p>
+      </div>
+    )}
+  </CardBody>
+</Card>
       </Grid>
 
       {/* Recent Companies */}

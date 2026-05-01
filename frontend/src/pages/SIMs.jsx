@@ -11,6 +11,7 @@ import {
   FiX,
   FiUser,
   FiUpload,
+  FiRefreshCw,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
@@ -1461,6 +1462,7 @@ export default function SIMs() {
   const [sims, setSims] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [searchQuery, setSearchQuery] = useState('') // Used to trigger search only on submit
   const [status, setStatus] = useState('')
   const [operator, setOperator] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
@@ -1475,19 +1477,17 @@ export default function SIMs() {
 
   const operators = ['Jio', 'Airtel', 'Vi', 'BSNL', 'MTNL', 'Other']
 
+  // Fetch SIMs when pagination or filters change
   useEffect(() => {
     fetchSIMs()
-    fetchMessagingStats()
-  }, [pagination.page])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, status, operator, searchQuery])
 
-  // Reset to page 1 when status or operator filter changes
+  // Fetch messaging stats on mount
   useEffect(() => {
-    if (pagination.page === 1) {
-      fetchSIMs()
-    } else {
-      setPagination((prev) => ({ ...prev, page: 1 }))
-    }
-  }, [status, operator])
+    fetchMessagingStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchUsers = async () => {
     try {
@@ -1508,7 +1508,7 @@ export default function SIMs() {
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
-        search,
+        search: searchQuery,
         ...(status && { status }),
         ...(operator && { operator }),
       })
@@ -1535,7 +1535,16 @@ export default function SIMs() {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    fetchSIMs()
+    setSearchQuery(search) // Update searchQuery to trigger fetch
+    setPagination((prev) => ({ ...prev, page: 1 }))
+  }
+
+  const handleReset = () => {
+    setSearch('')
+    setSearchQuery('')
+    setStatus('')
+    setOperator('')
+    setPagination((prev) => ({ ...prev, page: 1 }))
   }
 
   const handleExport = async () => {
@@ -1566,6 +1575,8 @@ export default function SIMs() {
         await api.post('/sims', data)
       }
       fetchSIMs()
+          fetchMessagingStats() // ✅ ADD THIS LINE
+
     } catch (error) {
       if (error.response?.status === 401) {
         throw new Error('Session expired. Please log in again.')
@@ -1742,7 +1753,7 @@ export default function SIMs() {
 
   return (
     <PageContainer>
-      <PageHeader
+      {/* <PageHeader
         title="SIM Management"
         description="Manage your SIM cards and their details"
         action={
@@ -1758,8 +1769,41 @@ export default function SIMs() {
             </Button>
           </div>
         }
-      />
+      /> */}
 
+<PageHeader
+  title="SIM Management"
+  description="Manage your SIM cards and their details"
+  action={
+    <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+      <Button
+        variant="secondary"
+        icon={FiDownload}
+        onClick={handleExport}
+        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
+      >
+        Export
+      </Button>
+
+      <Button
+        variant="secondary"
+        icon={FiUpload}
+        onClick={() => setShowBulkModal(true)}
+        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
+      >
+        Bulk Upload
+      </Button>
+
+      <Button
+        icon={FiPlus}
+        onClick={() => openModal()}
+        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
+      >
+        Add SIM
+      </Button>
+    </div>
+  }
+/>
       {/* Messaging Stats */}
       {messagingStats && (
         <Grid cols={4} gap={16} style={{ marginBottom: '24px' }}>
@@ -1808,7 +1852,7 @@ export default function SIMs() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value.replace(/[\t\n\r]+/g, '').trim())}
-                placeholder="Search by mobile number..."
+                placeholder="Search by mobile number or user name..."
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 40px',
@@ -1858,6 +1902,10 @@ export default function SIMs() {
               ))}
             </select>
             <Button type="submit">Search</Button>
+            <Button type="button" variant="secondary" onClick={handleReset}>
+              <FiRefreshCw style={{ width: '16px', height: '16px', marginRight: '6px' }} />
+              Reset
+            </Button>
           </form>
         </CardBody>
       </Card>

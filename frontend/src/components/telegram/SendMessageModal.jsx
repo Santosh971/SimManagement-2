@@ -639,144 +639,106 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                 )
               })()}
 
-              <div
-                style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                }}
-              >
-                {filteredAllSIMs.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
-                    No SIMs found
-                  </div>
-                ) : (
-                  filteredAllSIMs.map((sim) => (
-                    <div
-                      key={sim._id}
-                      style={{
-                        padding: '12px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderBottom: '1px solid #f3f4f6',
-                        // Show as linked only if phone verified
-                        backgroundColor: (sim.telegramChatId && sim.telegramPhoneVerified) ? '#f9fafb' : '#fff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            // Show green only if phone verified
-                            backgroundColor: (sim.telegramChatId && sim.telegramPhoneVerified) ? '#dcfce7' : '#fef3c7',
-                          }}
-                        >
-                          {(sim.telegramChatId && sim.telegramPhoneVerified) ? (
-                            <FiCheck style={{ color: '#16a34a' }} />
-                          ) : (
-                            <FiLink style={{ color: '#d97706' } } />
-                          )}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '500', fontSize: '13px' }}>
-                            {sim.mobileNumber}
-                            {/* Show LINKED badge only if phone verified */}
-                            {sim.telegramChatId && sim.telegramPhoneVerified && (
-                              <span style={{
-                                marginLeft: '8px',
-                                padding: '2px 6px',
-                                backgroundColor: '#dcfce7',
-                                color: '#16a34a',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: '600',
-                              }}>
-                                LINKED
-                              </span>
-                            )}
-                            {/* Show PENDING badge if chatId exists but not verified */}
-                            {sim.telegramChatId && !sim.telegramPhoneVerified && (
-                              <span style={{
-                                marginLeft: '8px',
-                                padding: '2px 6px',
-                                backgroundColor: '#fef3c7',
-                                color: '#d97706',
-                                borderRadius: '4px',
-                                fontSize: '10px',
-                                fontWeight: '600',
-                              }}>
-                                PENDING
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                            {sim.operator} • {sim.assignedTo?.name || 'Unassigned'}
-                          </div>
-                          {sim.assignedTo?.email ? (
-                            <div style={{ fontSize: '11px', color: '#16a34a' }}>
-                              📧 {sim.assignedTo.email}
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: '11px', color: '#dc2626' }}>
-                              ⚠️ No email assigned
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* Copy Link Button */}
-                        <button
-                          onClick={() => copyLink(sim._id, sim.mobileNumber)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '6px 10px',
-                            fontSize: '12px',
-                            border: '1px solid #0088cc',
-                            borderRadius: '6px',
-                            background: '#fff',
-                            color: '#0088cc',
-                            cursor: 'pointer',
-                          }}
-                          title="Copy link to clipboard"
-                        >
-                          <FiCopy style={{ width: '14px' }} />
-                          Copy Link
-                        </button>
-                        {/* Send Email Button */}
-                        <button
-                          onClick={() => sendEmailToSingle(sim._id, sim.mobileNumber)}
-                          disabled={sendingEmailId === sim._id || !sim.assignedTo?.email}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '6px 10px',
-                            fontSize: '12px',
-                            border: '1px solid #16a34a',
-                            borderRadius: '6px',
-                            background: sendingEmailId === sim._id ? '#f0fdf4' : (!sim.assignedTo?.email ? '#e5e7eb' : '#fff'),
-                            color: sendingEmailId === sim._id || !sim.assignedTo?.email ? '#9ca3af' : '#16a34a',
-                            cursor: sendingEmailId === sim._id || !sim.assignedTo?.email ? 'not-allowed' : 'pointer',
-                          }}
-                          title={sim.assignedTo?.email ? `Send link to ${sim.assignedTo.email}` : 'No email assigned'}
-                        >
-                          <FiMail style={{ width: '14px' }} />
-                          {sendingEmailId === sim._id ? 'Sending...' : 'Email'}
-                        </button>
-                      </div>
-                    </div>
-                  ))
+             <div className="max-h-[300px] overflow-y-auto border border-gray-200 rounded-lg">
+  {filteredAllSIMs.length === 0 ? (
+    <div className="p-5 text-center text-gray-500">
+      No SIMs found
+    </div>
+  ) : (
+    filteredAllSIMs.map((sim) => {
+      const isLinked = sim.telegramChatId && sim.telegramPhoneVerified;
+      const isPending = sim.telegramChatId && !sim.telegramPhoneVerified;
+
+      return (
+        <div
+          key={sim._id}
+          className={`p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 ${
+            isLinked ? "bg-gray-50" : "bg-white"
+          }`}
+        >
+          {/* LEFT SECTION */}
+          <div className="flex items-start sm:items-center gap-3 w-full">
+            {/* ICON */}
+            <div
+              className={`w-8 h-8 flex items-center justify-center rounded-md flex-shrink-0 ${
+                isLinked ? "bg-green-100" : "bg-yellow-100"
+              }`}
+            >
+              {isLinked ? (
+                <FiCheck className="text-green-600 text-sm" />
+              ) : (
+                <FiLink className="text-yellow-600 text-sm" />
+              )}
+            </div>
+
+            {/* TEXT */}
+            <div className="flex-1 min-w-0">
+              {/* NUMBER + BADGE */}
+              <div className="text-sm font-medium break-all">
+                {sim.mobileNumber}
+
+                {isLinked && (
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-green-100 text-green-600 rounded">
+                    LINKED
+                  </span>
+                )}
+
+                {isPending && (
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold bg-yellow-100 text-yellow-600 rounded">
+                    PENDING
+                  </span>
                 )}
               </div>
+
+              {/* OPERATOR */}
+              <div className="text-xs text-gray-500">
+                {sim.operator} • {sim.assignedTo?.name || "Unassigned"}
+              </div>
+
+              {/* EMAIL */}
+              {sim.assignedTo?.email ? (
+                <div className="text-xs text-green-600 break-all">
+                  📧 {sim.assignedTo.email}
+                </div>
+              ) : (
+                <div className="text-xs text-red-600">
+                  ⚠️ No email assigned
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT BUTTONS */}
+          <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+            {/* COPY BUTTON */}
+            <button
+              onClick={() => copyLink(sim._id, sim.mobileNumber)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-1.5 text-xs border border-[#0088cc] rounded-md text-[#0088cc] hover:bg-blue-50 transition"
+            >
+              <FiCopy className="text-sm" />
+              Copy
+            </button>
+
+            {/* EMAIL BUTTON */}
+            <button
+              onClick={() => sendEmailToSingle(sim._id, sim.mobileNumber)}
+              disabled={sendingEmailId === sim._id || !sim.assignedTo?.email}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-1.5 text-xs border rounded-md transition
+                ${
+                  sendingEmailId === sim._id || !sim.assignedTo?.email
+                    ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
+                    : "border-green-600 text-green-600 hover:bg-green-50"
+                }`}
+            >
+              <FiMail className="text-sm" />
+              {sendingEmailId === sim._id ? "Sending..." : "Email"}
+            </button>
+          </div>
+        </div>
+      );
+    })
+  )}
+</div>
             </>
           )}
 

@@ -297,107 +297,130 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
             {/* Recipients List */}
             <div
-              style={{
-                maxHeight: '280px',
-                overflowY: 'auto',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-              }}
-            >
-              {filteredRecipients.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
-                  {search ? 'No matching recipients found' : 'No recipients available'}
-                </div>
-              ) : (
-                filteredRecipients.map((recipient) => (
-                  <div
-                    key={recipient.id}
-                    onClick={() => toggleRecipient(recipient.id)}
-                    style={{
-                      padding: '12px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      backgroundColor: selectedIds.includes(recipient.id) ? '#eff6ff' : '#fff',
-                      borderBottom: '1px solid #f3f4f6',
-                      transition: 'background-color 0.15s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {/* Type Icon */}
-                      <div
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: recipient.type === 'sim' ? '#dbeafe' : '#dcfce7',
-                        }}
-                      >
-                        {recipient.type === 'sim' ? (
-                          <FiSmartphone style={{ color: '#2563eb' }} />
-                        ) : (
-                          <FiUser style={{ color: '#16a34a' }} />
-                        )}
-                      </div>
+  style={{
+    maxHeight: '280px',
+    overflowY: 'auto',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+  }}
+>
+  {filteredRecipients.length === 0 ? (
+    <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+      {search ? 'No matching recipients found' : 'No recipients available'}
+    </div>
+  ) : (
+    filteredRecipients.map((recipient) => (
+      <div
+        key={recipient.id}
+        onClick={() => toggleRecipient(recipient.id)}
+        style={{
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          backgroundColor: selectedIds.includes(recipient.id) ? '#eff6ff' : '#fff',
+          borderBottom: '1px solid #f3f4f6',
+          transition: 'background-color 0.15s',
+          gap: '12px',
+        }}
+      >
+        {/* Left: Icon + Info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
 
-                      {/* Info */}
-                      <div>
-                        <div style={{ fontWeight: '500', fontSize: '14px', color: '#111827' }}>
-                          {recipient.name}
-                          {recipient.type === 'sim' && recipient.status !== 'active' && (
-                            <span
-                              style={{
-                                marginLeft: '8px',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                backgroundColor: '#fef3c7',
-                                color: '#92400e',
-                              }}
-                            >
-                              {recipient.status}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                          <FiPhone style={{ width: '12px', height: '12px', marginRight: '4px' }} />
-                          {recipient.phoneNumber}
-                          {recipient.operator && ` • ${recipient.operator}`}
-                        </div>
-                      </div>
-                    </div>
+          {/* Type Icon */}
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            backgroundColor: recipient.type === 'sim' ? '#dbeafe' : '#dcfce7',
+          }}>
+            {recipient.type === 'sim' ? (
+              <FiSmartphone style={{ width: '16px', height: '16px', color: '#2563eb' }} />
+            ) : (
+              <FiUser style={{ width: '16px', height: '16px', color: '#16a34a' }} />
+            )}
+          </div>
 
-                    {/* Badge & Checkbox */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span
-                        style={{
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '500',
-                          backgroundColor: recipient.type === 'sim' ? '#eff6ff' : '#f0fdf4',
-                          color: recipient.type === 'sim' ? '#2563eb' : '#16a34a',
-                        }}
-                      >
-                        {recipient.type === 'sim' ? 'SIM' : 'User'}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(recipient.id)}
-                        onChange={() => toggleRecipient(recipient.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                      />
-                    </div>
-                  </div>
-                ))
+          {/* Info */}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {/* Name row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{
+                fontWeight: '500',
+                fontSize: '14px',
+                color: '#111827',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {recipient.name}
+              </span>
+              {recipient.type === 'sim' && recipient.status !== 'active' && (
+                <span style={{
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  backgroundColor: '#fef3c7',
+                  color: '#92400e',
+                  flexShrink: 0,
+                }}>
+                  {recipient.status}
+                </span>
               )}
             </div>
 
+            {/* Phone + Operator row */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              marginTop: '3px',
+              fontSize: '12px',
+              color: '#6b7280',
+            }}>
+              <FiPhone style={{ width: '11px', height: '11px', flexShrink: 0 }} />
+              <span style={{ whiteSpace: 'nowrap' }}>{recipient.phoneNumber}</span>
+              {recipient.operator && (
+                <>
+                  <span style={{ color: '#d1d5db' }}>•</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{recipient.operator}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Badge + Checkbox */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <span style={{
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontWeight: '500',
+            backgroundColor: recipient.type === 'sim' ? '#eff6ff' : '#f0fdf4',
+            color: recipient.type === 'sim' ? '#2563eb' : '#16a34a',
+            whiteSpace: 'nowrap',
+          }}>
+            {recipient.type === 'sim' ? 'SIM' : 'User'}
+          </span>
+          <input
+            type="checkbox"
+            checked={selectedIds.includes(recipient.id)}
+            onChange={() => toggleRecipient(recipient.id)}
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
+          />
+        </div>
+      </div>
+    ))
+  )}
+</div>
             {/* Selection Summary */}
             <div
               style={{

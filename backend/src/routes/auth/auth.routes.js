@@ -112,4 +112,20 @@ router.get('/profile', authController.getProfile);
 router.put('/profile', updateProfileValidation, validate, authController.updateProfile);
 router.post('/change-password', changePasswordValidation, validate, authController.changePassword);
 
+// Email Change Routes (protected)
+router.post('/email-change/request', [
+  body('newEmail').isEmail().withMessage('Please enter a valid new email address').normalizeEmail(),
+  body('password').notEmpty().withMessage('Password is required to change email'),
+], validate, authController.requestEmailChange);
+
+router.post('/email-change/verify-old', [
+  body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits'),
+], validate, authController.verifyOldEmailOTP);
+
+router.post('/email-change/verify-new', [
+  body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits'),
+], validate, authController.verifyNewEmailOTP);
+
+router.post('/email-change/cancel', authController.cancelEmailChange);
+
 module.exports = router;

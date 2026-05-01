@@ -34,7 +34,8 @@ api.interceptors.response.use(
     const isAuthRoute = error.config?.url?.includes('/auth/login') ||
                         error.config?.url?.includes('/auth/register') ||
                         error.config?.url?.includes('/auth/forgot-password') ||
-                        error.config?.url?.includes('/auth/reset-password')
+                        error.config?.url?.includes('/auth/reset-password') ||
+                        error.config?.url?.includes('/auth/email-change')
 
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token')

@@ -326,6 +326,35 @@ class CompanyController {
   }
 
   /**
+   * Update own company profile (for company admins)
+   * PUT /api/companies/my
+   * Admins can only update name, email, phone, website, and address
+   */
+  async updateMyCompany(req, res, next) {
+    try {
+      const company = await companyService.updateMyCompany(req.user.companyId, req.body, req.user);
+
+      // Audit log: COMPANY_PROFILE_UPDATE
+      await auditLogService.logAction({
+        action: 'COMPANY_PROFILE_UPDATE',
+        module: 'COMPANY',
+        description: `Updated company profile ${company.name}`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: company._id,
+        entityId: company._id,
+        entityType: 'COMPANY',
+        metadata: { changes: req.body },
+        req,
+      });
+
+      return successResponse(res, company, 'Company profile updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get company details by ID
    * GET /api/company/:companyId
    * Note: Users can only access their own company, super_admin can access any
@@ -338,6 +367,111 @@ class CompanyController {
         req.user.role
       );
       return successResponse(res, company);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Request company email change
+   * POST /api/companies/my/email-change/request
+   */
+  async requestCompanyEmailChange(req, res, next) {
+    try {
+      const { newEmail, password } = req.body;
+      const result = await companyService.requestCompanyEmailChange(
+        req.user.companyId,
+        newEmail,
+        password,
+        req.user
+      );
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'COMPANY_EMAIL_CHANGE_REQUEST',
+        module: 'COMPANY',
+        description: `Requested email change for company to ${newEmail}`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        entityId: req.user.companyId,
+        entityType: 'COMPANY',
+        metadata: { newEmail },
+        req,
+      });
+
+      return successResponse(res, result, 'Verification code sent to current company email');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Verify old email OTP for company email change
+   * POST /api/companies/my/email-change/verify-old
+   */
+  async verifyCompanyEmailOld(req, res, next) {
+    try {
+      const { otp } = req.body;
+      const result = await companyService.verifyCompanyEmailOld(req.user.companyId, otp);
+
+      return successResponse(res, result, 'Verification code sent to new email');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Verify new email OTP and complete company email change
+   * POST /api/companies/my/email-change/verify-new
+   */
+  async verifyCompanyEmailNew(req, res, next) {
+    try {
+      const { otp } = req.body;
+      const result = await companyService.verifyCompanyEmailNew(req.user.companyId, otp, req.user);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'COMPANY_EMAIL_CHANGE_COMPLETE',
+        module: 'COMPANY',
+        description: `Completed company email change to ${result.email}`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        entityId: req.user.companyId,
+        entityType: 'COMPANY',
+        metadata: { newEmail: result.email },
+        req,
+      });
+
+      return successResponse(res, result, 'Company email updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancel company email change
+   * POST /api/companies/my/email-change/cancel
+   */
+  async cancelCompanyEmailChange(req, res, next) {
+    try {
+      await companyService.cancelCompanyEmailChange(req.user.companyId);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'COMPANY_EMAIL_CHANGE_CANCEL',
+        module: 'COMPANY',
+        description: 'Cancelled company email change request',
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        entityId: req.user.companyId,
+        entityType: 'COMPANY',
+        req,
+      });
+
+      return successResponse(res, null, 'Email change request cancelled');
     } catch (error) {
       next(error);
     }

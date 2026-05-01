@@ -105,15 +105,15 @@ class AuditLogService {
       if (user.role === 'super_admin') {
         // Super admin can see all logs (no filter)
         // companyId will be null for super admin logs
-      } else if (user.role === 'admin') {
-        // Admin sees ONLY their company's logs
+      } else if (user.role === 'admin' || user.role === 'company_admin') {
+        // Admin and Company Admin see ONLY their company's logs
         // They should NOT see:
         // - Super admin logs (companyId: null)
         // - Other companies' logs
 
         // IMPORTANT: If admin has no company, return empty results
         if (!user.companyId) {
-          logger.warn('Admin user has no company assigned', { userId: user._id });
+          logger.warn('Admin user has no company assigned', { userId: user._id, role: user.role });
           return {
             data: [],
             total: 0,
@@ -175,8 +175,8 @@ class AuditLogService {
       if (user.role === 'super_admin') {
         // Super admin can see all logs
         return log;
-      } else if (user.role === 'admin') {
-        // Admin can only see logs from their company
+      } else if (user.role === 'admin' || user.role === 'company_admin') {
+        // Admin and Company Admin can only see logs from their company
         // [AUDIT LOG FIX] - Ensure proper ObjectId comparison
         const adminCompanyId = user.companyId instanceof mongoose.Types.ObjectId
           ? user.companyId.toString()
@@ -212,8 +212,8 @@ class AuditLogService {
       if (user.role === 'super_admin') {
         // Super admin can see all stats
         // No company filter needed
-      } else if (user.role === 'admin') {
-        // Admin can only see their company's stats
+      } else if (user.role === 'admin' || user.role === 'company_admin') {
+        // Admin and Company Admin can only see their company's stats
         // [AUDIT LOG FIX] - Convert companyId to ObjectId for proper comparison
         filters.companyId = user.companyId instanceof mongoose.Types.ObjectId
           ? user.companyId

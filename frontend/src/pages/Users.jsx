@@ -458,7 +458,7 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState(null)
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetUser, setResetUser] = useState(null)
-  const [stats, setStats] = useState({ total: 0, activeLast30Days: 0 })
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, activeLast30Days: 0 })
 
   useEffect(() => {
     fetchUsers()
@@ -502,7 +502,7 @@ export default function Users() {
   const fetchStats = async () => {
     try {
       const response = await api.get('/users/stats')
-      setStats(response.data.data || { total: 0, activeLast30Days: 0 })
+      setStats(response.data.data || { total: 0, active: 0, inactive: 0, activeLast30Days: 0 })
     } catch (error) {
       console.error('Failed to fetch user stats')
     }
@@ -525,6 +525,8 @@ export default function Users() {
       await api.post('/users', data)
     }
     fetchUsers()
+      fetchStats() // ✅ ADD THIS
+
   }
 
   const handleDelete = async (id) => {
@@ -534,6 +536,8 @@ export default function Users() {
       await api.delete(`/users/${id}`)
       toast.success('User deactivated successfully')
       fetchUsers()
+          fetchStats() // ✅ ADD THIS
+
     } catch (error) {
       toast.error('Failed to deactivate user')
     }
@@ -686,15 +690,15 @@ export default function Users() {
           iconBg="#eff6ff"
         />
         <StatCard
-          title="Active (Last 30 Days)"
-          value={stats.activeLast30Days}
+          title="Active Users"
+          value={stats.active}
           icon={FiUserCheck}
           iconColor="#16a34a"
           iconBg="#dcfce7"
         />
         <StatCard
-          title="Inactive"
-          value={stats.total - stats.activeLast30Days}
+          title="Inactive Users"
+          value={stats.inactive}
           icon={FiUserX}
           iconColor="#dc2626"
           iconBg="#fef2f2"

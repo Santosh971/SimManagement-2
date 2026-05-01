@@ -107,18 +107,43 @@ export default function PhoneInput({
 
   return (
     <div className={className} style={style}>
+      <style>{`
+        .phone-input-wrapper {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 480px) {
+          .phone-input-wrapper {
+            flex-direction: column;
+          }
+          .phone-country-select {
+            width: 100% !important;
+          }
+        }
+        @media (min-width: 481px) {
+          .phone-input-wrapper {
+            flex-wrap: nowrap;
+          }
+          .phone-country-select {
+            width: 100px !important;
+            min-width: 80px;
+            flex-shrink: 0;
+          }
+        }
+      `}</style>
       {label && (
         <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
           {label}
           {required && ' *'}
         </label>
       )}
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="phone-input-wrapper">
         <select
           value={countryCode}
           onChange={handleCountryCodeChange}
+          className="phone-country-select"
           style={{
-            width: '120px',
             padding: '10px 8px',
             border: '1px solid #d1d5db',
             borderRadius: '8px',
@@ -126,7 +151,6 @@ export default function PhoneInput({
             backgroundColor: '#ffffff',
             outline: 'none',
             boxSizing: 'border-box',
-            flexShrink: 0,
           }}
         >
           {countryCodes.map((c) => (
@@ -143,6 +167,7 @@ export default function PhoneInput({
           maxLength="15"
           style={{
             flex: 1,
+            minWidth: '0',
             padding: '10px 14px',
             border: '1px solid #d1d5db',
             borderRadius: '8px',

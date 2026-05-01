@@ -321,6 +321,12 @@ const Landing = () => {
     return iconMap[iconName] || FiSmartphone;
   };
 
+  // Handle logo click - scroll to top smoothly
+  const handleLogoClick = (e) => {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -328,11 +334,12 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Logo
-              linkTo="/"
-              size="default"
-              variant="dark"
-            />
+            <div onClick={handleLogoClick} className="cursor-pointer">
+              <Logo
+                size="default"
+                variant="dark"
+              />
+            </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
@@ -500,92 +507,7 @@ const Landing = () => {
           </div>
 
           {/* Hero Image/Dashboard Preview */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent z-10 pointer-events-none" />
-            <div className="bg-white rounded-2xl shadow-2xl border border-secondary-200 overflow-hidden">
-              {/* Browser Header */}
-              <div className="bg-secondary-100 px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-danger-500" />
-                  <div className="w-3 h-3 rounded-full bg-warning-500" />
-                  <div className="w-3 h-3 rounded-full bg-success-500" />
-                </div>
-                <div className="flex-1 bg-white rounded-md px-4 py-1.5 text-sm text-secondary-400 text-center">
-                  dashboard.simmanager.com
-                </div>
-              </div>
-              {/* Dashboard Preview */}
-              <div className="p-6 bg-secondary-50">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  {[
-                    { label: "Total SIMs", value: "127", color: "primary" },
-                    { label: "Active SIMs", value: "118", color: "success" },
-                    {
-                      label: "Upcoming Recharges",
-                      value: "12",
-                      color: "warning",
-                    },
-                    {
-                      label: "Call Logs Today",
-                      value: "2,456",
-                      color: "secondary",
-                    },
-                  ].map((stat, index) => (
-                    <div
-                      key={index}
-                      className="bg-white p-4 rounded-xl shadow-sm border border-secondary-100"
-                    >
-                      <p className="text-secondary-500 text-sm">{stat.label}</p>
-                      <p
-                        className={`text-2xl font-bold text-${stat.color}-600`}
-                      >
-                        {stat.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-secondary-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-secondary-900">
-                      Recent SIMs
-                    </h3>
-                    <span className="text-primary-600 text-sm font-medium">
-                      View All
-                    </span>
-                  </div>
-                  <div className="space-y-3">
-                    {[
-                      "+91 98765 43210",
-                      "+91 87654 32109",
-                      "+91 76543 21098",
-                    ].map((num, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between py-2 border-b border-secondary-100 last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                            <FiSmartphone className="w-5 h-5 text-primary-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-secondary-900">
-                              {num}
-                            </p>
-                            <p className="text-sm text-secondary-500">
-                              Jio • Maharashtra
-                            </p>
-                          </div>
-                        </div>
-                        <span className="px-3 py-1 bg-success-50 text-success-600 text-sm rounded-full">
-                          Active
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          
         </div>
       </section>
 
@@ -666,7 +588,7 @@ const Landing = () => {
                   </p>
                 </div>
                 {index < (content.howItWorks?.steps?.length || 4) - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-4 transform -translate-y-1/2">
+                  <div className="hidden lg:block absolute top-1/2 -right-8 transform -translate-y-1/2">
                     <FiArrowRight className="w-8 h-8 text-secondary-300" />
                   </div>
                 )}

@@ -654,13 +654,30 @@ class SimService {
       companyId = query.companyId;
     }
 
+    // [SEARCH BY ASSIGNED USER] - Find users matching search to include in SIM filter
+    let matchedUserIds = [];
+    if (search) {
+      // Find users whose name matches the search term (within the same company)
+      const userQuery = { name: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } };
+      if (companyId) {
+        userQuery.companyId = companyId;
+      }
+      const matchedUsers = await User.find(userQuery).select('_id');
+      matchedUserIds = matchedUsers.map(u => u._id);
+    }
+
     // [PHONE SEARCH FIX] - Escape special regex characters in search
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.$or = [
+      const searchConditions = [
         { mobileNumber: { $regex: escapedSearch, $options: 'i' } },
         { operator: { $regex: escapedSearch, $options: 'i' } },
       ];
+      // [ASSIGNED USER SEARCH] - Also search by assigned user name
+      if (matchedUserIds.length > 0) {
+        searchConditions.push({ assignedTo: { $in: matchedUserIds } });
+      }
+      filter.$or = searchConditions;
     }
 
     if (status) filter.status = status;

@@ -131,6 +131,25 @@ const UserSchema = new Schema({
     type: Number,
     default: 0,
   },
+  // Email change fields
+  emailChangeOTP: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  emailChangeOTPExpires: {
+    type: Date,
+    default: null,
+  },
+  emailChangeOTPVerified: {
+    type: Boolean,
+    default: false,
+  },
+  pendingNewEmail: {
+    type: String,
+    default: null,
+    trim: true,
+  },
   refreshToken: {
     type: String,
     default: null,

@@ -29,6 +29,25 @@ import {
   PhoneInput,
 } from '../components/ui'
 
+// Styles for CompanyModal
+const labelStyle = {
+  display: 'block',
+  marginBottom: '6px',
+  fontWeight: '500',
+  fontSize: '13px',
+  color: '#374151',
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  fontSize: '14px',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
 // Company Modal Component
 function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
   const [loading, setLoading] = useState(false)
@@ -145,277 +164,301 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
   if (!isOpen) return null
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+   <div
+  style={{
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+    padding: '16px',
+    boxSizing: 'border-box',
+  }}
+  onClick={onClose}
+>
+  <div
+    style={{
+      backgroundColor: '#ffffff',
+      borderRadius: '12px',
+      width: '100%',
+      maxWidth: '600px',
+      maxHeight: '90vh',
+      overflow: 'auto',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 50,
-    }} onClick={onClose}>
-      <div style={{
+      flexDirection: 'column',
+    }}
+    onClick={(e) => e.stopPropagation()}
+  >
+    {/* Sticky Header */}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 18px',
+        borderBottom: '1px solid #e5e7eb',
+        position: 'sticky',
+        top: 0,
         backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        width: '100%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
-        overflow: 'auto',
-      }} onClick={(e) => e.stopPropagation()}>
-        <div style={{
+        zIndex: 1,
+        flexShrink: 0,
+      }}
+    >
+      <h2 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#111827' }}>
+        {company ? 'Edit Company' : 'Add New Company'}
+      </h2>
+      <button
+        onClick={onClose}
+        style={{
+          padding: '6px',
+          borderRadius: '8px',
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 24px',
-          borderBottom: '1px solid #e5e7eb',
-        }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
-            {company ? 'Edit Company' : 'Add New Company'}
-          </h2>
-          <button onClick={onClose} style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-            <FiX style={{ width: '20px', height: '20px' }} />
-          </button>
+          justifyContent: 'center',
+        }}
+      >
+        <FiX style={{ width: '18px', height: '18px', color: '#6b7280' }} />
+      </button>
+    </div>
+
+    {/* Form */}
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        padding: '18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        flex: 1,
+      }}
+    >
+      {/* Company Name + Email */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+        <div>
+          <label style={labelStyle}>Company Name *</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Enter company name"
+            style={inputStyle}
+            required
+          />
         </div>
+        <div>
+          <label style={labelStyle}>Email *</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="company@example.com"
+            style={inputStyle}
+            required
+          />
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
-          {/* Basic Info */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Company Name *
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter company name"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Email *
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="company@example.com"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-                required
-              />
-            </div>
-          </div>
+      {/* Phone + Subscription Plan */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+        <PhoneInput
+          value={formData.phone}
+          onChange={handlePhoneChange}
+          label="Phone"
+          placeholder="Phone number"
+        />
+        {/* <div>
+          <label style={labelStyle}>Subscription Plan *</label>
+          <select
+            name="subscriptionId"
+            value={formData.subscriptionId}
+            onChange={handleChange}
+            style={inputStyle}
+            required
+            disabled={!!company}
+          >
+            <option value="">Select plan</option>
+            {subscriptions.map((sub) => (
+              <option key={sub._id} value={sub._id}>
+                {sub.name} - ₹{sub.price?.monthly || 0}/mo ({sub.subscriptionDuration || 30} days)
+              </option>
+            ))}
+          </select>
+        </div> */}
+      </div>
+ <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+     
+        <div>
+          <label style={labelStyle}>Subscription Plan *</label>
+          <select
+            name="subscriptionId"
+            value={formData.subscriptionId}
+            onChange={handleChange}
+            style={inputStyle}
+            required
+            disabled={!!company}
+          >
+            <option value="">Select plan</option>
+            {subscriptions.map((sub) => (
+              <option key={sub._id} value={sub._id}>
+                {sub.name} - ₹{sub.price?.monthly || 0}/mo ({sub.subscriptionDuration || 30} days)
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <PhoneInput
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              label="Phone"
-              placeholder="Phone number"
+      {/* Subscription Duration — Add only */}
+      {!company && (
+        <div>
+          <label style={labelStyle}>Subscription Duration (days)</label>
+          <input
+            type="number"
+            readOnly
+            name="subscriptionDuration"
+            value={formData.subscriptionDuration}
+            onChange={handleChange}
+            min="1"
+            max="365"
+            placeholder="Duration from selected plan"
+            style={{ ...inputStyle, backgroundColor: '#f9fafb', color: '#6b7280' }}
+          />
+          <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+            Auto-filled from selected plan. You can modify if needed.
+          </p>
+        </div>
+      )}
+
+      {/* Active Toggle — Edit only */}
+      {company && (
+        <div
+          style={{
+            padding: '12px 14px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={handleChange}
+              style={{ width: '16px', height: '16px', marginTop: '2px', flexShrink: 0, cursor: 'pointer' }}
             />
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Subscription Plan *
-              </label>
-              <select
-                name="subscriptionId"
-                value={formData.subscriptionId}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: '#ffffff',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-                required
-                disabled={!!company}
-              >
-                <option value="">Select plan</option>
-                {subscriptions.map((sub) => (
-                  <option key={sub._id} value={sub._id}>
-                    {sub.name} - ₹{sub.price?.monthly || 0}/mo ({sub.subscriptionDuration || 30} days)
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {!company && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Subscription Duration (days)
-              </label>
-              <input
-                type="number"
-                name="subscriptionDuration"
-                value={formData.subscriptionDuration}
-                onChange={handleChange}
-                min="1"
-                max="365"
-                placeholder="Duration from selected plan"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', margin: 0 }}>
-                Auto-filled from selected plan. You can modify if needed.
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#111827' }}>
+                Company Active
+              </span>
+              <p style={{ fontSize: '11px', color: '#6b7280', margin: '3px 0 0 0', lineHeight: '1.5' }}>
+                When inactive, company users cannot access the system regardless of subscription status.
               </p>
             </div>
-          )}
+          </label>
+        </div>
+      )}
 
-          {/* Active/Inactive Toggle - Only for Edit */}
-          {company && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  checked={formData.isActive}
-                  onChange={handleChange}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <div>
-                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                    Company Active
-                  </span>
-                  <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0 0' }}>
-                    When inactive, company users cannot access the system regardless of subscription status
-                  </p>
-                </div>
-              </label>
-            </div>
-          )}
+      {/* Address Section */}
+      <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
+        <h4 style={{ fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>
+          Address
+        </h4>
 
-          {/* Address */}
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px', marginTop: '16px' }}>
-            <h4 style={{ fontWeight: '500', marginBottom: '12px' }}>Address</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Street
-                </label>
-                <input
-                  type="text"
-                  name="address.street"
-                  value={formData['address.street']}
-                  onChange={handleChange}
-                  placeholder="Street address"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  City
-                </label>
-                <input
-                  type="text"
-                  name="address.city"
-                  value={formData['address.city']}
-                  onChange={handleChange}
-                  placeholder="City"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  State/Province
-                </label>
-                <input
-                  type="text"
-                  name="address.state"
-                  value={formData['address.state']}
-                  onChange={handleChange}
-                  placeholder="State"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Country
-                </label>
-                <input
-                  type="text"
-                  name="address.country"
-                  value={formData['address.country']}
-                  onChange={handleChange}
-                  placeholder="Country"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            </div>
+        {/* Street + City */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            gap: '12px',
+            marginBottom: '12px',
+          }}
+        >
+          <div>
+            <label style={labelStyle}>Street</label>
+            <input
+              type="text"
+              name="address.street"
+              value={formData['address.street']}
+              onChange={handleChange}
+              placeholder="Street address"
+              style={inputStyle}
+            />
           </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button loading={loading}>{company ? 'Update' : 'Create'}</Button>
+          <div>
+            <label style={labelStyle}>City</label>
+            <input
+              type="text"
+              name="address.city"
+              value={formData['address.city']}
+              onChange={handleChange}
+              placeholder="City"
+              style={inputStyle}
+            />
           </div>
-        </form>
+        </div>
+
+        {/* State + Country */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
+          <div>
+            <label style={labelStyle}>State / Province</label>
+            <input
+              type="text"
+              name="address.state"
+              value={formData['address.state']}
+              onChange={handleChange}
+              placeholder="State"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Country</label>
+            <input
+              type="text"
+              name="address.country"
+              value={formData['address.country']}
+              onChange={handleChange}
+              placeholder="Country"
+              style={inputStyle}
+            />
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Footer Buttons */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: '10px',
+          marginTop: '4px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          style={{ minWidth: '80px', fontSize: '13px' }}
+        >
+          Cancel
+        </Button>
+        <Button
+          loading={loading}
+          style={{ minWidth: '80px', fontSize: '13px' }}
+        >
+          {company ? 'Update' : 'Create'}
+        </Button>
+      </div>
+    </form>
+  </div>
+</div>
   )
 }
 
@@ -432,24 +475,27 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
   })
 
   useEffect(() => {
-    if (admin) {
-      setFormData({
-        name: admin.name || '',
-        email: admin.email || '',
-        phone: admin.phone || '',
-        password: '',
-        isActive: admin.isActive ?? true,
-      })
-    } else {
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        password: '',
-        isActive: true,
-      })
+    if (isOpen) {
+      if (admin) {
+        setFormData({
+          name: admin.name || '',
+          email: admin.email || '',
+          phone: admin.phone || '',
+          password: '',
+          isActive: admin.isActive ?? true,
+        })
+      } else {
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          password: '',
+          isActive: true,
+        })
+      }
+      setShowPassword(false)
     }
-  }, [admin])
+  }, [admin, isOpen])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -538,7 +584,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+        <form onSubmit={handleSubmit} style={{ padding: '24px' }} autoComplete="off">
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               Full Name *
@@ -551,6 +597,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter admin name"
+                autoComplete="off"
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 38px',
@@ -577,6 +624,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="admin@company.com"
+                autoComplete="off"
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 38px',
@@ -612,6 +660,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Minimum 8 characters"
+                  autoComplete="new-password"
                   style={{
                     width: '100%',
                     padding: '10px 38px 10px 38px',

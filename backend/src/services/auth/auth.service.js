@@ -427,7 +427,219 @@ class AuthService {
     delete userObj.resetPasswordToken;
     delete userObj.resetPasswordExpires;
     delete userObj.__v;
+    delete userObj.emailChangeOTP;
+    delete userObj.emailChangeOTPExpires;
+    delete userObj.emailChangeOTPVerified;
+    delete userObj.pendingNewEmail;
     return userObj;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // EMAIL CHANGE FEATURE - Secure multi-step verification
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Step 1: Request email change
+   * - Verifies password
+   * - Checks new email is not already used
+   * - Sends OTP to OLD email for verification
+   */
+  async requestEmailChange(userId, newEmail, password) {
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Incorrect password');
+    }
+
+    // Check if new email is same as current
+    if (newEmail.toLowerCase() === user.email.toLowerCase()) {
+      throw new AppError('New email cannot be the same as your current email', 400);
+    }
+
+    // Check if new email is already used
+    const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
+    if (existingUser) {
+      throw new ConflictError('This email is already registered in the system');
+    }
+
+    // Generate 6-digit OTP for old email verification
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Store OTP and pending new email
+    user.emailChangeOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    user.emailChangeOTPExpires = otpExpires;
+    user.emailChangeOTPVerified = false;
+    user.pendingNewEmail = newEmail.toLowerCase();
+    await user.save();
+
+    // Send OTP to OLD email
+    try {
+      await emailService.sendEmailChangeOTPOld(user.email, otp, user.name, newEmail);
+    } catch (error) {
+      // Clear the OTP if email fails
+      user.emailChangeOTP = undefined;
+      user.emailChangeOTPExpires = undefined;
+      user.pendingNewEmail = undefined;
+      await user.save();
+      throw new AppError('Failed to send verification email. Please try again.', 500);
+    }
+
+    return {
+      success: true,
+      message: 'Verification code sent to your current email',
+      oldEmail: user.email,
+      newEmail: newEmail,
+    };
+  }
+
+  /**
+   * Step 2: Verify OTP sent to OLD email
+   * - Validates the OTP
+   * - Sends OTP to NEW email for verification
+   */
+  async verifyOldEmailOTP(userId, otp) {
+    const user = await User.findById(userId).select('+emailChangeOTP');
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    // Check if email change was initiated
+    if (!user.emailChangeOTP || !user.emailChangeOTPExpires || !user.pendingNewEmail) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Check if OTP expired
+    if (user.emailChangeOTPExpires < Date.now()) {
+      user.emailChangeOTP = undefined;
+      user.emailChangeOTPExpires = undefined;
+      user.pendingNewEmail = undefined;
+      await user.save();
+      throw new AppError('Verification code has expired. Please start over.', 400);
+    }
+
+    // Verify OTP
+    const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    if (user.emailChangeOTP !== hashedOTP) {
+      throw new AppError('Invalid verification code', 400);
+    }
+
+    // Mark old email as verified
+    user.emailChangeOTPVerified = true;
+    await user.save();
+
+    // Generate new OTP for NEW email verification
+    const newOTP = crypto.randomInt(100000, 999999).toString();
+    const newOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Update OTP for new email verification
+    user.emailChangeOTP = crypto.createHash('sha256').update(newOTP).digest('hex');
+    user.emailChangeOTPExpires = newOTPExpires;
+    await user.save();
+
+    // Send OTP to NEW email
+    try {
+      await emailService.sendEmailChangeOTPNew(user.pendingNewEmail, newOTP, user.name, user.email);
+    } catch (error) {
+      throw new AppError('Failed to send verification email to new address. Please try again.', 500);
+    }
+
+    return {
+      success: true,
+      message: 'Verification code sent to your new email',
+    };
+  }
+
+  /**
+   * Step 3: Verify OTP sent to NEW email and complete email change
+   */
+  async verifyNewEmailOTP(userId, otp) {
+    const user = await User.findById(userId).select('+emailChangeOTP');
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    // Check if email change was initiated and old email was verified
+    if (!user.emailChangeOTP || !user.emailChangeOTPExpires || !user.pendingNewEmail || !user.emailChangeOTPVerified) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Check if OTP expired
+    if (user.emailChangeOTPExpires < Date.now()) {
+      user.emailChangeOTP = undefined;
+      user.emailChangeOTPExpires = undefined;
+      user.emailChangeOTPVerified = undefined;
+      user.pendingNewEmail = undefined;
+      await user.save();
+      throw new AppError('Verification code has expired. Please start over.', 400);
+    }
+
+    // Verify OTP
+    const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    if (user.emailChangeOTP !== hashedOTP) {
+      throw new AppError('Invalid verification code', 400);
+    }
+
+    // Double-check new email is still available
+    const existingUser = await User.findOne({ email: user.pendingNewEmail });
+    if (existingUser) {
+      user.emailChangeOTP = undefined;
+      user.emailChangeOTPExpires = undefined;
+      user.emailChangeOTPVerified = undefined;
+      user.pendingNewEmail = undefined;
+      await user.save();
+      throw new ConflictError('This email is now registered by another user. Please try a different email.');
+    }
+
+    const oldEmail = user.email;
+    const newEmail = user.pendingNewEmail;
+
+    // Update email
+    user.email = newEmail;
+    user.emailChangeOTP = undefined;
+    user.emailChangeOTPExpires = undefined;
+    user.emailChangeOTPVerified = undefined;
+    user.pendingNewEmail = undefined;
+    user.emailVerified = true;
+    await user.save();
+
+    // Send confirmation emails
+    try {
+      await emailService.sendEmailChangeConfirmationOld(oldEmail, user.name, newEmail);
+      await emailService.sendEmailChangeConfirmationNew(newEmail, user.name, oldEmail);
+    } catch (error) {
+      // Don't fail if confirmation emails fail
+      console.error('Failed to send confirmation emails:', error.message);
+    }
+
+    return {
+      success: true,
+      message: 'Email updated successfully',
+      newEmail: newEmail,
+    };
+  }
+
+  /**
+   * Cancel pending email change
+   */
+  async cancelEmailChange(userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    user.emailChangeOTP = undefined;
+    user.emailChangeOTPExpires = undefined;
+    user.emailChangeOTPVerified = undefined;
+    user.pendingNewEmail = undefined;
+    await user.save();
+
+    return { success: true, message: 'Email change cancelled' };
   }
 }
 

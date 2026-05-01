@@ -833,65 +833,81 @@ export default function WifiMonitor() {
       )}
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <Card>
-          <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total Networks</div>
-                <div style={{ fontSize: '24px', fontWeight: '600' }}>{stats?.totalNetworks || 0}</div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '8px' }}>
-                <FiWifi style={{ width: '24px', height: '24px', color: '#2563eb' }} />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
 
-        {/* <Card>
-          <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Active Devices</div>
-                <div style={{ fontSize: '24px', fontWeight: '600' }}>{stats?.activeDevices || 0}</div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: '#f0fdf4', borderRadius: '8px' }}>
-                <FiSmartphone style={{ width: '24px', height: '24px', color: '#16a34a' }} />
-              </div>
-            </div>
-          </CardBody>
-        </Card> */}
+  {/* TOTAL NETWORKS */}
+  <Card className="w-full">
+    <CardBody>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs sm:text-sm text-gray-500 mb-1">
+            Total Networks
+          </p>
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-800">
+            {stats?.totalNetworks || 0}
+          </h3>
+        </div>
 
-        <Card>
-          <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Avg Speed</div>
-                <div style={{ fontSize: '24px', fontWeight: '600' }}>{stats?.avgSpeed || '0'} Mbps</div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: '#fefce8', borderRadius: '8px' }}>
-                <FiActivity style={{ width: '24px', height: '24px', color: '#ca8a04' }} />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Active Alerts</div>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: stats?.activeAlerts > 0 ? '#dc2626' : '#16a34a' }}>
-                  {stats?.activeAlerts || 0}
-                </div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: stats?.activeAlerts > 0 ? '#fef2f2' : '#f0fdf4', borderRadius: '8px' }}>
-                <FiAlertCircle style={{ width: '24px', height: '24px', color: stats?.activeAlerts > 0 ? '#dc2626' : '#16a34a' }} />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+        <div className="p-2 sm:p-3 bg-blue-50 rounded-lg">
+          <FiWifi className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+        </div>
       </div>
+    </CardBody>
+  </Card>
+
+  {/* AVG SPEED */}
+  <Card className="w-full">
+    <CardBody>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs sm:text-sm text-gray-500 mb-1">
+            Avg Speed
+          </p>
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-800">
+            {stats?.avgSpeed || "0"} Mbps
+          </h3>
+        </div>
+
+        <div className="p-2 sm:p-3 bg-yellow-50 rounded-lg">
+          <FiActivity className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
+        </div>
+      </div>
+    </CardBody>
+  </Card>
+
+  {/* ACTIVE ALERTS */}
+  <Card className="w-full">
+    <CardBody>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs sm:text-sm text-gray-500 mb-1">
+            Active Alerts
+          </p>
+          <h3
+            className={`text-xl sm:text-2xl md:text-3xl font-semibold ${
+              stats?.activeAlerts > 0 ? "text-red-600" : "text-green-600"
+            }`}
+          >
+            {stats?.activeAlerts || 0}
+          </h3>
+        </div>
+
+        <div
+          className={`p-2 sm:p-3 rounded-lg ${
+            stats?.activeAlerts > 0 ? "bg-red-50" : "bg-green-50"
+          }`}
+        >
+          <FiAlertCircle
+            className={`w-5 h-5 sm:w-6 sm:h-6 ${
+              stats?.activeAlerts > 0 ? "text-red-600" : "text-green-600"
+            }`}
+          />
+        </div>
+      </div>
+    </CardBody>
+  </Card>
+
+</div>
 
       {/* Active Alerts */}
       {alerts.length > 0 && (

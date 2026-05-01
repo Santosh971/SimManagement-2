@@ -446,24 +446,33 @@ const LandingContent = () => {
       </div>
 
       {/* Mobile Section Selector - Shows on mobile, hides on md+ */}
-      <div className="block md:hidden mb-6">
-        <label className="block text-sm font-medium text-secondary-700 mb-2">Select Section</label>
-        <select
-          value={activeSection}
-          onChange={(e) => setActiveSection(e.target.value)}
-          className="w-full px-3 py-2.5 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-        >
-          {sections.map(section => (
-            <option key={section.id} value={section.id}>
-              {section.label}
-            </option>
-          ))}
-        </select>
-      </div>
+   
+{/* Tabs (only desktop) */}
+<div className="hidden lg:flex">
+  {/* Tabs UI */}
+</div>
 
+{/* Dropdown (mobile + tablet) */}
+<div className="block lg:hidden w-full mb-6">
+  <label className="block text-sm sm:text-base font-medium text-secondary-700 mb-2">
+    Select Section
+  </label>
+
+  <select
+    value={activeSection}
+    onChange={(e) => setActiveSection(e.target.value)}
+    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+  >
+    {sections.map((section) => (
+      <option key={section.id} value={section.id}>
+        {section.label}
+      </option>
+    ))}
+  </select>
+</div>
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar Navigation - Hides on mobile, shows on md+ */}
-        <div className="hidden md:block md:w-64 flex-shrink-0">
+        <div className="hidden lg:block md:w-64 flex-shrink-0">
           <nav className="space-y-1">
             {sections.map(section => (
               <button

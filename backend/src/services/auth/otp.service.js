@@ -105,6 +105,8 @@ class OTPService {
         expiresAt: otpExpires
       });
 
+
+      console.log("Email OTP : ", otp); // Log OTP for testing (remove in production)
       // Check if email bypass is enabled (for testing without SMTP)
       const isDevelopment = config.app.env === 'development';
       const bypassEmail = this.BYPASS_EMAIL || isDevelopment;

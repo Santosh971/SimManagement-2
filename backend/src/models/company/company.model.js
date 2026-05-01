@@ -75,6 +75,23 @@ const CompanySchema = new Schema({
     totalRecharges: { type: Number, default: 0 },
     totalSpent: { type: Number, default: 0 },
   },
+  // Email change verification fields
+  emailChangeOTP: {
+    type: String,
+    default: null,
+  },
+  emailChangeOTPExpires: {
+    type: Date,
+    default: null,
+  },
+  emailChangeOTPVerified: {
+    type: Boolean,
+    default: false,
+  },
+  pendingNewEmail: {
+    type: String,
+    default: null,
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',

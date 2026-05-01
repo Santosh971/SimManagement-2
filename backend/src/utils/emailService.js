@@ -1331,7 +1331,121 @@ class EmailService {
 
     return this.sendEmail({ to: user.email, subject, html });
   }
-  
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // EMAIL CHANGE - Verification Emails
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Send OTP to OLD email for email change verification
+   */
+  async sendEmailChangeOTPOld(toEmail, otp, userName, newEmail) {
+    const subject = 'Verify Email Change Request';
+    const body = `
+      ${paragraph(`Hi ${userName || 'there'},`)}
+      ${paragraph('We received a request to change your email address.')}
+      ${alertBox(`
+        <strong>Verification Code</strong><br />
+        <span style="font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #1A56DB;">${otp}</span>
+      `, { bg: '#EBF5FF', border: '#93C5FD', textColor: '#1E429F', label: 'Your Code' })}
+      ${paragraph(`<strong>New Email:</strong> ${newEmail}`)}
+      ${paragraph('<strong>This code expires in 10 minutes.</strong>', { color: '#DC2626' })}
+      ${paragraph('If you did not request this change, please ignore this email or contact support immediately.')}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
+      headerIcon: '&#9993;',
+      headerTitle: 'Email Change Request',
+      headerSubtitle: 'Verify your identity',
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: toEmail, subject, html });
+  }
+
+  /**
+   * Send OTP to NEW email for email change verification
+   */
+  async sendEmailChangeOTPNew(toEmail, otp, userName, oldEmail) {
+    const subject = 'Verify Your New Email Address';
+    const body = `
+      ${paragraph(`Hi ${userName || 'there'},`)}
+      ${paragraph('Please verify that this is your new email address.')}
+      ${alertBox(`
+        <strong>Verification Code</strong><br />
+        <span style="font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #057A55;">${otp}</span>
+      `, { bg: '#F3FAF7', border: '#BCF0DA', textColor: '#057A55', label: 'Your Code' })}
+      ${paragraph(`<strong>Previous Email:</strong> ${oldEmail}`)}
+      ${paragraph('<strong>This code expires in 10 minutes.</strong>', { color: '#DC2626' })}
+      ${paragraph('If you did not request this change, please ignore this email.')}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #057A55 0%, #047857 100%)`,
+      headerIcon: '&#9989;',
+      headerTitle: 'Verify New Email',
+      headerSubtitle: 'Confirm your new email address',
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: toEmail, subject, html });
+  }
+
+  /**
+   * Send confirmation to OLD email after successful email change
+   */
+  async sendEmailChangeConfirmationOld(toEmail, userName, newEmail) {
+    const subject = 'Your Email Has Been Changed';
+    const body = `
+      ${paragraph(`Hi ${userName || 'there'},`)}
+      ${paragraph('Your account email has been successfully changed.')}
+      ${alertBox(`
+        <strong>Previous Email:</strong> ${toEmail}<br />
+        <strong>New Email:</strong> ${newEmail}
+      `, { bg: '#FDF2F2', border: '#F8B4B8', textColor: '#9B1C1C', label: 'Email Changed' })}
+      ${paragraph('You will no longer receive emails at this address. All future communications will be sent to your new email.')}
+      ${paragraph('<strong>If you did not make this change, please contact support immediately.</strong>', { color: '#DC2626' })}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
+      headerIcon: '&#9888;',
+      headerTitle: 'Email Changed',
+      headerSubtitle: 'Security notification',
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: toEmail, subject, html });
+  }
+
+  /**
+   * Send confirmation to NEW email after successful email change
+   */
+  async sendEmailChangeConfirmationNew(toEmail, userName, oldEmail) {
+    const subject = 'Email Change Complete - Welcome!';
+    const body = `
+      ${paragraph(`Hi ${userName || 'there'},`)}
+      ${paragraph('Your email has been successfully updated.')}
+      ${alertBox(`
+        <strong>New Email:</strong> ${toEmail}<br />
+        <strong>Previous Email:</strong> ${oldEmail}
+      `, { bg: '#F3FAF7', border: '#BCF0DA', textColor: '#057A55', label: 'Confirmed' })}
+      ${paragraph('You can now log in using your new email address.')}
+      ${paragraph('All future communications will be sent to this email address.')}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #057A55 0%, #047857 100%)`,
+      headerIcon: '&#9989;',
+      headerTitle: 'Email Updated',
+      headerSubtitle: 'Your account is ready',
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: toEmail, subject, html });
+  }
+
   isReady() {
     return this.isConfigured && this.transporter !== null;
   }

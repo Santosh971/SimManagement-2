@@ -218,6 +218,87 @@ class AuthController {
       next(error);
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // EMAIL CHANGE - Multi-step verification
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  async requestEmailChange(req, res, next) {
+    try {
+      const { newEmail, password } = req.body;
+      const result = await authService.requestEmailChange(req.user.id, newEmail, password);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'EMAIL_CHANGE_REQUESTED',
+        module: 'AUTH',
+        description: `Email change requested from ${req.user.email} to ${newEmail}`,
+        performedBy: req.user.id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        metadata: { oldEmail: req.user.email, newEmail },
+        req,
+      });
+
+      return successResponse(res, result, 'Verification code sent to your current email');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyOldEmailOTP(req, res, next) {
+    try {
+      const { otp } = req.body;
+      const result = await authService.verifyOldEmailOTP(req.user.id, otp);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'EMAIL_CHANGE_OLD_VERIFIED',
+        module: 'AUTH',
+        description: 'Old email verified for email change',
+        performedBy: req.user.id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        req,
+      });
+
+      return successResponse(res, result, 'Verification code sent to your new email');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyNewEmailOTP(req, res, next) {
+    try {
+      const { otp } = req.body;
+      const result = await authService.verifyNewEmailOTP(req.user.id, otp);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'EMAIL_CHANGE_COMPLETED',
+        module: 'AUTH',
+        description: `Email changed from ${req.user.email} to ${result.newEmail}`,
+        performedBy: req.user.id,
+        role: req.user.role,
+        companyId: req.user.companyId,
+        metadata: { oldEmail: req.user.email, newEmail: result.newEmail },
+        req,
+      });
+
+      return successResponse(res, result, 'Email updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancelEmailChange(req, res, next) {
+    try {
+      const result = await authService.cancelEmailChange(req.user.id);
+      return successResponse(res, result, 'Email change cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

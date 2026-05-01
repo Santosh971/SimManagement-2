@@ -111,6 +111,10 @@ class AuditLogController {
       // Apply role-based filtering
       // [AUDIT LOG FIX] - Convert companyId to ObjectId for proper comparison
       if (req.user.role !== 'super_admin') {
+        // Admin and Company Admin can only export their company's logs
+        if (!req.user.companyId) {
+          return res.status(403).json({ success: false, message: 'No company assigned' });
+        }
         filters.companyId = req.user.companyId instanceof mongoose.Types.ObjectId
           ? req.user.companyId
           : new mongoose.Types.ObjectId(req.user.companyId);

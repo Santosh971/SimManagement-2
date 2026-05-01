@@ -330,7 +330,6 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
-                <FiCheck style={{ width: '32px', height: '32px', marginBottom: '8px' }} />
                 <p>No upcoming recharges</p>
               </div>
             )}
@@ -351,7 +350,6 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>
-                <FiCheck style={{ width: '32px', height: '32px', marginBottom: '8px' }} />
                 <p>All recharges up to date</p>
               </div>
             )}

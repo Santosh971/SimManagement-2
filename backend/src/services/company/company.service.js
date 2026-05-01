@@ -664,6 +664,44 @@ class CompanyService {
   }
 
   /**
+   * Update own company profile (for company admins)
+   * Admins can only update: name, phone, website, address
+   * Email changes require separate verification process
+   * @param {string} companyId - Company ID
+   * @param {Object} updateData - Data to update
+   * @param {Object} user - Requesting user
+   * @returns {Object} Updated company
+   */
+  async updateMyCompany(companyId, updateData, user) {
+    // Only allow specific fields to be updated (email removed - requires verification)
+    const allowedUpdates = ['name', 'phone', 'website', 'address'];
+    const updates = {};
+
+    Object.keys(updateData).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = updateData[key];
+      }
+    });
+
+    // If phone is being updated, normalize it
+    if (updates.phone) {
+      updates.phone = updates.phone.trim();
+    }
+
+    const company = await Company.findByIdAndUpdate(
+      companyId,
+      updates,
+      { new: true, runValidators: true }
+    ).populate('subscriptionId', 'name price limits');
+
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    return this.mapCompanyResponse(company);
+  }
+
+  /**
    * Map company document to safe response object
    * @param {Object} company - Company document
    * @returns {Object} Mapped response
@@ -693,6 +731,230 @@ class CompanyService {
       createdAt: company.createdAt,
       settings: company.settings || {},
     };
+  }
+
+  /**
+   * Request company email change - Step 1
+   * Verifies admin password and sends OTP to current company email
+   */
+  async requestCompanyEmailChange(companyId, newEmail, password, user) {
+    const crypto = require('crypto');
+    const User = require('../../models/auth/user.model');
+    const emailService = require('../../utils/emailService');
+
+    // Get company
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    // Verify user's password (the admin making the request)
+    const adminUser = await User.findById(user._id).select('+password');
+    if (!adminUser) {
+      throw new NotFoundError('User');
+    }
+
+    const isPasswordValid = await adminUser.comparePassword(password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Incorrect password');
+    }
+
+    // Check if new email is same as current
+    if (newEmail.toLowerCase() === company.email.toLowerCase()) {
+      throw new AppError('New email cannot be the same as the current company email', 400);
+    }
+
+    // Check if new email is already used by another company
+    const existingCompany = await Company.findOne({ email: newEmail.toLowerCase() });
+    if (existingCompany) {
+      throw new ConflictError('This email is already used by another company');
+    }
+
+    // Check if new email is already used by a user
+    const existingUser = await User.findOne({ email: newEmail.toLowerCase() });
+    if (existingUser) {
+      throw new ConflictError('This email is already registered as a user in the system');
+    }
+
+    // Generate 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Store OTP and pending new email
+    company.emailChangeOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    company.emailChangeOTPExpires = otpExpires;
+    company.emailChangeOTPVerified = false;
+    company.pendingNewEmail = newEmail.toLowerCase();
+    await company.save();
+
+    // Send OTP to current company email
+    try {
+      await emailService.sendEmailChangeOTPOld(company.email, otp, company.name, newEmail);
+    } catch (error) {
+      // Clear the OTP if email fails
+      company.emailChangeOTP = undefined;
+      company.emailChangeOTPExpires = undefined;
+      company.pendingNewEmail = undefined;
+      await company.save();
+      throw new AppError('Failed to send verification email. Please try again.', 500);
+    }
+
+    return {
+      success: true,
+      message: 'Verification code sent to current company email',
+      oldEmail: company.email,
+      newEmail: newEmail,
+    };
+  }
+
+  /**
+   * Verify old email OTP - Step 2
+   * Validates OTP and sends new OTP to the new email
+   */
+  async verifyCompanyEmailOld(companyId, otp) {
+    const crypto = require('crypto');
+    const emailService = require('../../utils/emailService');
+
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    // Check if email change was initiated
+    if (!company.emailChangeOTP || !company.emailChangeOTPExpires || !company.pendingNewEmail) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Check if OTP expired
+    if (company.emailChangeOTPExpires < Date.now()) {
+      company.emailChangeOTP = undefined;
+      company.emailChangeOTPExpires = undefined;
+      company.pendingNewEmail = undefined;
+      await company.save();
+      throw new AppError('Verification code has expired. Please start over.', 400);
+    }
+
+    // Verify OTP
+    const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    if (company.emailChangeOTP !== hashedOTP) {
+      throw new AppError('Invalid verification code', 400);
+    }
+
+    // Mark old email as verified
+    company.emailChangeOTPVerified = true;
+    await company.save();
+
+    // Generate new OTP for NEW email verification
+    const newOTP = crypto.randomInt(100000, 999999).toString();
+    const newOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Update OTP for new email verification
+    company.emailChangeOTP = crypto.createHash('sha256').update(newOTP).digest('hex');
+    company.emailChangeOTPExpires = newOTPExpires;
+    await company.save();
+
+    // Send OTP to NEW email
+    try {
+      await emailService.sendEmailChangeOTPNew(company.pendingNewEmail, newOTP, company.name, company.email);
+    } catch (error) {
+      throw new AppError('Failed to send verification email to new address. Please try again.', 500);
+    }
+
+    return {
+      success: true,
+      message: 'Verification code sent to the new email',
+    };
+  }
+
+  /**
+   * Verify new email OTP and complete email change - Step 3
+   */
+  async verifyCompanyEmailNew(companyId, otp, user) {
+    const crypto = require('crypto');
+    const User = require('../../models/auth/user.model');
+    const emailService = require('../../utils/emailService');
+
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    // Check if email change was initiated and old email was verified
+    if (!company.emailChangeOTP || !company.emailChangeOTPExpires || !company.pendingNewEmail || !company.emailChangeOTPVerified) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Check if OTP expired
+    if (company.emailChangeOTPExpires < Date.now()) {
+      company.emailChangeOTP = undefined;
+      company.emailChangeOTPExpires = undefined;
+      company.emailChangeOTPVerified = undefined;
+      company.pendingNewEmail = undefined;
+      await company.save();
+      throw new AppError('Verification code has expired. Please start over.', 400);
+    }
+
+    // Verify OTP
+    const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    if (company.emailChangeOTP !== hashedOTP) {
+      throw new AppError('Invalid verification code', 400);
+    }
+
+    // Double-check new email is still available
+    const existingCompany = await Company.findOne({ email: company.pendingNewEmail });
+    if (existingCompany) {
+      throw new ConflictError('This email is now used by another company. Please try a different email.');
+    }
+
+    const existingUser = await User.findOne({ email: company.pendingNewEmail });
+    if (existingUser) {
+      throw new ConflictError('This email is now registered as a user. Please try a different email.');
+    }
+
+    // Store old email for confirmation
+    const oldEmail = company.email;
+
+    // Update company email
+    company.email = company.pendingNewEmail;
+
+    // Clear email change fields
+    company.emailChangeOTP = undefined;
+    company.emailChangeOTPExpires = undefined;
+    company.emailChangeOTPVerified = undefined;
+    company.pendingNewEmail = undefined;
+
+    await company.save();
+
+    // Send confirmation emails
+    try {
+      await emailService.sendEmailChangeConfirmationOld(oldEmail, company.name, company.email);
+      await emailService.sendEmailChangeConfirmationNew(company.email, company.name, oldEmail);
+    } catch (error) {
+      // Email failed but email change is complete, just log the error
+      console.error('Failed to send confirmation emails:', error);
+    }
+
+    return this.mapCompanyResponse(company);
+  }
+
+  /**
+   * Cancel company email change
+   */
+  async cancelCompanyEmailChange(companyId) {
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    // Clear email change fields
+    company.emailChangeOTP = undefined;
+    company.emailChangeOTPExpires = undefined;
+    company.emailChangeOTPVerified = undefined;
+    company.pendingNewEmail = undefined;
+
+    await company.save();
+
+    return { success: true };
   }
 }
 

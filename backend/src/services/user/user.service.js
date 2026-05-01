@@ -268,12 +268,19 @@ class UserService {
   async getUserStats(companyId) {
     // [HARD DELETE] Removed isActive: true filter - users are now hard deleted
     const totalUsers = await User.countDocuments({ companyId });
-    const activeUsers = await User.countDocuments({ companyId, lastLogin: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
+    // Active users = users with isActive: true
+    const activeUsers = await User.countDocuments({ companyId, isActive: true });
+    // Inactive users = users with isActive: false
+    const inactiveUsers = await User.countDocuments({ companyId, isActive: false });
+    // Users who logged in within last 30 days (activity tracking)
+    const activeLast30Days = await User.countDocuments({ companyId, lastLogin: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } });
     const adminCount = await User.countDocuments({ companyId, role: 'admin' });
 
     return {
       total: totalUsers,
-      activeLast30Days: activeUsers,
+      active: activeUsers,
+      inactive: inactiveUsers,
+      activeLast30Days: activeLast30Days,
       admins: adminCount,
     };
   }
