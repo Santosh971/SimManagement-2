@@ -172,24 +172,66 @@ class DeviceService {
     }
 
     // 6. [WIFI ACCESS VALIDATION] - Find WiFi network
-    const wifi = await WifiNetwork.findOne({
+    // Log search criteria for debugging
+    logger.info('[WIFI METRICS] Searching for WiFi network', {
+      simCompanyId: sim.companyId,
+      simId: sim._id,
+      ssid,
+      bssid
+    });
+
+    // Try to find WiFi network with flexible BSSID matching
+    // Priority: 1. Exact SSID + BSSID match, 2. SSID match (ignore BSSID)
+    let wifi = await WifiNetwork.findOne({
       companyId: sim.companyId,
       isActive: true,
       $or: [
-        { ssid, bssid },
-        { wifiName: ssid, bssid },
-        { ssid, bssid: { $exists: false } }, // fallback for networks without BSSID
-        { wifiName: ssid, bssid: { $exists: false } }
+        { ssid, bssid },                        // Exact SSID + BSSID match
+        { wifiName: ssid, bssid },              // wifiName + BSSID match
       ]
     });
 
+    // If not found, try matching by SSID only (for mesh/dual-band networks)
     if (!wifi) {
+      logger.info('[WIFI METRICS] Exact BSSID not found, trying SSID-only match', { ssid, bssid });
+
+      wifi = await WifiNetwork.findOne({
+        companyId: sim.companyId,
+        isActive: true,
+        $or: [
+          { ssid },
+          { wifiName: ssid }
+        ]
+      });
+
+      if (wifi) {
+        logger.info('[WIFI METRICS] WiFi found by SSID (BSSID ignored)', {
+          wifiId: wifi._id,
+          wifiName: wifi.wifiName,
+          ssid: wifi.ssid,
+          storedBssid: wifi.bssid,
+          receivedBssid: bssid
+        });
+      }
+    }
+
+    if (!wifi) {
+      // Log all WiFi networks for this company for debugging
+      const allWifiNetworks = await WifiNetwork.find({ companyId: sim.companyId });
       logger.warn('[WIFI METRICS] WiFi network not found', {
         ssid,
         bssid,
-        companyId: sim.companyId
+        companyId: sim.companyId,
+        availableNetworks: allWifiNetworks.map(w => ({
+          id: w._id,
+          name: w.wifiName,
+          ssid: w.ssid,
+          bssid: w.bssid,
+          isActive: w.isActive,
+          assignedSims: w.assignedSims
+        }))
       });
-      throw new NotFoundError('WiFi network not found');
+      throw new NotFoundError('WiFi network not found. Please ensure the WiFi network is created in admin panel with matching SSID.');
     }
 
     // 7. [SIM-BASED ACCESS VALIDATION] - Check if SIM is allowed for this WiFi
@@ -202,14 +244,16 @@ class DeviceService {
       throw new ForbiddenError('SIM not authorized for this WiFi network');
     }
 
-    // 8. [BSSID VALIDATION] - Verify BSSID if set on WiFi network
-    if (wifi.bssid && wifi.bssid !== bssid) {
-      logger.warn('[WIFI METRICS] BSSID mismatch - possible WiFi spoofing', {
+    // 8. [BSSID VALIDATION] - Log if BSSID doesn't match (but don't reject)
+    // This is common for mesh networks, dual-band routers, and when users change routers
+    if (wifi.bssid && wifi.bssid !== bssid && bssid) {
+      logger.info('[WIFI METRICS] BSSID mismatch - likely mesh/dual-band network', {
         wifiId: wifi._id,
-        expectedBssid: wifi.bssid,
-        receivedBssid: bssid
+        wifiName: wifi.wifiName,
+        storedBssid: wifi.bssid,
+        receivedBssid: bssid,
+        note: 'This is normal for mesh networks, dual-band routers, or when router was replaced'
       });
-      throw new ValidationError('Invalid WiFi router (BSSID mismatch)');
     }
 
     // 9. Update SIM last seen and metrics tracking

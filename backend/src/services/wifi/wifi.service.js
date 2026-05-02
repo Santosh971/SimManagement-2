@@ -245,7 +245,7 @@ class WifiService {
   }
 
   /**
-   * Delete WiFi network (soft delete)
+   * Delete WiFi network (hard delete - permanently remove from database)
    */
   async deleteWifiNetwork(wifiId, user) {
     const filter = { _id: wifiId };
@@ -254,21 +254,31 @@ class WifiService {
       filter.companyId = user.companyId;
     }
 
-    // Unassign all devices first
-    await WifiDevice.updateMany(
-      { wifiId },
-      { wifiId: null, isActive: false }
-    );
-
-    const network = await WifiNetwork.findOneAndUpdate(
-      filter,
-      { isActive: false },
-      { new: true }
-    );
+    // First, find the network to verify it exists
+    const network = await WifiNetwork.findOne(filter);
 
     if (!network) {
       throw new NotFoundError('WiFi network');
     }
+
+    // Delete all related WiFi metrics
+    await WifiMetric.deleteMany({ wifiId: network._id });
+    logger.info('[WIFI] Deleted related metrics', { wifiId: network._id });
+
+    // Delete all related WiFi alerts
+    await WifiAlert.deleteMany({ wifiId: network._id });
+    logger.info('[WIFI] Deleted related alerts', { wifiId: network._id });
+
+    // Unassign all devices
+    await WifiDevice.updateMany(
+      { wifiId: network._id },
+      { wifiId: null, isActive: false }
+    );
+    logger.info('[WIFI] Unassigned devices', { wifiId: network._id });
+
+    // Hard delete the WiFi network
+    await WifiNetwork.deleteOne({ _id: network._id });
+    logger.info('[WIFI] WiFi network deleted permanently', { wifiId: network._id, name: network.wifiName });
 
     return true;
   }
