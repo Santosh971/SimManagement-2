@@ -8,6 +8,9 @@ import {
   FiSearch,
   FiSmartphone,
   FiUser,
+  FiPause,
+  FiPlay,
+  FiRefreshCw,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -38,6 +41,7 @@ export default function SmsLogs() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
   const [stats, setStats] = useState(null)
+  const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
 
   // Debounced search
   useEffect(() => {
@@ -69,6 +73,19 @@ export default function SmsLogs() {
     }
   }, [type, simId, userId, sender, dateRange.start, dateRange.end])
 
+  // Auto-refresh polling (every 20 seconds)
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      // Silent refresh - don't show loading spinner
+      fetchSmsLogs(true)
+      fetchStats()
+    }, 20000) // 20 seconds
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, pagination.page, type, simId, userId, sender, dateRange.start, dateRange.end])
+
   const fetchSims = async () => {
     try {
       const response = await api.get('/sims?limit=100')
@@ -87,9 +104,11 @@ export default function SmsLogs() {
     }
   }
 
-  const fetchSmsLogs = async () => {
+  const fetchSmsLogs = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
@@ -106,10 +125,15 @@ export default function SmsLogs() {
       setSmsLogs(response.data.data || [])
       setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
     } catch (error) {
-      toast.error('Failed to fetch SMS logs')
+      // Only show toast error for manual refresh, not polling
+      if (!silent) {
+        toast.error('Failed to fetch SMS logs')
+      }
       setSmsLogs([])
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -120,6 +144,11 @@ export default function SmsLogs() {
     } catch (error) {
       console.error('Failed to fetch stats')
     }
+  }
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    fetchSmsLogs()
   }
 
   const handleExport = async () => {
@@ -402,7 +431,7 @@ export default function SmsLogs() {
             )}
 
             {/* Sender Filter */}
-            <input
+            {/* <input
               type="text"
               value={sender}
               onChange={(e) => setSender(e.target.value)}
@@ -415,7 +444,7 @@ export default function SmsLogs() {
                 minWidth: '120px',
                 outline: 'none',
               }}
-            />
+            /> */}
           </div>
 
           {/* Date Range and Actions */}
@@ -450,8 +479,38 @@ export default function SmsLogs() {
                 }}
               />
             </div>
-            <Button onClick={fetchSmsLogs}>Apply Filters</Button>
+            <Button onClick={() => fetchSmsLogs()}>Apply Filters</Button>
             <Button variant="ghost" onClick={resetFilters}>Reset</Button>
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                border: `1px solid ${autoRefresh ? '#16a34a' : '#d1d5db'}`,
+                borderRadius: '8px',
+                background: autoRefresh ? '#dcfce7' : '#fff',
+                color: autoRefresh ? '#16a34a' : '#6b7280',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+              }}
+            >
+              {autoRefresh ? (
+                <>
+                  <FiPlay style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh ON
+                </>
+              ) : (
+                <>
+                  <FiPause style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh OFF
+                </>
+              )}
+            </button>
           </div>
         </CardBody>
       </Card>

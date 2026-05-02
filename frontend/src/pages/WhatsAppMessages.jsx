@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { FiMessageCircle, FiSend, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi'
+import { FiMessageCircle, FiSend, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle, FiPause, FiPlay } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import SendMessageModal from '../components/whatsapp/SendMessageModal'
 import {
@@ -27,6 +27,7 @@ export default function WhatsAppMessages() {
     phoneNumber: '',
   })
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10 })
+  const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
 
   // FIXED: Fetch data when page or filters change
   useEffect(() => {
@@ -42,9 +43,23 @@ export default function WhatsAppMessages() {
     }
   }, [filters.status, filters.phoneNumber])
 
-  const fetchData = async () => {
+  // Auto-refresh polling (every 20 seconds)
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      // Silent refresh - don't show loading spinner
+      fetchData(true)
+    }, 20000) // 20 seconds
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, pagination.page, filters.status, filters.phoneNumber])
+
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
@@ -66,9 +81,14 @@ export default function WhatsAppMessages() {
       setStats(statsRes.data.data)
     } catch (error) {
       console.error('Failed to fetch messages:', error)
-      toast.error('Failed to load messages')
+      // Only show toast error for manual refresh, not polling
+      if (!silent) {
+        toast.error('Failed to load messages')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -245,7 +265,8 @@ export default function WhatsAppMessages() {
       {/* Filters */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {/* First row: Filters */}
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '12px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
                 Status
@@ -289,11 +310,46 @@ export default function WhatsAppMessages() {
                 }}
               />
             </div>
-            {/* FIXED: Refresh button with loading state */}
             <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
               {loading ? 'Loading...' : 'Refresh'}
             </Button>
+
+            <div>
+               <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                border: `1px solid ${autoRefresh ? '#16a34a' : '#d1d5db'}`,
+                borderRadius: '8px',
+                background: autoRefresh ? '#dcfce7' : '#fff',
+                color: autoRefresh ? '#16a34a' : '#6b7280',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {autoRefresh ? (
+                <>
+                  <FiPlay style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh ON
+                </>
+              ) : (
+                <>
+                  <FiPause style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh OFF
+                </>
+              )}
+            </button>
           </div>
+            </div>
+          </div>
+         
         </CardBody>
       </Card>
 

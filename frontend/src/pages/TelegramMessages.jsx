@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { FiSend, FiRefreshCw, FiCheck, FiX, FiAlertCircle } from 'react-icons/fi'
+import { FiSend, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiPause, FiPlay } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import SendMessageModal from '../components/telegram/SendMessageModal'
 import {
@@ -27,6 +27,7 @@ export default function TelegramMessages() {
     simId: '',
   })
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10 })
+  const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
 
   // Fetch data when page changes
   useEffect(() => {
@@ -42,9 +43,23 @@ export default function TelegramMessages() {
     }
   }, [filters.status, filters.simId])
 
-  const fetchData = async () => {
+  // Auto-refresh polling (every 15 seconds)
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      // Silent refresh - don't show loading spinner
+      fetchData(true)
+    }, 15000) // 15 seconds
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, pagination.page, filters.status, filters.simId])
+
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
@@ -66,9 +81,14 @@ export default function TelegramMessages() {
       setStats(statsRes.data.data)
     } catch (error) {
       console.error('Failed to fetch messages:', error)
-      toast.error('Failed to load messages')
+      // Only show toast error for manual refresh, not polling
+      if (!silent) {
+        toast.error('Failed to load messages')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -241,34 +261,66 @@ export default function TelegramMessages() {
       {/* Filters */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                style={{
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minWidth: '140px',
-                  outline: 'none',
-                }}
-              >
-                <option value="">All Status</option>
-                <option value="sent">Sent</option>
-                <option value="delivered">Delivered</option>
-                <option value="replied">Replied</option>
-                <option value="inactive">Inactive</option>
-                <option value="failed">Failed</option>
-              </select>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    minWidth: '140px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="sent">Sent</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="replied">Replied</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
             </div>
-            <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
-              {loading ? 'Loading...' : 'Refresh'}
-            </Button>
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                border: `1px solid ${autoRefresh ? '#16a34a' : '#d1d5db'}`,
+                borderRadius: '8px',
+                background: autoRefresh ? '#dcfce7' : '#fff',
+                color: autoRefresh ? '#16a34a' : '#6b7280',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+              }}
+            >
+              {autoRefresh ? (
+                <>
+                  <FiPlay style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh ON
+                </>
+              ) : (
+                <>
+                  <FiPause style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh OFF
+                </>
+              )}
+            </button>
           </div>
         </CardBody>
       </Card>

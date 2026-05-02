@@ -624,7 +624,7 @@ export default function CallAutomation() {
           </div>
 
           {/* Stats */}
-          {config && (
+          {/* {config && (
             <div style={{
               marginTop: '24px',
               padding: '16px',
@@ -665,7 +665,7 @@ export default function CallAutomation() {
                 <div style={{ fontWeight: '600', fontSize: '14px' }}>{targetSimIds.length}</div>
               </div>
             </div>
-          )}
+          )} */}
         </CardBody>
       </Card>
     </PageContainer>

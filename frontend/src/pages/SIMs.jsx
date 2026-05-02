@@ -856,22 +856,23 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                 required
               />
             </div>
-            {currentConfig.autoDetectOperator && formData.mobileNumber.length === 10 && (
+            {/* {currentConfig.autoDetectOperator && formData.mobileNumber.length === 10 && (
               <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
                 {detectingOperator ? 'Detecting operator...' : 'Operator will be auto-detected'}
               </p>
-            )}
+            )} */}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Operator {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
+                Operator * {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
               </label>
               {/* [DYNAMIC OPERATOR] - Show dropdown for supported countries, input for others */}
               {showOperatorDropdown ? (
                 <select
                   name="operator"
+                  required
                   value={formData.operator}
                   onChange={handleChange}
                   disabled={detectingOperator}
@@ -912,10 +913,11 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Status
+                Status * 
               </label>
               <select
                 name="status"
+                required
                 value={formData.status}
                 onChange={handleChange}
                 style={{
@@ -940,11 +942,12 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           {!hideCircleField && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Circle {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
+                Circle * {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
               </label>
               {showCircleDropdown ? (
                 <select
                   name="circle"
+                  required
                   value={formData.circle}
                   onChange={handleChange}
                   style={{
@@ -980,6 +983,8 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
               ) : showCircleInput ? (
                 <input
                   type="text"
+                  required
+
                   name="circle"
                   value={formData.circle}
                   onChange={handleChange}
@@ -1000,7 +1005,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               <FiUser style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
-              Assigned User
+              Assigned User *
             </label>
             {loadingUsers ? (
               <div style={{ padding: '10px 14px', color: '#6b7280', fontSize: '14px' }}>
@@ -1020,6 +1025,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
             ) : (
               <select
                 name="assignedTo"
+                required
                 value={formData.assignedTo}
                 onChange={handleChange}
                 style={{
@@ -1753,57 +1759,56 @@ export default function SIMs() {
 
   return (
     <PageContainer>
-      {/* <PageHeader
-        title="SIM Management"
-        description="Manage your SIM cards and their details"
-        action={
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Button variant="secondary" icon={FiDownload} onClick={handleExport}>
-              Export
-            </Button>
-            <Button variant="secondary" icon={FiUpload} onClick={() => setShowBulkModal(true)}>
-              Bulk Upload
-            </Button>
-            <Button icon={FiPlus} onClick={() => openModal()}>
-              Add SIM
-            </Button>
-          </div>
-        }
-      /> */}
 
-<PageHeader
-  title="SIM Management"
-  description="Manage your SIM cards and their details"
-  action={
-    <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-      <Button
-        variant="secondary"
-        icon={FiDownload}
-        onClick={handleExport}
-        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
-      >
-        Export
-      </Button>
+<div className="mb-6">
 
-      <Button
-        variant="secondary"
-        icon={FiUpload}
-        onClick={() => setShowBulkModal(true)}
-        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
-      >
-        Bulk Upload
-      </Button>
+  {/* HEADER CONTAINER */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-      <Button
-        icon={FiPlus}
-        onClick={() => openModal()}
-        className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 whitespace-nowrap"
-      >
-        Add SIM
-      </Button>
+    {/* LEFT: TITLE + DESCRIPTION */}
+    <div>
+      <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
+        SIM Management
+      </h1>
+      <p className="text-xs sm:text-sm text-gray-500 mt-1">
+        Manage your SIM cards and their details
+      </p>
     </div>
-  }
-/>
+
+    {/* RIGHT: ACTION BUTTONS */}
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+
+      {/* EXPORT */}
+      <button
+        onClick={handleExport}
+        className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg bg-white text-gray-700 text-[11px] sm:text-xs md:text-sm font-medium"
+      >
+        <FiDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+        <span>Export</span>
+      </button>
+
+      {/* BULK UPLOAD */}
+      <button
+        onClick={() => setShowBulkModal(true)}
+        className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg bg-white text-gray-700 text-[11px] sm:text-xs md:text-sm font-medium"
+      >
+        <FiUpload className="w-3 h-3 sm:w-4 sm:h-4" />
+        <span>Bulk Upload</span>
+      </button>
+
+      {/* ADD SIM */}
+      <button
+        onClick={() => openModal()}
+        className="flex items-center gap-1 sm:gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-blue-600 text-white text-[11px] sm:text-xs md:text-sm font-medium"
+      >
+        <FiPlus className="w-3 h-3 sm:w-4 sm:h-4" />
+        <span>Add SIM</span>
+      </button>
+
+    </div>
+
+  </div>
+</div>
       {/* Messaging Stats */}
       {messagingStats && (
         <Grid cols={4} gap={16} style={{ marginBottom: '24px' }}>

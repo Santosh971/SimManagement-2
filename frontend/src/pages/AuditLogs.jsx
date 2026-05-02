@@ -741,9 +741,9 @@ const AuditLogs = () => {
                 </span>
               )}
               {/* Chevron only on mobile */}
-              <span className="lg:hidden">
+              {/* <span className="lg:hidden">
                 {showFilters ? <FiChevronUp className="shrink-0" /> : <FiChevronDown className="shrink-0" />}
-              </span>
+              </span> */}
             </button>
 
             {hasActiveFilters && (

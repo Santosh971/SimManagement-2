@@ -549,10 +549,10 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
                 {stats?.avgSpeed || '0'} Mbps
               </div>
             </div>
-            <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+            {/* <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Devices</div>
               <div style={{ fontSize: '24px', fontWeight: '600' }}>{stats?.deviceCount || 0}</div>
-            </div>
+            </div> */}
           </div>
 
           {/* Network Info (SSID, BSSID) */}

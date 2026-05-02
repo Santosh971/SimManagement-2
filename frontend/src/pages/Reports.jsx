@@ -324,7 +324,7 @@ export default function Reports() {
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.mobileNumber}</td>
-              <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '13px' }}>{item.simNumber}</td>
+            
               <td style={{ padding: '12px 16px' }}>{item.operator}</td>
               <td style={{ padding: '12px 16px' }}>
                 <Badge variant={item.status === 'active' ? 'success' : item.status === 'inactive' ? 'danger' : 'warning'}>
@@ -386,7 +386,7 @@ export default function Reports() {
     const getHeaders = () => {
       switch (activeReport) {
         case 'sims':
-          return ['Mobile', 'SIM Number', 'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To']
+          return ['Mobile',  'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To']
         case 'recharges':
           return ['Mobile', 'Operator', 'Amount', 'Validity', 'Plan', 'Method', 'Date']
         case 'callLogs':
