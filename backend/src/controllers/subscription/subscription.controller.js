@@ -151,6 +151,24 @@ class SubscriptionController {
       next(error);
     }
   }
+
+  async getUsage(req, res, next) {
+    try {
+      const usage = await subscriptionService.getPlanUsage(req.params.id);
+      return successResponse(res, usage);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllUsage(req, res, next) {
+    try {
+      const usage = await subscriptionService.getAllPlansUsage();
+      return successResponse(res, usage);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new SubscriptionController();

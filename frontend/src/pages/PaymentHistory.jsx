@@ -26,6 +26,8 @@ export default function PaymentHistory() {
     total: 0,
     totalPages: 0,
   })
+  const today = new Date().toISOString().split('T')[0];
+
 
   // Filters
   const [filters, setFilters] = useState({
@@ -325,15 +327,17 @@ const filterInputStyle = {
 
       {/* Start Date */}
       <div>
-        <label style={filterLabelStyle}>Start Date</label>
-        <input
-          type="date"
-          value={filters.startDate}
-          onChange={(e) => handleFilterChange('startDate', e.target.value)}
-          onKeyDown={(e) => e.preventDefault()}
-          style={{ ...filterInputStyle, cursor: 'pointer' }}
-        />
-      </div>
+  <label style={filterLabelStyle}>Start Date</label>
+  <input
+    type="date"
+    value={filters.startDate}
+    max={today} // ✅ restrict future dates
+    onChange={(e) => handleFilterChange('startDate', e.target.value)}
+    onKeyDown={(e) => e.preventDefault()}
+    style={{ ...filterInputStyle, cursor: 'pointer' }}
+  />
+</div>
+
 
       {/* End Date */}
       <div>

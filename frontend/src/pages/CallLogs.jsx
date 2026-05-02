@@ -869,6 +869,8 @@ export default function CallLogs() {
   if (loading && callLogs.length === 0) {
     return <PageContainer><Spinner size="lg" /></PageContainer>
   }
+  const today = new Date().toISOString().split('T')[0];
+
 
   return (
     <PageContainer>
@@ -919,12 +921,16 @@ export default function CallLogs() {
                 {sims.map(s => <option key={s._id} value={s._id}>{s.mobileNumber} ({s.operator})</option>)}
               </select>
 
-              <input
-                type="date" value={dateRange.start}
-                onKeyDown={(e) => e.preventDefault()}
-                onChange={(e) => setDateRange(p => ({ ...p, start: e.target.value }))}
-                style={{ ...inputBase, cursor: 'pointer' }}
-              />
+             <input
+  type="date"
+  value={dateRange.start}
+  max={today} // ✅ restrict future dates
+  onKeyDown={(e) => e.preventDefault()}
+  onChange={(e) =>
+    setDateRange(p => ({ ...p, start: e.target.value }))
+  }
+  style={{ ...inputBase, cursor: 'pointer' }}
+/>
               <input
                 type="date" value={dateRange.end}
                 onKeyDown={(e) => e.preventDefault()}

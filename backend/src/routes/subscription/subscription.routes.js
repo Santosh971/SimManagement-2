@@ -39,7 +39,9 @@ router.use(authenticate);
 
 // All authenticated users can view plans
 router.get('/', subscriptionController.getAll);
+router.get('/usage/all', authorize('super_admin'), subscriptionController.getAllUsage);
 router.get('/:id', subscriptionController.getById);
+router.get('/:id/usage', authorize('super_admin'), subscriptionController.getUsage);
 router.get('/stats', authorize('super_admin'), subscriptionController.getStats);
 
 // Super admin only routes

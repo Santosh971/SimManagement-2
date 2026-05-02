@@ -1,4 +1,5 @@
 const Subscription = require('../../models/subscription/subscription.model');
+const Company = require('../../models/company/company.model');
 const { NotFoundError, ConflictError } = require('../../utils/errors');
 
 class SubscriptionService {
@@ -63,13 +64,27 @@ class SubscriptionService {
   }
 
   async deletePlan(planId) {
-    const plan = await Subscription.findByIdAndDelete(planId);
+    // Check if plan exists
+    const plan = await Subscription.findById(planId);
 
     if (!plan) {
       throw new NotFoundError('Subscription plan');
     }
 
-    return true;
+    // Check if any companies are using this plan
+    const companiesUsingPlan = await Company.countDocuments({ subscriptionId: planId });
+
+    if (companiesUsingPlan > 0) {
+      throw new ConflictError(
+        `This plan is currently used by ${companiesUsingPlan} business${companiesUsingPlan > 1 ? 'es' : ''}. You cannot delete it.`
+      );
+    }
+
+    // Safe to delete - no companies using this plan
+    await Subscription.findByIdAndDelete(planId);
+
+    // Return the plan object for audit log
+    return plan;
   }
 
   async togglePlanStatus(planId) {
@@ -126,6 +141,52 @@ class SubscriptionService {
       yearlySavings: plan.calculateYearlySavings(),
       formattedPrice: plan.formattedPrice,
     }));
+  }
+
+  /**
+   * Get usage statistics for a specific plan
+   * Returns count of companies using the plan
+   */
+  async getPlanUsage(planId) {
+    const plan = await Subscription.findById(planId);
+
+    if (!plan) {
+      throw new NotFoundError('Subscription plan');
+    }
+
+    const companiesCount = await Company.countDocuments({ subscriptionId: planId });
+    const activeCompaniesCount = await Company.countDocuments({
+      subscriptionId: planId,
+      isActive: true
+    });
+
+    return {
+      planId,
+      planName: plan.name,
+      totalCompanies: companiesCount,
+      activeCompanies: activeCompaniesCount,
+      canDelete: companiesCount === 0
+    };
+  }
+
+  /**
+   * Get usage statistics for all plans
+   */
+  async getAllPlansUsage() {
+    const plans = await Subscription.find({}).sort({ sortOrder: 1 });
+
+    const plansWithUsage = await Promise.all(
+      plans.map(async (plan) => {
+        const companiesCount = await Company.countDocuments({ subscriptionId: plan._id });
+        return {
+          ...plan.toObject(),
+          companiesCount,
+          canDelete: companiesCount === 0
+        };
+      })
+    );
+
+    return plansWithUsage;
   }
 }
 

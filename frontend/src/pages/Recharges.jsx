@@ -1409,6 +1409,7 @@ export default function Recharges() {
       </PageContainer>
     )
   }
+const today = new Date().toISOString().split('T')[0];
 
   return (
     <PageContainer>
@@ -1507,12 +1508,16 @@ export default function Recharges() {
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 sm:gap-3 items-center">
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
-              className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none"
-            />
+           <input
+  type="date"
+  value={dateRange.start}
+  max={today} // ✅ restrict future dates
+  onChange={(e) =>
+    setDateRange((prev) => ({ ...prev, start: e.target.value }))
+  }
+  onKeyDown={(e) => e.preventDefault()} // optional (prevents manual typing)
+  className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
+/>
             <input
               type="date"
               value={dateRange.end}

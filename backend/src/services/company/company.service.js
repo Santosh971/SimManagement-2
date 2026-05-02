@@ -503,7 +503,7 @@ class CompanyService {
 
       console.log(`[DELETE] Admin ${admin.email} (${adminId}) deleted`);
 
-      return true;
+      return admin;
     } catch (error) {
       await session.abortTransaction();
       session.endSession();

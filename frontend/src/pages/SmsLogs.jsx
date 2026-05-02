@@ -208,6 +208,8 @@ export default function SmsLogs() {
     return message.substring(0, maxLength) + '...'
   }
 
+  const today = new Date().toISOString().split('T')[0];
+
   const columns = [
     {
       key: 'type',
@@ -294,6 +296,7 @@ export default function SmsLogs() {
       </PageContainer>
     )
   }
+
 
   return (
     <PageContainer>
@@ -454,6 +457,7 @@ export default function SmsLogs() {
               <input
                 type="date"
                 value={dateRange.start}
+                max={today}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
                 style={{
                   padding: '10px 14px',

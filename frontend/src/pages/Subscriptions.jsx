@@ -302,7 +302,6 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
                 Max SIMs
-                <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '4px' }}>(-1 for unlimited)</span>
               </label>
               <input
                 type="number"
@@ -324,7 +323,6 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
                 Max Users
-                <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '4px' }}>(-1 for unlimited)</span>
               </label>
               <input
                 type="number"
@@ -755,6 +753,7 @@ export default function Subscriptions() {
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [selectedBilling, setSelectedBilling] = useState('monthly')
   const [statusFilter, setStatusFilter] = useState('all') // 'all', 'active', 'inactive'
+  const [planUsage, setPlanUsage] = useState({}) // Store usage count per plan
 
   const isSuperAdmin = user?.role === 'super_admin'
 
@@ -776,11 +775,29 @@ export default function Subscriptions() {
 
       const response = await api.get('/subscriptions', { params })
       setSubscriptions(response.data.data || [])
+
+      // Fetch usage data for super admins
+      if (isSuperAdmin) {
+        fetchPlanUsage()
+      }
     } catch (error) {
       toast.error('Failed to fetch subscriptions')
       setSubscriptions([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPlanUsage = async () => {
+    try {
+      const response = await api.get('/subscriptions/usage/all')
+      const usageData = {}
+      ;(response.data.data || []).forEach(plan => {
+        usageData[plan._id] = plan.companiesCount || 0
+      })
+      setPlanUsage(usageData)
+    } catch (error) {
+      console.error('Failed to fetch plan usage:', error)
     }
   }
 
@@ -795,6 +812,14 @@ export default function Subscriptions() {
   }
 
   const deletePlan = async (id, planName) => {
+    // Check usage first
+    const usageCount = planUsage[id] || 0
+    if (usageCount > 0) {
+      toast.error(`This plan is used by ${usageCount} business${usageCount > 1 ? 'es' : ''}. You cannot delete it.`)
+      return
+    }
+
+    // Confirm deletion
     if (!window.confirm(`Are you sure you want to delete "${planName}"? This action cannot be undone.`)) {
       return
     }
@@ -804,7 +829,8 @@ export default function Subscriptions() {
       toast.success('Plan deleted successfully')
       fetchSubscriptions()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete plan')
+      const errorMessage = error.response?.data?.message || 'Failed to delete plan'
+      toast.error(errorMessage)
     }
   }
 
@@ -1012,18 +1038,33 @@ export default function Subscriptions() {
               </p>
             </div>
             {isSuperAdmin && (
-              <span style={{
-                padding: '4px 10px',
-                borderRadius: '4px',
-                backgroundColor: plan.isActive ? '#dcfce7' : '#fef2f2',
-                color: plan.isActive ? '#16a34a' : '#dc2626',
-                fontSize: '12px',
-                fontWeight: '500',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}>
-                {plan.isActive ? 'Active' : 'Inactive'}
-              </span>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {/* Usage count badge */}
+                {planUsage[plan._id] > 0 && (
+                  <span style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#dbeafe',
+                    color: '#1d4ed8',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {planUsage[plan._id]} {planUsage[plan._id] === 1 ? 'business' : 'businesses'}
+                  </span>
+                )}
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  backgroundColor: plan.isActive ? '#dcfce7' : '#fef2f2',
+                  color: plan.isActive ? '#16a34a' : '#dc2626',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {plan.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
             )}
           </div>
 
@@ -1125,9 +1166,12 @@ export default function Subscriptions() {
                 onClick={() => deletePlan(plan._id, plan.name)}
                 style={{
                   flexShrink: 0, padding: '10px 12px',
-                  backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fecaca',
+                  backgroundColor: planUsage[plan._id] > 0 ? '#f3f4f6' : '#fef2f2',
+                  color: planUsage[plan._id] > 0 ? '#9ca3af' : '#dc2626',
+                  borderColor: planUsage[plan._id] > 0 ? '#e5e7eb' : '#fecaca',
+                  cursor: planUsage[plan._id] > 0 ? 'not-allowed' : 'pointer',
                 }}
-                title="Delete Plan"
+                title={planUsage[plan._id] > 0 ? `Used by ${planUsage[plan._id]} business${planUsage[plan._id] > 1 ? 'es' : ''} - cannot delete` : 'Delete Plan'}
               >
                 <FiTrash2 style={{ width: '16px', height: '16px' }} />
               </Button>

@@ -642,6 +642,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
 
           <PhoneInput
             value={formData.phone}
+            
             onChange={handlePhoneChange}
             label="Phone"
             placeholder="Phone number"
@@ -946,7 +947,7 @@ export default function Companies() {
 
     try {
       await api.delete(`/companies/admins/${adminId}`)
-      toast.success('Admin deactivated successfully')
+      toast.success('Admin Remove successfully')
       fetchCompanyAdmins(selectedCompany._id)
     } catch (error) {
       toast.error('Failed to deactivate admin')
