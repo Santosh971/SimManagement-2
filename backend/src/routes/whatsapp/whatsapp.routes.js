@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const whatsAppController = require('../../controllers/whatsapp/whatsapp.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 const {
   sendBulkValidation,
@@ -44,19 +45,19 @@ router.use(authenticate);
  * Get eligible recipients (SIMs and Users)
  * GET /api/whatsapp/recipients
  */
-router.get('/recipients', whatsAppController.getRecipients);
+router.get('/recipients', checkSubscriptionFeature('whatsappStatus'), whatsAppController.getRecipients);
 
 /**
  * Get WhatsApp messages for company
  * GET /api/whatsapp/messages
  */
-router.get('/messages', queryValidation, validate, whatsAppController.getMessages);
+router.get('/messages', checkSubscriptionFeature('whatsappStatus'), queryValidation, validate, whatsAppController.getMessages);
 
 /**
  * Get message statistics
  * GET /api/whatsapp/stats
  */
-router.get('/stats', statsValidation, validate, whatsAppController.getStats);
+router.get('/stats', checkSubscriptionFeature('whatsappStatus'), statsValidation, validate, whatsAppController.getStats);
 
 /**
  * Send bulk WhatsApp messages
@@ -65,6 +66,7 @@ router.get('/stats', statsValidation, validate, whatsAppController.getStats);
  */
 router.post(
   '/send-bulk',
+  checkSubscriptionFeature('whatsappStatus'),
   authorize('super_admin', 'admin'),
   sendBulkValidation,
   validate,
@@ -77,6 +79,7 @@ router.post(
  */
 router.post(
   '/process-inactive',
+  checkSubscriptionFeature('whatsappStatus'),
   authorize('super_admin', 'admin'),
   whatsAppController.processInactive
 );

@@ -575,8 +575,8 @@ class EmailService {
       ['Company', company.name],
     ])}
   
-      ${paragraph('Click below to log in and get started:')}
-      ${ctaButton('Log In to Dashboard', loginUrl)}
+
+    
       ${divider()}
       ${paragraph(`If you have any questions or need help getting set up, feel free to reach out to your administrator.`)}
     `;

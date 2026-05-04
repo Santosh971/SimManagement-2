@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const simController = require('../../controllers/sim/sim.controller');
 const { authenticate, authorize, checkCompanyAccess } = require('../../middleware/auth');
-const { checkSubscriptionLimit } = require('../../middleware/subscription');
+const { checkSubscriptionLimit, checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 
 // Multer configuration for Excel upload
@@ -110,7 +110,7 @@ router.post('/', checkCompanyAccess, checkSubscriptionLimit('sims'), createSimVa
 router.post('/import', checkCompanyAccess, checkSubscriptionLimit('sims'), upload.single('file'), simController.bulkImport);
 router.post('/detect-operator', simController.detectOperator); // Operator detection from mobile number
 router.get('/template', simController.downloadTemplate);
-router.get('/export', simController.export);
+router.get('/export', checkSubscriptionFeature('excelExport'), simController.export);
 router.get('/stats', simController.getStats);
 router.get('/messaging-stats', simController.getMessagingStats);
 router.get('/', queryValidation, validate, simController.getAll);

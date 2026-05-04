@@ -329,14 +329,62 @@ class TelegramService {
     }
 
     // Find the SIM
-    const sim = await Sim.findById(simId);
+    let sim = await Sim.findById(simId);
 
-    if (!sim || !sim.isActive) {
-      await this.sendTelegramMessage(chatId,
-        '❌ SIM not found. Please contact your administrator.'
-      );
-      return { success: false, message: 'SIM not found' };
+    if (!sim) {
+      logger.warn('[Telegram] SIM not found by ID, checking for existing chatId link', {
+        simId: simId,
+        chatId: chatId,
+        userName: userName,
+      });
+
+      // [FIX] Check if this chatId is already linked to another SIM
+      // This handles the case where user clicks an old/expired link but has an existing SIM
+      const existingSim = await Sim.findOne({
+        telegramChatId: String(chatId),
+      }).populate('companyId');
+
+      if (existingSim) {
+        logger.info('[Telegram] Found existing SIM linked to chatId', {
+          chatId: String(chatId),
+          existingSimId: existingSim._id,
+          mobileNumber: existingSim.mobileNumber,
+          telegramPhoneVerified: existingSim.telegramPhoneVerified,
+        });
+
+        // If already verified, confirm to user
+        if (existingSim.telegramPhoneVerified) {
+          await this.sendTelegramMessage(chatId,
+            `✅ <b>Already Verified!</b>\n\n` +
+            `📱 SIM: <b>${existingSim.mobileNumber}</b>\n` +
+            `📱 Your Number: <b>${existingSim.telegramPhoneNumber || 'N/A'}</b>\n\n` +
+            `This SIM is already linked and verified. You will continue to receive activity check messages.`
+          );
+          return { success: true, message: 'Already linked and verified', simId: existingSim._id };
+        }
+
+        // If pending verification, ask for phone number
+        sim = existingSim;
+      } else {
+        // No SIM found by ID and no existing link - show error
+        logger.error('[Telegram] SIM not found for linking', {
+          simId: simId,
+          chatId: chatId,
+          userName: userName,
+        });
+        await this.sendTelegramMessage(chatId,
+          '❌ SIM not found. Please contact your administrator.'
+        );
+        return { success: false, message: 'SIM not found' };
+      }
     }
+
+    logger.info('[Telegram] Found SIM for linking', {
+      simId: sim._id,
+      mobileNumber: sim.mobileNumber,
+      existingTelegramChatId: sim.telegramChatId,
+      existingTelegramPhoneVerified: sim.telegramPhoneVerified,
+    });
 
     // Check if already linked and verified
     if (sim.telegramChatId && sim.telegramPhoneVerified) {
@@ -352,7 +400,7 @@ class TelegramService {
 
     // [FIX] Clear telegramChatId from any OTHER SIMs that have this chatId (unverified ones)
     // This prevents the issue where multiple SIMs have the same telegramChatId
-    await Sim.updateMany(
+    const clearResult = await Sim.updateMany(
       {
         telegramChatId: String(chatId),
         telegramPhoneVerified: { $ne: true }, // Only clear unverified ones
@@ -372,6 +420,12 @@ class TelegramService {
       }
     );
 
+    logger.info('[Telegram] Cleared telegramChatId from other SIMs', {
+      chatId: String(chatId),
+      currentSimId: sim._id,
+      clearedCount: clearResult.modifiedCount,
+    });
+
     // Store Telegram user info temporarily (pending phone verification)
     sim.telegramChatId = String(chatId);
     sim.telegramUsername = userName;
@@ -381,7 +435,28 @@ class TelegramService {
     sim.telegramEnabled = false; // Will be enabled after phone verification
     sim.telegramPhoneVerified = false;
     sim.telegramLastActive = new Date();
-    await sim.save();
+
+    try {
+      const savedSim = await sim.save();
+      logger.info('[Telegram] SIM updated with telegramChatId (pending verification)', {
+        simId: savedSim._id,
+        mobileNumber: savedSim.mobileNumber,
+        telegramChatId: savedSim.telegramChatId,
+        telegramPhoneVerified: savedSim.telegramPhoneVerified,
+        telegramEnabled: savedSim.telegramEnabled,
+      });
+    } catch (saveError) {
+      logger.error('[Telegram] Failed to save SIM with telegramChatId', {
+        error: saveError.message,
+        simId: sim._id,
+        mobileNumber: sim.mobileNumber,
+      });
+      await this.sendTelegramMessage(chatId,
+        '❌ <b>Linking Error!</b>\n\n' +
+        'There was a problem linking your SIM. Please contact your administrator.'
+      );
+      return { success: false, message: 'Failed to save SIM' };
+    }
 
     logger.info(`[Telegram] SIM ${sim.mobileNumber} - pending phone verification`, {
       simId: sim._id,
@@ -443,6 +518,14 @@ class TelegramService {
     const contact = message.contact;
     const from = message.from;
 
+    logger.info('[Telegram] handleContact called', {
+      chatId: chatId,
+      fromId: from?.id,
+      fromUsername: from?.username,
+      hasContact: !!contact,
+      hasPhoneNumber: !!contact?.phone_number,
+    });
+
     if (!contact || !contact.phone_number) {
       await this.sendTelegramMessage(chatId,
         '❌ Could not receive your phone number. Please try again.'
@@ -458,18 +541,80 @@ class TelegramService {
     // [FIX] Find the SIM linked to this chat that is PENDING verification
     // Priority: Find unverified SIM first, fall back to any SIM with this chatId
     // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+
+    // [FIX] Use $or to properly match false, null, or undefined telegramPhoneVerified
     let sim = await Sim.findOne({
       telegramChatId: String(chatId),
-      telegramPhoneVerified: { $ne: true }, // Not yet verified
+      $or: [
+        { telegramPhoneVerified: false },
+        { telegramPhoneVerified: null },
+        { telegramPhoneVerified: { $exists: false } }
+      ]
     }).populate('companyId');
 
-    // If no pending SIM found, try to find any SIM with this chatId
+    logger.info('[Telegram] SIM lookup result (pending verification)', {
+      chatId: String(chatId),
+      simFound: !!sim,
+      simId: sim?._id,
+      simMobileNumber: sim?.mobileNumber,
+      simTelegramChatId: sim?.telegramChatId,
+      simTelegramPhoneVerified: sim?.telegramPhoneVerified,
+    });
+
+    // If no pending SIM found, try to find any SIM with this chatId (even if already verified)
     if (!sim) {
       sim = await Sim.findOne({
         telegramChatId: String(chatId),
       }).populate('companyId');
+
+      logger.info('[Telegram] SIM lookup result (fallback - any chatId)', {
+        chatId: String(chatId),
+        simFound: !!sim,
+        simId: sim?._id,
+        simMobileNumber: sim?.mobileNumber,
+        simTelegramChatId: sim?.telegramChatId,
+        simTelegramPhoneVerified: sim?.telegramPhoneVerified,
+      });
+
+      // [FIX] If SIM is already verified, inform the user
+      if (sim && sim.telegramPhoneVerified) {
+        logger.info('[Telegram] SIM already verified, sending confirmation', {
+          simId: sim._id,
+          mobileNumber: sim.mobileNumber,
+          telegramPhoneVerified: sim.telegramPhoneVerified,
+        });
+
+        await this.sendTelegramMessage(chatId,
+          `✅ <b>Already Verified!</b>\n\n` +
+          `📱 SIM: <b>${sim.mobileNumber}</b>\n` +
+          `📱 Your Number: <b>${sim.telegramPhoneNumber || 'N/A'}</b>\n\n` +
+          `This SIM is already linked and verified. You will continue to receive activity check messages.`
+        );
+
+        return {
+          success: true,
+          message: 'SIM already verified',
+          simId: sim._id,
+          mobileNumber: sim.mobileNumber,
+          alreadyVerified: true,
+        };
+      }
     }
 
+    // [FIX] If still no SIM found, check if ANY SIM has this chatId (for debugging)
+    if (!sim) {
+      const anySimWithChatId = await Sim.findOne({ telegramChatId: String(chatId) });
+      logger.warn('[Telegram] No SIM found for chatId', {
+        chatId: String(chatId),
+        anySimWithChatIdExists: !!anySimWithChatId,
+        anySimDetails: anySimWithChatId ? {
+          id: anySimWithChatId._id,
+          mobileNumber: anySimWithChatId.mobileNumber,
+          telegramPhoneVerified: anySimWithChatId.telegramPhoneVerified,
+          telegramChatId: anySimWithChatId.telegramChatId,
+        } : null,
+      });
+    }
 
     const userName = from.username || `${from.first_name} ${from.last_name || ''}`.trim();
 
@@ -556,7 +701,42 @@ class TelegramService {
     sim.telegramUserId = from.id;
     sim.telegramFirstName = from.first_name;
     sim.telegramLastName = from.last_name || null;
-    await sim.save();
+
+    // Save with error handling
+    try {
+      const savedSim = await sim.save();
+      if (!savedSim || !savedSim.telegramPhoneVerified) {
+        logger.error('[Telegram] SIM save failed - telegramPhoneVerified not persisted', {
+          simId: sim._id,
+          mobileNumber: sim.mobileNumber,
+          savedSim: savedSim ? 'exists' : 'null',
+          telegramPhoneVerified: savedSim?.telegramPhoneVerified,
+        });
+        await this.sendTelegramMessage(chatId,
+          '❌ <b>Verification Error!</b>\n\n' +
+          'There was a problem saving your verification. Please contact your administrator.'
+        );
+        return { success: false, message: 'Failed to save verification status' };
+      }
+      logger.info('[Telegram] SIM saved successfully', {
+        simId: savedSim._id,
+        mobileNumber: savedSim.mobileNumber,
+        telegramPhoneVerified: savedSim.telegramPhoneVerified,
+        telegramEnabled: savedSim.telegramEnabled,
+        telegramChatId: savedSim.telegramChatId,
+      });
+    } catch (saveError) {
+      logger.error('[Telegram] SIM save error', {
+        error: saveError.message,
+        simId: sim._id,
+        mobileNumber: sim.mobileNumber,
+      });
+      await this.sendTelegramMessage(chatId,
+        '❌ <b>Verification Error!</b>\n\n' +
+        'There was a problem saving your verification. Please contact your administrator.'
+      );
+      return { success: false, message: 'Failed to save verification status' };
+    }
 
     // Create audit log for successful phone verification
     await auditLogService.logAction({

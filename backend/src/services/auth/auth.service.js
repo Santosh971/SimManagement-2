@@ -380,20 +380,37 @@ class AuthService {
     return this.sanitizeUser(user);
   }
 
-  async createSuperAdmin() {
-    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'santoshshimpankar61@gmail.com';
-    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
-    const superAdminName = process.env.SUPER_ADMIN_NAME || 'Super Admin';
+  async createSuperAdmin(credentials = {}) {
+    // Use provided credentials or fall back to environment variables or defaults
+    const superAdminEmail = credentials.email || process.env.SUPER_ADMIN_EMAIL || 'admin@simmanagement.com';
+    const superAdminPassword = credentials.password || process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
+    const superAdminName = credentials.name || process.env.SUPER_ADMIN_NAME || 'Super Admin';
 
     const existingSuperAdmin = await User.findOne({ role: 'super_admin' });
     if (existingSuperAdmin) {
       return { message: 'Super admin already exists', user: this.sanitizeUser(existingSuperAdmin) };
     }
 
+    // Validate email format
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(superAdminEmail)) {
+      throw new AppError('Invalid email format', 400);
+    }
+
+    // Validate password length
+    if (!superAdminPassword || superAdminPassword.length < 8) {
+      throw new AppError('Password must be at least 8 characters', 400);
+    }
+
+    // Validate name
+    if (!superAdminName || superAdminName.trim().length === 0) {
+      throw new AppError('Name is required', 400);
+    }
+
     const user = new User({
-      email: superAdminEmail,
+      email: superAdminEmail.toLowerCase().trim(),
       password: superAdminPassword,
-      name: superAdminName,
+      name: superAdminName.trim(),
       role: 'super_admin',
       companyId: null,
       isActive: true,

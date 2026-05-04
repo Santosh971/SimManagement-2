@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const telegramController = require('../../controllers/telegram/telegram.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 const {
   sendBulkValidation,
@@ -40,31 +41,31 @@ router.use(authenticate);
  * Get eligible SIMs (with telegramChatId)
  * GET /api/telegram/sims
  */
-router.get('/sims', telegramController.getEligibleSIMs);
+router.get('/sims', checkSubscriptionFeature('telegramStatus'), telegramController.getEligibleSIMs);
 
 /**
  * Get Telegram messages for company
  * GET /api/telegram/messages
  */
-router.get('/messages', queryValidation, validate, telegramController.getMessages);
+router.get('/messages', checkSubscriptionFeature('telegramStatus'), queryValidation, validate, telegramController.getMessages);
 
 /**
  * Get message statistics
  * GET /api/telegram/stats
  */
-router.get('/stats', statsValidation, validate, telegramController.getStats);
+router.get('/stats', checkSubscriptionFeature('telegramStatus'), statsValidation, validate, telegramController.getStats);
 
 /**
  * Generate deep link for SIM
  * GET /api/telegram/link/:simId
  */
-router.get('/link/:simId', simIdValidation, validate, telegramController.generateLink);
+router.get('/link/:simId', checkSubscriptionFeature('telegramStatus'), simIdValidation, validate, telegramController.generateLink);
 
 /**
  * Unlink Telegram from SIM
  * DELETE /api/telegram/unlink/:simId
  */
-router.delete('/unlink/:simId', simIdValidation, validate, telegramController.unlinkSIM);
+router.delete('/unlink/:simId', checkSubscriptionFeature('telegramStatus'), simIdValidation, validate, telegramController.unlinkSIM);
 
 /**
  * Send Telegram link to single user via email
@@ -73,6 +74,7 @@ router.delete('/unlink/:simId', simIdValidation, validate, telegramController.un
  */
 router.post(
   '/send-link-email',
+  checkSubscriptionFeature('telegramStatus'),
   authorize('super_admin', 'admin'),
   telegramController.sendLinkEmail
 );
@@ -84,6 +86,7 @@ router.post(
  */
 router.post(
   '/send-link-email-bulk',
+  checkSubscriptionFeature('telegramStatus'),
   authorize('super_admin', 'admin'),
   telegramController.sendLinkEmailBulk
 );
@@ -95,6 +98,7 @@ router.post(
  */
 router.post(
   '/send-bulk',
+  checkSubscriptionFeature('telegramStatus'),
   authorize('super_admin', 'admin'),
   sendBulkValidation,
   validate,
@@ -107,6 +111,7 @@ router.post(
  */
 router.post(
   '/process-inactive',
+  checkSubscriptionFeature('telegramStatus'),
   authorize('super_admin', 'admin'),
   telegramController.processInactive
 );

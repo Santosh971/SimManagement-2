@@ -3,7 +3,7 @@ const router = express.Router();
 const { query } = require('express-validator');
 const reportController = require('../../controllers/report/report.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
-const { checkSubscriptionLimit } = require('../../middleware/subscription');
+const { checkSubscriptionLimit, checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 
 // Validation rules
@@ -14,19 +14,36 @@ const reportValidation = [
   query('download').optional().isBoolean().withMessage('Download must be boolean'),
 ];
 
+/**
+ * Conditional middleware: Check excelExport feature only if downloading
+ * Allows JSON format without excelExport check
+ */
+const checkExportIfNeeded = (req, res, next) => {
+  const format = req.query.format;
+  const download = req.query.download;
+
+  // If requesting excel/csv or download=true, check excelExport feature
+  if ((format === 'excel' || format === 'csv' || download === 'true' || download === true)) {
+    return checkSubscriptionFeature('excelExport')(req, res, next);
+  }
+
+  // For JSON format, just proceed
+  next();
+};
+
 // All routes require authentication
 router.use(authenticate);
 
 // SIM Report
-router.get('/sims', checkSubscriptionLimit('reports'), reportValidation, validate, reportController.generateSimReport);
+router.get('/sims', checkSubscriptionLimit('reports'), checkExportIfNeeded, reportValidation, validate, reportController.generateSimReport);
 
 // Recharge Report
-router.get('/recharges', checkSubscriptionLimit('reports'), reportValidation, validate, reportController.generateRechargeReport);
+router.get('/recharges', checkSubscriptionLimit('reports'), checkExportIfNeeded, reportValidation, validate, reportController.generateRechargeReport);
 
 // Call Log Report
-router.get('/calllogs', checkSubscriptionLimit('reports'), reportValidation, validate, reportController.generateCallLogReport);
+router.get('/calllogs', checkSubscriptionLimit('reports'), checkExportIfNeeded, reportValidation, validate, reportController.generateCallLogReport);
 
 // Company Report (Super Admin only)
-router.get('/companies', authorize('super_admin'), reportValidation, validate, reportController.generateCompanyReport);
+router.get('/companies', authorize('super_admin'), checkExportIfNeeded, reportValidation, validate, reportController.generateCompanyReport);
 
 module.exports = router;

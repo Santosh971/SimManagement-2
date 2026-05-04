@@ -81,7 +81,12 @@ router.post('/login', loginValidation, validate, authController.login);
 router.post('/refresh-token', refreshTokenValidation, validate, authController.refreshToken);
 router.post('/forgot-password', [body('email').isEmail()], validate, authController.forgotPassword);
 router.post('/reset-password/:token', resetPasswordValidation, validate, authController.resetPassword);
-router.post('/init-super-admin', authController.initSuperAdmin);
+router.post('/init-super-admin', [
+  // All fields are optional - if not provided, defaults/environment variables will be used
+  body('email').optional().isEmail().withMessage('Please provide a valid email address').normalizeEmail().trim(),
+  body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('name').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Name must be between 1 and 50 characters'),
+], validate, authController.initSuperAdmin);
 
 // Forgot Password OTP routes (for admin users)
 router.post('/forgot-password-otp', [

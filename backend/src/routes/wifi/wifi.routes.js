@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 const wifiController = require('../../controllers/wifi/wifi.controller');
 const { authenticate, authorize, checkCompanyAccess } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 
 // ==================== VALIDATION RULES ====================
@@ -118,6 +119,12 @@ const alertQueryValidation = [
 
 // All routes require authentication
 router.use(authenticate);
+
+// Feature check for WiFi Monitor (skip for super_admin)
+router.use((req, res, next) => {
+  if (req.user?.role === 'super_admin') return next();
+  return checkSubscriptionFeature('wifiMonitor')(req, res, next);
+});
 
 // ==================== WIFI NETWORK ROUTES ====================
 

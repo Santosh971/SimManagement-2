@@ -1202,6 +1202,7 @@ export default function Subscription() {
               setPaymentLoading(false)
               setShowRenewModal(false)
               fetchSubscription()
+              fetchPaymentHistory() // Refresh payment history immediately
             } else {
               throw new Error(verifyResponse.data.message || 'Payment verification failed')
             }

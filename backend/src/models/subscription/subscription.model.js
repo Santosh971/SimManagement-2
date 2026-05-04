@@ -34,6 +34,9 @@ const SubscriptionSchema = new Schema({
     callLogSync: { type: Boolean, default: false },
     whatsappStatus: { type: Boolean, default: false },
     telegramStatus: { type: Boolean, default: false },
+    wifiMonitor: { type: Boolean, default: false },
+    callAutomation: { type: Boolean, default: false },
+    smsLogs: { type: Boolean, default: false },
     emailNotifications: { type: Boolean, default: true },
     smsNotifications: { type: Boolean, default: false },
     advancedReports: { type: Boolean, default: false },
@@ -42,9 +45,36 @@ const SubscriptionSchema = new Schema({
     prioritySupport: { type: Boolean, default: false },
   },
   limits: {
-    maxSims: { type: Number, default: 10, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
-    maxUsers: { type: Number, default: 5, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
-    maxRecharges: { type: Number, default: 100, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
+    maxSims: {
+      type: Number,
+      default: 10,
+      validate: {
+        validator: function(v) {
+          return v === -1 || v >= 0;
+        },
+        message: 'Max SIMs must be -1 (unlimited), 0, or a positive number'
+      }
+    },
+    maxUsers: {
+      type: Number,
+      default: 5,
+      validate: {
+        validator: function(v) {
+          return v === -1 || v >= 0;
+        },
+        message: 'Max Users must be -1 (unlimited), 0, or a positive number'
+      }
+    },
+    maxRecharges: {
+      type: Number,
+      default: 100,
+      validate: {
+        validator: function(v) {
+          return v === -1 || v >= 0;
+        },
+        message: 'Max Recharges must be -1 (unlimited), 0, or a positive number'
+      }
+    },
     callLogSync: { type: Boolean, default: true },
     whatsappStatus: { type: Boolean, default: false },
     reports: { type: Boolean, default: true },
@@ -139,8 +169,11 @@ SubscriptionSchema.statics.createFreeTrialPlan = async function () {
     planType: 'free_trial',
     features: {
       callLogSync: true,
-      whatsappStatus: true,
-      telegramStatus: true,
+      whatsappStatus: false,
+      telegramStatus: false,
+      wifiMonitor: false,
+      callAutomation: false,
+      smsLogs: false,
       emailNotifications: true,
       smsNotifications: false,
       advancedReports: true,
@@ -153,7 +186,7 @@ SubscriptionSchema.statics.createFreeTrialPlan = async function () {
       maxUsers: 5,
       maxRecharges: 50,
       callLogSync: true,
-      whatsappStatus: true,
+      whatsappStatus: false,
       reports: true,
     },
     durationDays: { monthly: 14, yearly: 14 }, // 14 days for free trial
@@ -192,6 +225,9 @@ const defaultPlans = [
       callLogSync: false,
       whatsappStatus: false,
       telegramStatus: false,
+      wifiMonitor: false,
+      callAutomation: false,
+      smsLogs: false,
       emailNotifications: true,
       smsNotifications: false,
       advancedReports: false,
@@ -213,6 +249,9 @@ const defaultPlans = [
       callLogSync: true,
       whatsappStatus: true,
       telegramStatus: false,
+      wifiMonitor: true,
+      callAutomation: true,
+      smsLogs: true,
       emailNotifications: true,
       smsNotifications: true,
       advancedReports: true,
@@ -234,6 +273,9 @@ const defaultPlans = [
       callLogSync: true,
       whatsappStatus: true,
       telegramStatus: true,
+      wifiMonitor: true,
+      callAutomation: true,
+      smsLogs: true,
       emailNotifications: true,
       smsNotifications: true,
       advancedReports: true,

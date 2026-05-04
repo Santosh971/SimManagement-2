@@ -90,6 +90,11 @@ const queryValidation = [
   query('sortOrder').optional().isIn(['asc', 'desc']),
 ];
 
+const historyQueryValidation = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Invalid page'),
+  query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Invalid limit'),
+];
+
 // All routes require authentication and super admin role
 router.use(authenticate);
 
@@ -124,6 +129,7 @@ router.put('/:id', updateCompanyValidation, validate, companyController.update);
 router.delete('/:id', companyController.delete);
 router.post('/:id/renew-subscription', renewSubscriptionValidation, validate, companyController.renewSubscription);
 router.post('/:id/extend-trial', extendTrialValidation, validate, companyController.extendTrial);
+router.get('/:id/subscription-history', historyQueryValidation, validate, companyController.getSubscriptionHistory);
 router.get('/:id/stats', companyController.getStats);
 
 // Admin Management Routes

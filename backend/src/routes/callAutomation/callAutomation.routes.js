@@ -9,6 +9,7 @@ const router = express.Router();
 const { body, query, param } = require('express-validator');
 const callAutomationController = require('../../controllers/callAutomation/callAutomation.controller');
 const { authenticate, authorize, checkCompanyAccess } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 
 // =============================================
@@ -62,6 +63,12 @@ const deviceConfigValidation = [
 
 // All routes below require authentication
 router.use(authenticate);
+
+// Feature check for Call Automation (skip for super_admin)
+router.use((req, res, next) => {
+  if (req.user?.role === 'super_admin') return next();
+  return checkSubscriptionFeature('callAutomation')(req, res, next);
+});
 
 // Save/update configuration (admin only)
 router.post(

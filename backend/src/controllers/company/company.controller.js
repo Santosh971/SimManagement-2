@@ -104,27 +104,34 @@ class CompanyController {
   async renewSubscription(req, res, next) {
     try {
       const { subscriptionId, billingCycle = 'monthly' } = req.body;
-      const company = await companyService.renewSubscription(
+      const result = await companyService.renewSubscription(
         req.params.id,
         subscriptionId,
-        billingCycle
+        billingCycle,
+        req.user._id // Pass admin ID for history tracking
       );
 
       // Audit log: COMPANY_SUBSCRIPTION_RENEW
       await auditLogService.logAction({
         action: 'COMPANY_SUBSCRIPTION_RENEW',
         module: 'COMPANY',
-        description: `Renewed subscription for company ${company.name} to plan ${company.subscriptionId}`,
+        description: `Renewed subscription for company ${result.company.name} to plan ${result.company.subscriptionId}`,
         performedBy: req.user._id,
         role: req.user.role,
-        companyId: company._id,
-        entityId: company._id,
+        companyId: result.company._id,
+        entityId: result.company._id,
         entityType: 'COMPANY',
-        metadata: { subscriptionId, billingCycle },
+        metadata: {
+          subscriptionId,
+          billingCycle,
+          changeType: result.type,
+          bonusDays: result.bonusDays,
+          remainingDays: result.remainingDays,
+        },
         req,
       });
 
-      return successResponse(res, company, 'Subscription renewed successfully');
+      return successResponse(res, result.company, result.message);
     } catch (error) {
       next(error);
     }
@@ -472,6 +479,20 @@ class CompanyController {
       });
 
       return successResponse(res, null, 'Email change request cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get subscription history for a company
+   * GET /api/companies/:id/subscription-history
+   */
+  async getSubscriptionHistory(req, res, next) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      const history = await companyService.getSubscriptionHistory(req.params.id, { page, limit });
+      return successResponse(res, history);
     } catch (error) {
       next(error);
     }

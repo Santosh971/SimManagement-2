@@ -38,6 +38,9 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
       callLogSync: false,
       whatsappStatus: false,
       telegramStatus: false,
+      wifiMonitor: false,
+      callAutomation: false,
+      smsLogs: false,
       emailNotifications: true,
       smsNotifications: false,
       advancedReports: false,
@@ -67,6 +70,9 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           callLogSync: plan.features?.callLogSync || false,
           whatsappStatus: plan.features?.whatsappStatus || false,
           telegramStatus: plan.features?.telegramStatus || false,
+          wifiMonitor: plan.features?.wifiMonitor || false,
+          callAutomation: plan.features?.callAutomation || false,
+          smsLogs: plan.features?.smsLogs || false,
           emailNotifications: plan.features?.emailNotifications ?? true,
           smsNotifications: plan.features?.smsNotifications || false,
           advancedReports: plan.features?.advancedReports || false,
@@ -87,6 +93,9 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           callLogSync: false,
           whatsappStatus: false,
           telegramStatus: false,
+          wifiMonitor: false,
+          callAutomation: false,
+          smsLogs: false,
           emailNotifications: true,
           smsNotifications: false,
           advancedReports: false,
@@ -111,9 +120,15 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
       }))
     } else if (name.startsWith('limits.')) {
       const key = name.split('.')[1]
+      const numValue = parseInt(value) || 0
+      // Only allow -1 (unlimited), 0, or positive numbers
+      if (numValue < -1) {
+        toast.error(`${key} cannot be negative. Use -1 for unlimited, or 0/positive number.`)
+        return
+      }
       setFormData((prev) => ({
         ...prev,
-        limits: { ...prev.limits, [key]: parseInt(value) || 0 },
+        limits: { ...prev.limits, [key]: numValue },
       }))
     } else if (name.startsWith('features.')) {
       const key = name.split('.')[1]
@@ -134,6 +149,13 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
 
     if (!formData.name || !formData.price.monthly || !formData.price.yearly) {
       toast.error('Name and pricing are required')
+      return
+    }
+
+    // Validate limits - must be -1, 0, or positive
+    const limits = formData.limits
+    if (limits.maxSims < -1 || limits.maxUsers < -1 || limits.maxRecharges < -1) {
+      toast.error('Limits must be -1 (unlimited), 0, or a positive number')
       return
     }
 
@@ -311,6 +333,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                   boxSizing: 'border-box',
                 }}
               />
+              <p style={{ fontSize: '11px', color: '#6b7280', margin: '4px 0 0 0' }}>-1 = Unlimited</p>
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
@@ -332,6 +355,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                   boxSizing: 'border-box',
                 }}
               />
+              <p style={{ fontSize: '11px', color: '#6b7280', margin: '4px 0 0 0' }}>-1 = Unlimited</p>
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
@@ -353,6 +377,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                   boxSizing: 'border-box',
                 }}
               />
+              <p style={{ fontSize: '11px', color: '#6b7280', margin: '4px 0 0 0' }}>-1 = Unlimited</p>
             </div>
           </div>
 
@@ -410,11 +435,13 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 { key: 'callLogSync', label: 'Call Log Sync' },
                 { key: 'whatsappStatus', label: 'WhatsApp Status' },
                 { key: 'telegramStatus', label: 'Telegram Status' },
+                { key: 'wifiMonitor', label: 'WiFi Monitor' },
+                { key: 'callAutomation', label: 'Call Automation' },
+                { key: 'smsLogs', label: 'SMS Logs' },
                 { key: 'emailNotifications', label: 'Email Notifications' },
-                { key: 'smsNotifications', label: 'SMS Notifications' },
-
                 { key: 'excelExport', label: 'Excel Export' },
-              
+
+
               ].map((feature) => (
                 <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input
@@ -692,9 +719,9 @@ export default function Subscriptions() {
     try {
       const response = await api.get('/subscriptions/usage/all')
       const usageData = {}
-      ;(response.data.data || []).forEach(plan => {
-        usageData[plan._id] = plan.companiesCount || 0
-      })
+        ; (response.data.data || []).forEach(plan => {
+          usageData[plan._id] = plan.companiesCount || 0
+        })
       setPlanUsage(usageData)
     } catch (error) {
       console.error('Failed to fetch plan usage:', error)
@@ -853,300 +880,300 @@ export default function Subscriptions() {
       )}
 
       {/* Plans Grid */}
-    {subscriptions.length > 0 ? (
-  <div style={{
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 340px))',
-    gap: '24px',
-    alignItems: 'stretch',
-    justifyContent: 'start',   /* prevents lone card from stretching */
-  }}>
-    {subscriptions.map((plan) => (
-      <Card
-        key={plan._id}
-        style={{
-          width: '100%',          /* fills its fixed column, never more */
-          boxShadow: plan.isPopular
-            ? '0 0 0 2px #2563eb'
-            : plan.isActive
-              ? '0 1px 3px rgba(0,0,0,0.1)'
-              : '0 1px 3px rgba(0,0,0,0.05)',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
-          opacity: plan.isActive ? 1 : 0.7,
-          border: plan.isActive ? 'none' : '2px solid #fecaca',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        {/* Popular Badge — fixed height so all cards align even without it */}
-        <div style={{ height: '28px', flexShrink: 0 }}>
-          {plan.planType === 'free_trial' ? (
-            <div style={{
-              backgroundColor: '#16a34a',
-              color: '#ffffff',
-              textAlign: 'center',
-              padding: '4px',
-              fontSize: '12px',
-              fontWeight: '500',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              Free Trial — 14 Days
-            </div>
-          ) : plan.isPopular ? (
-            <div style={{
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              textAlign: 'center',
-              padding: '4px',
-              fontSize: '12px',
-              fontWeight: '500',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              Most Popular
-            </div>
-          ) : null}
-        </div>
-
-        {/* Card Body — flex column so button always sticks to bottom */}
-        <CardBody style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px' }}>
-
-          {/* ── Header: Name + Status badge ─────────────────────────── */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: '16px',
-            gap: '12px',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                color: '#111827',
-                margin: 0,
-                whiteSpace: 'nowrap',
+      {subscriptions.length > 0 ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 340px))',
+          gap: '24px',
+          alignItems: 'stretch',
+          justifyContent: 'start',   /* prevents lone card from stretching */
+        }}>
+          {subscriptions.map((plan) => (
+            <Card
+              key={plan._id}
+              style={{
+                width: '100%',          /* fills its fixed column, never more */
+                boxShadow: plan.isPopular
+                  ? '0 0 0 2px #2563eb'
+                  : plan.isActive
+                    ? '0 1px 3px rgba(0,0,0,0.1)'
+                    : '0 1px 3px rgba(0,0,0,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {plan.name}
-              </h3>
-              <p style={{
-                color: '#6b7280',
-                fontSize: '13px',
-                marginTop: '4px',
-                marginBottom: 0,
-                minHeight: '36px',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}>
-                {plan.description}
-              </p>
-            </div>
-            {isSuperAdmin && (
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                {/* Usage count badge */}
-                {planUsage[plan._id] > 0 && (
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: '#dbeafe',
-                    color: '#1d4ed8',
-                    fontSize: '11px',
+                opacity: plan.isActive ? 1 : 0.7,
+                border: plan.isActive ? 'none' : '2px solid #fecaca',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {/* Popular Badge — fixed height so all cards align even without it */}
+              <div style={{ height: '28px', flexShrink: 0 }}>
+                {plan.planType === 'free_trial' ? (
+                  <div style={{
+                    backgroundColor: '#16a34a',
+                    color: '#ffffff',
+                    textAlign: 'center',
+                    padding: '4px',
+                    fontSize: '12px',
                     fontWeight: '500',
-                    whiteSpace: 'nowrap',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}>
-                    {planUsage[plan._id]} {planUsage[plan._id] === 1 ? 'business' : 'businesses'}
-                  </span>
-                )}
-                <span style={{
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  backgroundColor: plan.isActive ? '#dcfce7' : '#fef2f2',
-                  color: plan.isActive ? '#16a34a' : '#dc2626',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {plan.isActive ? 'Active' : 'Inactive'}
-                </span>
+                    Free Trial — 14 Days
+                  </div>
+                ) : plan.isPopular ? (
+                  <div style={{
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    textAlign: 'center',
+                    padding: '4px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    Most Popular
+                  </div>
+                ) : null}
               </div>
-            )}
-          </div>
 
-          {/* ── Pricing ──────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '20px' }}>
-            {plan.planType === 'free_trial' ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ fontSize: '28px', fontWeight: '700', color: '#16a34a' }}>
-                    Free
-                  </span>
-                  <span style={{ color: '#6b7280', fontSize: '14px' }}>14 days</span>
+              {/* Card Body — flex column so button always sticks to bottom */}
+              <CardBody style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px' }}>
+
+                {/* ── Header: Name + Status badge ─────────────────────────── */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '16px',
+                  gap: '12px',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#111827',
+                      margin: 0,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {plan.name}
+                    </h3>
+                    <p style={{
+                      color: '#6b7280',
+                      fontSize: '13px',
+                      marginTop: '4px',
+                      marginBottom: 0,
+                      minHeight: '36px',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {plan.description}
+                    </p>
+                  </div>
+                  {isSuperAdmin && (
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {/* Usage count badge */}
+                      {planUsage[plan._id] > 0 && (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: '#dbeafe',
+                          color: '#1d4ed8',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {planUsage[plan._id]} {planUsage[plan._id] === 1 ? 'business' : 'businesses'}
+                        </span>
+                      )}
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '4px',
+                        backgroundColor: plan.isActive ? '#dcfce7' : '#fef2f2',
+                        color: plan.isActive ? '#16a34a' : '#dc2626',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {plan.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
-                  No credit card required
-                </p>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>
-                    ₹{plan.price?.monthly}
-                  </span>
-                  <span style={{ color: '#6b7280', fontSize: '14px' }}>/month</span>
+
+                {/* ── Pricing ──────────────────────────────────────────────── */}
+                <div style={{ marginBottom: '20px' }}>
+                  {plan.planType === 'free_trial' ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#16a34a' }}>
+                          Free
+                        </span>
+                        <span style={{ color: '#6b7280', fontSize: '14px' }}>14 days</span>
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+                        No credit card required
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                        <span style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>
+                          ₹{plan.price?.monthly}
+                        </span>
+                        <span style={{ color: '#6b7280', fontSize: '14px' }}>/month</span>
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+                        ₹{plan.price?.yearly}/year&nbsp;
+                        <span style={{ color: '#16a34a', fontWeight: '500' }}>
+                          (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
+                        </span>
+                      </p>
+                    </>
+                  )}
                 </div>
-                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
-                  ₹{plan.price?.yearly}/year&nbsp;
-                  <span style={{ color: '#16a34a', fontWeight: '500' }}>
-                    (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
-                  </span>
-                </p>
-              </>
-            )}
-          </div>
 
-          {/* ── Limits & Features — flex:1 so this section stretches ── */}
-          <div style={{ flex: 1, marginBottom: '20px' }}>
+                {/* ── Limits & Features — flex:1 so this section stretches ── */}
+                <div style={{ flex: 1, marginBottom: '20px' }}>
 
-            <div style={{ height: '1px', backgroundColor: '#f3f4f6', marginBottom: '12px' }} />
+                  <div style={{ height: '1px', backgroundColor: '#f3f4f6', marginBottom: '12px' }} />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-              <span style={{ color: '#6b7280' }}>Max SIMs</span>
-              <span style={{ fontWeight: '600', color: '#111827' }}>
-                {plan.limits?.maxSims === -1 ? 'Unlimited' : plan.limits?.maxSims}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-              <span style={{ color: '#6b7280' }}>Max Users</span>
-              <span style={{ fontWeight: '600', color: '#111827' }}>
-                {plan.limits?.maxUsers === -1 ? 'Unlimited' : plan.limits?.maxUsers}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '12px' }}>
-              <span style={{ color: '#6b7280' }}>Duration</span>
-              <span style={{ fontWeight: '600', color: '#111827' }}>
-                {plan.planType === 'free_trial' ? '14 days (Free Trial)' : 'Monthly: 28 days / Yearly: 336 days'}
-              </span>
-            </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                    <span style={{ color: '#6b7280' }}>Max SIMs</span>
+                    <span style={{ fontWeight: '600', color: '#111827' }}>
+                      {plan.limits?.maxSims === -1 ? 'Unlimited' : plan.limits?.maxSims}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
+                    <span style={{ color: '#6b7280' }}>Max Users</span>
+                    <span style={{ fontWeight: '600', color: '#111827' }}>
+                      {plan.limits?.maxUsers === -1 ? 'Unlimited' : plan.limits?.maxUsers}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '12px' }}>
+                    <span style={{ color: '#6b7280' }}>Duration</span>
+                    <span style={{ fontWeight: '600', color: '#111827' }}>
+                      {plan.planType === 'free_trial' ? '14 days (Free Trial)' : 'Monthly: 28 days / Yearly: 336 days'}
+                    </span>
+                  </div>
 
-            <div style={{ height: '1px', backgroundColor: '#f3f4f6', marginBottom: '12px' }} />
+                  <div style={{ height: '1px', backgroundColor: '#f3f4f6', marginBottom: '12px' }} />
 
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              fontSize: '14px', marginBottom: '6px',
-              color: plan.features?.callLogSync ? '#16a34a' : '#d1d5db',
-            }}>
-              <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
-              <span>Call Log Sync</span>
-            </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              fontSize: '14px', marginBottom: '6px',
-              color: plan.features?.advancedReports ? '#16a34a' : '#d1d5db',
-            }}>
-              <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
-              <span>Advanced Reports</span>
-            </div>
-          </div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    fontSize: '14px', marginBottom: '6px',
+                    color: plan.features?.callLogSync ? '#16a34a' : '#d1d5db',
+                  }}>
+                    <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                    <span>Call Log Sync</span>
+                  </div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    fontSize: '14px', marginBottom: '6px',
+                    color: plan.features?.advancedReports ? '#16a34a' : '#d1d5db',
+                  }}>
+                    <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                    <span>Advanced Reports</span>
+                  </div>
+                </div>
 
-          {/* ── Action Buttons — always at bottom ────────────────────── */}
-          {isSuperAdmin ? (
-            <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-              <Button
-                variant="secondary"
-                style={{
-                  flex: 1,
-                  backgroundColor: plan.isActive ? '#fef2f2' : '#dcfce7',
-                  color: plan.isActive ? '#dc2626' : '#16a34a',
-                  borderColor: plan.isActive ? '#fecaca' : '#bbf7d0',
-                }}
-                onClick={() => toggleStatus(plan._id)}
-              >
-                {plan.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => openModal(plan)}
-                style={{ flexShrink: 0, padding: '10px 12px' }}
-                title="Edit Plan"
-              >
-                <FiPackage style={{ width: '16px', height: '16px' }} />
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => deletePlan(plan._id, plan.name)}
-                style={{
-                  flexShrink: 0, padding: '10px 12px',
-                  backgroundColor: planUsage[plan._id] > 0 ? '#f3f4f6' : '#fef2f2',
-                  color: planUsage[plan._id] > 0 ? '#9ca3af' : '#dc2626',
-                  borderColor: planUsage[plan._id] > 0 ? '#e5e7eb' : '#fecaca',
-                  cursor: planUsage[plan._id] > 0 ? 'not-allowed' : 'pointer',
-                }}
-                title={planUsage[plan._id] > 0 ? `Used by ${planUsage[plan._id]} business${planUsage[plan._id] > 1 ? 'es' : ''} - cannot delete` : 'Delete Plan'}
-              >
-                <FiTrash2 style={{ width: '16px', height: '16px' }} />
-              </Button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
-              {plan.planType === 'free_trial' ? (
-                <Button
-                  disabled={!plan.isActive}
-                  onClick={() => openCheckout(plan, 'monthly')}
-                >
-                  Start Free Trial
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    disabled={!plan.isActive}
-                    onClick={() => openCheckout(plan, 'monthly')}
-                  >
-                    Subscribe Monthly
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={!plan.isActive}
-                    onClick={() => openCheckout(plan, 'yearly')}
-                  >
-                    Subscribe Yearly&nbsp;
-                    (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
-                  </Button>
-                </>
+                {/* ── Action Buttons — always at bottom ────────────────────── */}
+                {isSuperAdmin ? (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                    <Button
+                      variant="secondary"
+                      style={{
+                        flex: 1,
+                        backgroundColor: plan.isActive ? '#fef2f2' : '#dcfce7',
+                        color: plan.isActive ? '#dc2626' : '#16a34a',
+                        borderColor: plan.isActive ? '#fecaca' : '#bbf7d0',
+                      }}
+                      onClick={() => toggleStatus(plan._id)}
+                    >
+                      {plan.isActive ? 'Deactivate' : 'Activate'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => openModal(plan)}
+                      style={{ flexShrink: 0, padding: '10px 12px' }}
+                      title="Edit Plan"
+                    >
+                      <FiPackage style={{ width: '16px', height: '16px' }} />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => deletePlan(plan._id, plan.name)}
+                      style={{
+                        flexShrink: 0, padding: '10px 12px',
+                        backgroundColor: planUsage[plan._id] > 0 ? '#f3f4f6' : '#fef2f2',
+                        color: planUsage[plan._id] > 0 ? '#9ca3af' : '#dc2626',
+                        borderColor: planUsage[plan._id] > 0 ? '#e5e7eb' : '#fecaca',
+                        cursor: planUsage[plan._id] > 0 ? 'not-allowed' : 'pointer',
+                      }}
+                      title={planUsage[plan._id] > 0 ? `Used by ${planUsage[plan._id]} business${planUsage[plan._id] > 1 ? 'es' : ''} - cannot delete` : 'Delete Plan'}
+                    >
+                      <FiTrash2 style={{ width: '16px', height: '16px' }} />
+                    </Button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
+                    {plan.planType === 'free_trial' ? (
+                      <Button
+                        disabled={!plan.isActive}
+                        onClick={() => openCheckout(plan, 'monthly')}
+                      >
+                        Start Free Trial
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          disabled={!plan.isActive}
+                          onClick={() => openCheckout(plan, 'monthly')}
+                        >
+                          Subscribe Monthly
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={!plan.isActive}
+                          onClick={() => openCheckout(plan, 'yearly')}
+                        >
+                          Subscribe Yearly&nbsp;
+                          (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardBody>
+            <div style={{ padding: '48px', textAlign: 'center' }}>
+              <FiPackage style={{ width: '48px', height: '48px', color: '#9ca3af', marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+                No Subscription Plans
+              </h3>
+              <p style={{ color: '#6b7280', marginBottom: '16px' }}>Create your first subscription plan</p>
+              {isSuperAdmin && (
+                <Button onClick={() => openModal()}>Add Plan</Button>
               )}
             </div>
-          )}
-
-        </CardBody>
-      </Card>
-    ))}
-  </div>
-) : (
-  <Card>
-    <CardBody>
-      <div style={{ padding: '48px', textAlign: 'center' }}>
-        <FiPackage style={{ width: '48px', height: '48px', color: '#9ca3af', marginBottom: '16px' }} />
-        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
-          No Subscription Plans
-        </h3>
-        <p style={{ color: '#6b7280', marginBottom: '16px' }}>Create your first subscription plan</p>
-        {isSuperAdmin && (
-          <Button onClick={() => openModal()}>Add Plan</Button>
-        )}
-      </div>
-    </CardBody>
-  </Card>
-)}
+          </CardBody>
+        </Card>
+      )}
 
       {/* Admin Modal */}
       {isSuperAdmin && (

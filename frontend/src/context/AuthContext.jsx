@@ -37,14 +37,82 @@ api.interceptors.response.use(
                         error.config?.url?.includes('/auth/reset-password') ||
                         error.config?.url?.includes('/auth/email-change')
 
+    // Handle 401 Unauthorized
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'
     }
+
+    // Handle 403 Feature Not Available - show upgrade prompt (only once)
+    if (error.response?.status === 403 && error.response?.data?.code === 'FEATURE_NOT_AVAILABLE') {
+      // Mark error as handled so components don't show duplicate toast
+      error._featureToastShown = true
+
+      const featureName = error.response?.data?.feature || 'This feature'
+      const featureNames = {
+        excelExport: 'Excel Export',
+        advancedReports: 'Advanced Reports',
+        emailNotifications: 'Email Notifications',
+        smsNotifications: 'SMS Notifications',
+        apiAccess: 'API Access',
+        prioritySupport: 'Priority Support',
+        callLogSync: 'Call Log Sync',
+        whatsappStatus: 'WhatsApp Status',
+        telegramStatus: 'Telegram Status',
+        wifiMonitor: 'WiFi Monitor',
+        callAutomation: 'Call Automation',
+        smsLogs: 'SMS Logs',
+      }
+      const displayName = featureNames[featureName] || featureName
+
+      // Show upgrade toast with action (using id to prevent duplicates)
+      toast.error(
+        (t) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span><strong>{displayName}</strong> is not available in your current plan.</span>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id)
+                window.location.href = '/subscription'
+              }}
+              style={{
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              Upgrade Plan
+            </button>
+          </div>
+        ),
+        { duration: 8000, id: `feature-not-available-${featureName}` }
+      )
+    }
+
     return Promise.reject(error)
   }
 )
+
+/**
+ * Helper function to show error toast (skips FEATURE_NOT_AVAILABLE errors)
+ * Use this in catch blocks instead of: toast.error(error.response?.data?.message || 'Error')
+ * @param {Error} error - The error object
+ * @param {string} fallbackMessage - Fallback message if error has no message
+ */
+const showErrorToast = (error, fallbackMessage = 'Operation failed') => {
+  // Skip if feature toast was already shown by interceptor
+  if (error._featureToastShown) return
+  // Skip if it's a FEATURE_NOT_AVAILABLE error
+  if (error.response?.data?.code === 'FEATURE_NOT_AVAILABLE') return
+
+  const message = error.response?.data?.message || fallbackMessage
+  toast.error(message)
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -155,6 +223,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     changePassword,
     api,
+    showErrorToast,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -168,4 +237,4 @@ export const useAuth = () => {
   return context
 }
 
-export { api }
+export { api, showErrorToast }

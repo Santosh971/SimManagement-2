@@ -21,7 +21,7 @@ const AuditLogSchema = new Schema({
     required: [true, 'Module is required'],
     trim: true,
     uppercase: true,
-    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM'],
+    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM', 'WIFI', 'CALL_AUTOMATION', 'SMS'],
     index: true,
   },
 
@@ -65,7 +65,7 @@ const AuditLogSchema = new Schema({
   entityType: {
     type: String,
     trim: true,
-    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', 'TELEGRAM_MESSAGE', 'WHATSAPP_MESSAGE', null],
+    enum: ['SIM', 'USER', 'RECHARGE', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'REPORT', 'CALL_LOG', 'NOTIFICATION', 'TELEGRAM_MESSAGE', 'WHATSAPP_MESSAGE', 'WifiNetwork', 'WifiDevice', 'WifiAlert', 'WifiMetric', 'CallAutomationConfig', 'SMS', null],
   },
 
   // Additional metadata (flexible key-value store)

@@ -181,6 +181,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
+import { useState, useEffect } from 'react'
 import {
   FiHome,
   FiCreditCard,
@@ -204,8 +205,25 @@ import {
 } from 'react-icons/fi'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
-  const { user } = useAuth()
+  const { user, api } = useAuth()
   const location = useLocation()
+  const [subscriptionFeatures, setSubscriptionFeatures] = useState(null)
+
+  // Fetch subscription features for admin users
+  useEffect(() => {
+    const fetchSubscriptionFeatures = async () => {
+      if (user?.role === 'admin' && user?.companyId) {
+        try {
+          const response = await api.get('/companies/my-subscription')
+          const features = response.data?.data?.plan?.features || {}
+          setSubscriptionFeatures(features)
+        } catch (error) {
+          console.error('Failed to fetch subscription features:', error)
+        }
+      }
+    }
+    fetchSubscriptionFeatures()
+  }, [user, api])
 
   // Role Based Navigation
   const getNavigationByRole = () => {
@@ -223,18 +241,18 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Settings', href: '/app/settings', icon: FiSettings },
         ]
 
-      case 'admin':
-        return [
+      case 'admin': {
+        const navItems = [
           { name: 'Dashboard', href: '/app/dashboard', icon: FiHome },
           { name: 'SIMs', href: '/app/sims', icon: FiSmartphone },
           { name: 'Recharges', href: '/app/recharges', icon: FiCreditCard },
           { name: 'Call Logs', href: '/app/call-logs', icon: FiPhone },
-          { name: 'SMS Logs', href: '/app/sms', icon: FiMessageSquare },
-          { name: 'WhatsApp', href: '/app/whatsapp', icon: FiMessageCircle },
-          { name: 'Telegram', href: '/app/telegram', icon: FiSend },
-          { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi },
+          { name: 'SMS Logs', href: '/app/sms', icon: FiMessageSquare, feature: 'smsLogs' },
+          { name: 'WhatsApp', href: '/app/whatsapp', icon: FiMessageCircle, feature: 'whatsappStatus' },
+          { name: 'Telegram', href: '/app/telegram', icon: FiSend, feature: 'telegramStatus' },
+          { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi, feature: 'wifiMonitor' },
           // { name: 'WiFi Devices', href: '/app/wifi-devices', icon: FiSmartphone },
-          { name: 'Call Automation', href: '/app/call-automation', icon: FiPhoneOutgoing }, // [CALL AUTOMATION]
+          { name: 'Call Automation', href: '/app/call-automation', icon: FiPhoneOutgoing, feature: 'callAutomation' },
           { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },
@@ -242,6 +260,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Notifications', href: '/app/notifications', icon: FiBell },
           { name: 'Settings', href: '/app/settings', icon: FiSettings },
         ]
+
+        // Filter out items based on subscription features
+        return navItems.filter(item => {
+          if (!item.feature) return true
+          // Show item only if feature is enabled (or features not loaded yet - will show until filtered)
+          if (subscriptionFeatures === null) return true
+          return subscriptionFeatures[item.feature] === true
+        })
+      }
 
       case 'user':
         return [

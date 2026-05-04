@@ -148,7 +148,7 @@ export default function Reports() {
 
       toast.success(`Report exported as ${format.toUpperCase()}`)
     } catch (error) {
-      toast.error('Failed to export report')
+      toast.error('This feature is available in higher plans. Upgrade your plan to access it.')
     } finally {
       setLoading(false)
     }
@@ -231,40 +231,40 @@ export default function Reports() {
         )} */}
 
         {activeReport === 'recharges' && (
-  <>
-    <StatCard
-      title="Total Amount"
-      value={`₹${(summary.totalAmount || 0).toLocaleString()}`}
-    />
-    <StatCard
-      title="Average"
-      value={`₹${Math.round(summary.avgAmount || 0)}`}
-    />
-    <StatCard
-      title="Payment Methods"
-      value={
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-          {Object.entries(summary.byPaymentMethod || {}).length > 0
-            ? Object.entries(summary.byPaymentMethod).map(([method, count]) => (
-                <div
-                  key={method}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
-                >
-                  <span style={{ fontSize: '14px', color: '#6b7280', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
-                    {method}
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
-                    {count}
-                  </span>
+          <>
+            <StatCard
+              title="Total Amount"
+              value={`₹${(summary.totalAmount || 0).toLocaleString()}`}
+            />
+            <StatCard
+              title="Average"
+              value={`₹${Math.round(summary.avgAmount || 0)}`}
+            />
+            <StatCard
+              title="Payment Methods"
+              value={
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
+                  {Object.entries(summary.byPaymentMethod || {}).length > 0
+                    ? Object.entries(summary.byPaymentMethod).map(([method, count]) => (
+                      <div
+                        key={method}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
+                      >
+                        <span style={{ fontSize: '14px', color: '#6b7280', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                          {method}
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
+                          {count}
+                        </span>
+                      </div>
+                    ))
+                    : <span style={{ fontSize: '13px', color: '#9ca3af' }}>N/A</span>
+                  }
                 </div>
-              ))
-            : <span style={{ fontSize: '13px', color: '#9ca3af' }}>N/A</span>
-          }
-        </div>
-      }
-    />
-  </>
-)}
+              }
+            />
+          </>
+        )}
 
         {activeReport === 'callLogs' && (
           <>
@@ -324,7 +324,7 @@ export default function Reports() {
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.mobileNumber}</td>
-            
+
               <td style={{ padding: '12px 16px' }}>{item.operator}</td>
               <td style={{ padding: '12px 16px' }}>
                 <Badge variant={item.status === 'active' ? 'success' : item.status === 'inactive' ? 'danger' : 'warning'}>
@@ -386,7 +386,7 @@ export default function Reports() {
     const getHeaders = () => {
       switch (activeReport) {
         case 'sims':
-          return ['Mobile',  'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To']
+          return ['Mobile', 'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To']
         case 'recharges':
           return ['Mobile', 'Operator', 'Amount', 'Validity', 'Plan', 'Method', 'Date']
         case 'callLogs':

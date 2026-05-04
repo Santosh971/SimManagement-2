@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 const callLogController = require('../../controllers/callLog/callLog.controller');
 const { authenticate, checkCompanyAccess } = require('../../middleware/auth');
-const { checkSubscriptionLimit } = require('../../middleware/subscription');
+const { checkSubscriptionLimit, checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 // [PHONE NORMALIZATION FIX]
 const { normalizePhoneNumber } = require('../../utils/response');
@@ -93,7 +93,7 @@ router.post('/sync', checkSubscriptionLimit('callLogSync'), syncValidation, vali
 router.post('/sync-user', userSyncValidation, validate, callLogController.syncUserLogs);
 router.get('/', queryValidation, validate, callLogController.getAll);
 router.get('/stats', callLogController.getStats);
-router.get('/export', callLogController.export);
+router.get('/export', checkSubscriptionFeature('excelExport'), callLogController.export);
 router.get('/:id', callLogController.getById);
 router.get('/sim/:simId/stats', callLogController.getSimStats);
 router.patch('/:id/flag', flagValidation, validate, callLogController.flag);

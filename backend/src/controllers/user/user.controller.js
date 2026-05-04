@@ -47,7 +47,7 @@ class UserController {
 
   async update(req, res, next) {
     try {
-      const user = await userService.updateUser(req.params.id, req.body, req.user);
+      const { user, originalValues } = await userService.updateUser(req.params.id, req.body, req.user);
 
       // Audit log: USER_UPDATE
       await auditLogService.logAction({
@@ -59,7 +59,10 @@ class UserController {
         companyId: user.companyId,
         entityId: user._id,
         entityType: 'USER',
-        metadata: { changes: req.body },
+        metadata: {
+          previousValues: originalValues,
+          newValues: req.body,
+        },
         req,
       });
 
@@ -77,17 +80,17 @@ class UserController {
       await auditLogService.logAction({
         action: 'USER_DELETE',
         module: 'USER',
-        description: `Deactivated user ${user.name} (${user.email})`,
+        description: `Deleted user ${user.name} (${user.email})`,
         performedBy: req.user._id,
         role: req.user.role,
         companyId: user.companyId,
         entityId: user._id,
         entityType: 'USER',
-        metadata: { email: user.email },
+        metadata: { email: user.email, userName: user.name },
         req,
       });
 
-      return successResponse(res, null, 'User deactivated successfully');
+      return successResponse(res, null, 'User deleted successfully');
     } catch (error) {
       next(error);
     }
@@ -107,7 +110,7 @@ class UserController {
         companyId: user.companyId,
         entityId: user._id,
         entityType: 'USER',
-        metadata: { email: user.email },
+        metadata: { email: user.email, userName: user.name },
         req,
       });
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const smsController = require('../../controllers/sms/sms.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 const {
   syncValidation,
@@ -11,6 +12,12 @@ const {
 
 // All routes require authentication
 router.use(authenticate);
+
+// Feature check for SMS Logs (skip for super_admin)
+router.use((req, res, next) => {
+  if (req.user?.role === 'super_admin') return next();
+  return checkSubscriptionFeature('smsLogs')(req, res, next);
+});
 
 // Sync SMS from mobile device (user role)
 router.post(

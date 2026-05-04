@@ -4,11 +4,13 @@ const Payment = require('../../models/payment/payment.model');
 const Company = require('../../models/company/company.model');
 const User = require('../../models/auth/user.model');
 const Subscription = require('../../models/subscription/subscription.model');
+const SubscriptionHistory = require('../../models/subscription/subscriptionHistory.model');
 const { AppError, NotFoundError, ConflictError } = require('../../utils/errors');
 const config = require('../../config');
 const jwt = require('jsonwebtoken');
 const emailService = require('../../utils/emailService');
 const notificationHelper = require('../../utils/notificationHelper');
+const subscriptionService = require('../subscription/subscription.service');
 
 // Initialize Razorpay
 let razorpay = null;
@@ -198,15 +200,20 @@ class PaymentService {
     const plan = payment.subscriptionId;
     const user = payment.userId;
 
-    company.subscriptionId = plan._id;
-    company.subscriptionStartDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + payment.planDuration);
-    company.subscriptionEndDate = endDate;
-    company.billingCycle = payment.billingCycle; // Store billing cycle
-    company.isActive = true;
+    // Check for duplicate processing using payment ID
+    const isAlreadyProcessed = await SubscriptionHistory.isPaymentProcessed(payment._id);
+    if (isAlreadyProcessed) {
+      throw new ConflictError('Payment already processed. Please refresh to see updated subscription.');
+    }
 
-    await company.save();
+    // Process subscription change using the new upgrade/renewal logic
+    const result = await subscriptionService.processSubscriptionChange({
+      company: company,
+      newPlan: plan,
+      billingCycle: payment.billingCycle,
+      payment: payment,
+      userId: user._id,
+    });
 
     // Send notification to superadmins (non-blocking)
     if (user) {
@@ -232,6 +239,7 @@ class PaymentService {
               amount: payment.amount,
               planName: payment.planName,
               expiryDate: company.subscriptionEndDate,
+              bonusDays: result.bonusDays || 0,
             },
           },
           {
@@ -250,7 +258,9 @@ class PaymentService {
                     <p style="margin: 10px 0 0 0;"><strong>Amount:</strong> ₹${payment.amount}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Billing Cycle:</strong> ${payment.billingCycle}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Valid Until:</strong> ${new Date(company.subscriptionEndDate).toDateString()}</p>
+                    ${result.bonusDays > 0 ? `<p style="margin: 10px 0 0 0;"><strong>Bonus Days:</strong> ${result.bonusDays} days added</p>` : ''}
                   </div>
+                  <p style="color: #16a34a; font-weight: 500;">${result.message}</p>
                   <p>Thank you for your subscription!</p>
                   <p>Best regards,<br>SIM Management Team</p>
                 </div>
@@ -282,6 +292,12 @@ class PaymentService {
         id: company._id,
         name: company.name,
         subscriptionEnds: company.subscriptionEndDate,
+      },
+      subscription: {
+        type: result.type,
+        message: result.message,
+        bonusDays: result.bonusDays || 0,
+        remainingDays: result.remainingDays || 0,
       },
     };
   }
@@ -438,9 +454,16 @@ class PaymentService {
     // Find payment by order ID
     const payment = await Payment.findOne({
       razorpayOrderId: paymentData.order_id,
-    });
+    }).populate('companyId subscriptionId userId');
 
     if (payment && payment.status !== 'completed') {
+      // Check for duplicate processing
+      const isAlreadyProcessed = await SubscriptionHistory.isPaymentProcessed(payment._id);
+      if (isAlreadyProcessed) {
+        console.log('Payment already processed via webhook:', payment._id);
+        return;
+      }
+
       // Update payment status
       payment.razorpayPaymentId = paymentData.id;
       payment.paymentMethod = paymentData.method;
@@ -451,16 +474,23 @@ class PaymentService {
       payment.paidAt = new Date();
       await payment.save();
 
-      // Update company subscription
-      const company = await Company.findById(payment.companyId);
-      if (company) {
-        const plan = await Subscription.findById(payment.subscriptionId);
-        company.subscriptionId = plan._id;
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + payment.planDuration);
-        company.subscriptionEndDate = endDate;
-        company.isActive = true;
-        await company.save();
+      // Process subscription change using new logic
+      if (payment.companyId) {
+        const company = payment.companyId;
+        const plan = payment.subscriptionId;
+        const user = payment.userId;
+
+        try {
+          await subscriptionService.processSubscriptionChange({
+            company: company,
+            newPlan: plan,
+            billingCycle: payment.billingCycle,
+            payment: payment,
+            userId: user?._id,
+          });
+        } catch (err) {
+          console.error('Error processing subscription change:', err.message);
+        }
       }
     }
   }
@@ -675,6 +705,25 @@ class PaymentService {
     payment.paidAt = new Date();
     payment.notes = 'Registration completed'; // Clear sensitive data
     await payment.save();
+
+    // Create subscription history record for new registration
+    await SubscriptionHistory.create({
+      companyId: company._id,
+      userId: user._id,
+      oldPlanId: null,
+      newPlanId: plan._id,
+      oldPlanName: null,
+      newPlanName: plan.name,
+      startDate: subscriptionStartDate,
+      endDate: subscriptionEndDate,
+      bonusDays: 0,
+      remainingDays: 0,
+      paymentId: payment._id,
+      type: 'new',
+      billingCycle: payment.billingCycle,
+      amount: payment.amount,
+      notes: 'New subscription via paid registration',
+    });
 
     // Generate tokens for auto-login
     const accessToken = jwt.sign(
@@ -969,6 +1018,25 @@ class PaymentService {
     });
 
     await payment.save();
+
+    // Create subscription history record for free trial
+    await SubscriptionHistory.create({
+      companyId: company._id,
+      userId: user._id,
+      oldPlanId: null,
+      newPlanId: plan._id,
+      oldPlanName: null,
+      newPlanName: plan.name,
+      startDate: subscriptionStartDate,
+      endDate: subscriptionEndDate,
+      bonusDays: 0,
+      remainingDays: 0,
+      paymentId: payment._id,
+      type: 'new',
+      billingCycle: 'monthly',
+      amount: 0,
+      notes: 'Free trial registration',
+    });
 
     // Send welcome email
     try {

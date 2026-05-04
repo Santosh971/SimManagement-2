@@ -212,7 +212,14 @@ class AuthController {
 
   async initSuperAdmin(req, res, next) {
     try {
-      const result = await authService.createSuperAdmin();
+      // Pass request body credentials to the service
+      // If no credentials provided, defaults will be used
+      const credentials = {
+        email: req.body?.email,
+        password: req.body?.password,
+        name: req.body?.name,
+      };
+      const result = await authService.createSuperAdmin(credentials);
       return successResponse(res, result, 'Super admin initialized');
     } catch (error) {
       next(error);

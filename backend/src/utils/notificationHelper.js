@@ -1,6 +1,7 @@
 const Notification = require('../models/notification/notification.model');
 const emailService = require('./emailService');
 const logger = require('./logger');
+const { isFeatureEnabled } = require('../middleware/subscription');
 
 /**
  * Notification Helper
@@ -43,6 +44,7 @@ class NotificationHelper {
 
   /**
    * Create notification with email
+   * Checks if emailNotifications feature is enabled before sending
    * @param {Object} notificationData - Notification data
    * @param {Object} emailData - Email data { to, subject, html }
    * @returns {Promise<Notification>}
@@ -55,7 +57,23 @@ class NotificationHelper {
         channels: { email: true, sms: false, inApp: true },
       });
 
-      // Send email if configured
+      // Check if emailNotifications feature is enabled for the company
+      if (notificationData.companyId) {
+        const featureCheck = await isFeatureEnabled(notificationData.companyId, 'emailNotifications');
+
+        if (!featureCheck.enabled) {
+          logger.info('Email notifications disabled for company', {
+            companyId: notificationData.companyId,
+            notificationId: notification._id,
+            reason: featureCheck.reason
+          });
+          // Mark email as skipped (not sent due to plan limitation)
+          await notification.markAsSent('email', false, featureCheck.reason || 'Email notifications not available in plan');
+          return notification;
+        }
+      }
+
+      // Send email if configured and feature is enabled
       if (emailService.isReady() && emailData) {
         const emailResult = await emailService.sendEmail(emailData);
 
@@ -72,6 +90,35 @@ class NotificationHelper {
     } catch (error) {
       logger.error('Failed to create notification with email', { error: error.message });
       throw error;
+    }
+  }
+
+  /**
+   * Helper method to send email if emailNotifications feature is enabled
+   * @param {string} companyId - Company ID
+   * @param {Function} emailFn - Email function to call
+   * @param {Array} args - Arguments for the email function
+   * @returns {Promise<{sent: boolean, reason?: string}>}
+   */
+  async sendEmailIfEnabled(companyId, emailFn, ...args) {
+    try {
+      // Check if emailNotifications feature is enabled
+      const featureCheck = await isFeatureEnabled(companyId, 'emailNotifications');
+
+      if (!featureCheck.enabled) {
+        logger.info('Email skipped - feature not enabled', {
+          companyId,
+          reason: featureCheck.reason
+        });
+        return { sent: false, reason: featureCheck.reason || 'Email notifications not available in plan' };
+      }
+
+      // Send the email
+      await emailFn(...args);
+      return { sent: true };
+    } catch (error) {
+      logger.error('Failed to send email', { error: error.message, companyId });
+      return { sent: false, reason: error.message };
     }
   }
 
@@ -130,8 +177,8 @@ class NotificationHelper {
       },
     };
 
-    // Send welcome email
-    await emailService.sendWelcomeEmail(user, company, tempPassword);
+    // Send welcome email (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendWelcomeEmail.bind(emailService), user, company, tempPassword);
 
     return this.createNotification(notificationData);
   }
@@ -161,8 +208,8 @@ class NotificationHelper {
       data: { simId: sim._id },
     };
 
-    // Send email to user
-    await emailService.sendSimAssignmentEmail(user, sim, assignedBy);
+    // Send email to user (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendSimAssignmentEmail.bind(emailService), user, sim, assignedBy);
 
     return this.createNotification(notificationData);
   }
@@ -351,8 +398,8 @@ class NotificationHelper {
       data: { simId: sim._id },
     };
 
-    // Send email to user
-    await emailService.sendSimUnassignmentEmail(user, sim, unassignedBy);
+    // Send email to user (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendSimUnassignmentEmail.bind(emailService), user, sim, unassignedBy);
 
     return this.createNotification(notificationData);
   }
@@ -378,8 +425,8 @@ class NotificationHelper {
       data: { companyId: company._id },
     };
 
-    // Send email
-    await emailService.sendSubscriptionRenewalEmail(company, newEndDate, planName);
+    // Send email (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendSubscriptionRenewalEmail.bind(emailService), company, newEndDate, planName);
 
     return this.createNotification(notificationData);
   }
@@ -405,8 +452,8 @@ class NotificationHelper {
       data: { companyId: company._id },
     };
 
-    // Send email
-    await emailService.sendTrialExtensionEmail(company, newEndDate, additionalDays);
+    // Send email (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendTrialExtensionEmail.bind(emailService), company, newEndDate, additionalDays);
 
     return this.createNotification(notificationData);
   }
@@ -432,9 +479,9 @@ class NotificationHelper {
       data: { companyId: company._id },
     };
 
-    // Send email
+    // Send email (if emailNotifications feature is enabled)
     try {
-      await emailService.sendTrialConvertedEmail(company, newEndDate, planName);
+      await this.sendEmailIfEnabled(company._id, emailService.sendTrialConvertedEmail.bind(emailService), company, newEndDate, planName);
     } catch (error) {
       console.error('Failed to send trial converted email:', error.message);
     }
@@ -463,8 +510,8 @@ class NotificationHelper {
       },
     };
 
-    // Send email with new password
-    await emailService.sendAdminPasswordResetEmail(user, newPassword, resetBy);
+    // Send email with new password (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendAdminPasswordResetEmail.bind(emailService), user, newPassword, resetBy);
 
     return this.createNotification(notificationData);
   }
@@ -489,8 +536,8 @@ class NotificationHelper {
       },
     };
 
-    // Send email
-    await emailService.sendUserActivationEmail(user, company, activatedBy);
+    // Send email (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendUserActivationEmail.bind(emailService), user, company, activatedBy);
 
     return this.createNotification(notificationData);
   }
@@ -515,8 +562,8 @@ class NotificationHelper {
       },
     };
 
-    // Send email
-    await emailService.sendUserDeactivationEmail(user, company, deactivatedBy);
+    // Send email (if emailNotifications feature is enabled)
+    await this.sendEmailIfEnabled(company._id, emailService.sendUserDeactivationEmail.bind(emailService), user, company, deactivatedBy);
 
     return this.createNotification(notificationData);
   }

@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 const statusController = require('../../controllers/status/status.controller');
 const { authenticate } = require('../../middleware/auth');
-const { checkSubscriptionLimit } = require('../../middleware/subscription');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
 
 // Validation rules
@@ -24,6 +24,13 @@ const bulkUpdateValidation = [
   body('enabled').isBoolean().withMessage('Enabled must be a boolean'),
 ];
 
+// Middleware to check feature based on platform
+const checkPlatformFeature = (req, res, next) => {
+  const platform = req.body.platform;
+  const feature = platform === 'whatsapp' ? 'whatsappStatus' : 'telegramStatus';
+  return checkSubscriptionFeature(feature)(req, res, next);
+};
+
 // All routes require authentication
 router.use(authenticate);
 
@@ -31,8 +38,8 @@ router.use(authenticate);
 router.get('/overview', statusController.getOverview);
 router.get('/:simId', statusController.getStatus);
 router.get('/:simId/history', statusController.getHistory);
-router.put('/:simId/whatsapp', checkSubscriptionLimit('whatsappStatus'), updateWhatsAppValidation, validate, statusController.updateWhatsApp);
-router.put('/:simId/telegram', checkSubscriptionLimit('whatsappStatus'), updateTelegramValidation, validate, statusController.updateTelegram);
-router.post('/bulk', bulkUpdateValidation, validate, statusController.bulkUpdate);
+router.put('/:simId/whatsapp', checkSubscriptionFeature('whatsappStatus'), updateWhatsAppValidation, validate, statusController.updateWhatsApp);
+router.put('/:simId/telegram', checkSubscriptionFeature('telegramStatus'), updateTelegramValidation, validate, statusController.updateTelegram);
+router.post('/bulk', bulkUpdateValidation, validate, checkPlatformFeature, statusController.bulkUpdate);
 
 module.exports = router;

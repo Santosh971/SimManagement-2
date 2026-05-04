@@ -719,15 +719,15 @@ const STYLES = `
 
 export default function CallLogs() {
   const { api } = useAuth()
-  const [callLogs, setCallLogs]   = useState([])
-  const [sims, setSims]           = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [callType, setCallType]   = useState('')
-  const [simId, setSimId]         = useState('')
+  const [callLogs, setCallLogs] = useState([])
+  const [sims, setSims] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [callType, setCallType] = useState('')
+  const [simId, setSimId] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
-  const [stats, setStats]         = useState(null)
+  const [stats, setStats] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
 
   useEffect(() => { fetchCallLogs(); fetchStats(); fetchSims() }, [pagination.page])
@@ -754,7 +754,7 @@ export default function CallLogs() {
     try {
       const r = await api.get('/sims?limit=100')
       setSims(r.data.data || [])
-    } catch {}
+    } catch { }
   }
 
   const fetchCallLogs = async (silent = false) => {
@@ -764,11 +764,11 @@ export default function CallLogs() {
       }
       const params = new URLSearchParams({
         page: pagination.page, limit: pagination.limit,
-        ...(callType    && { callType }),
-        ...(simId       && { simId }),
+        ...(callType && { callType }),
+        ...(simId && { simId }),
         ...(phoneNumber && { phoneNumber }),
         ...(dateRange.start && { startDate: dateRange.start }),
-        ...(dateRange.end   && { endDate:   dateRange.end }),
+        ...(dateRange.end && { endDate: dateRange.end }),
       })
       const r = await api.get(`/call-logs?${params}`)
       setCallLogs(r.data.data || [])
@@ -780,7 +780,7 @@ export default function CallLogs() {
       }
       setCallLogs([])
     }
-    finally  {
+    finally {
       if (!silent) {
         setLoading(false)
       }
@@ -788,7 +788,7 @@ export default function CallLogs() {
   }
 
   const fetchStats = async () => {
-    try { const r = await api.get('/call-logs/stats'); setStats(r.data.data) } catch {}
+    try { const r = await api.get('/call-logs/stats'); setStats(r.data.data) } catch { }
   }
 
   const handleSearch = (e) => { e.preventDefault(); fetchCallLogs() }
@@ -796,20 +796,20 @@ export default function CallLogs() {
   const handleExport = async () => {
     try {
       const params = new URLSearchParams({
-        ...(callType    && { callType }),
-        ...(simId       && { simId }),
+        ...(callType && { callType }),
+        ...(simId && { simId }),
         ...(phoneNumber && { phoneNumber }),
         ...(dateRange.start && { startDate: dateRange.start }),
-        ...(dateRange.end   && { endDate:   dateRange.end }),
+        ...(dateRange.end && { endDate: dateRange.end }),
       })
       const r = await api.get(`/call-logs/export?${params}`, { responseType: 'blob' })
-      const url  = window.URL.createObjectURL(new Blob([r.data]))
+      const url = window.URL.createObjectURL(new Blob([r.data]))
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', 'call-logs-export.xlsx')
       document.body.appendChild(link); link.click(); link.remove()
       toast.success('Export completed')
-    } catch { toast.error('Export failed') }
+    } catch { toast.error('This feature is available in higher plans. Upgrade your plan to access it.') }
   }
 
   const handleFlag = async (id, flagged, reason = '') => {
@@ -820,7 +820,7 @@ export default function CallLogs() {
     } catch { toast.error('Failed to update flag') }
   }
 
-  const getIcon  = (type) => ({ incoming: FiPhoneIncoming, outgoing: FiPhoneOutgoing, missed: FiPhoneMissed }[type] || FiPhone)
+  const getIcon = (type) => ({ incoming: FiPhoneIncoming, outgoing: FiPhoneOutgoing, missed: FiPhoneMissed }[type] || FiPhone)
   const getColor = (type) => ({ incoming: { bg: '#dcfce7', text: '#16a34a' }, outgoing: { bg: '#eff6ff', text: '#2563eb' }, missed: { bg: '#fef2f2', text: '#dc2626' } }[type] || { bg: '#f3f4f6', text: '#374151' })
 
   const formatDuration = (s) => {
@@ -885,10 +885,10 @@ export default function CallLogs() {
       {/* ── Stats ── */}
       {stats && (
         <Grid cols={4} gap={16} style={{ marginBottom: '24px' }}>
-          <StatCard title="Total Calls"  value={stats.totalCalls?.toLocaleString() || 0} icon={FiPhone}         iconColor="#2563eb" iconBg="#eff6ff" />
-          <StatCard title="Incoming"     value={stats.byType?.find(t => t._id === 'incoming')?.count || 0}      icon={FiPhoneIncoming} iconColor="#16a34a" iconBg="#dcfce7" />
-          <StatCard title="Outgoing"     value={stats.byType?.find(t => t._id === 'outgoing')?.count || 0}      icon={FiPhoneOutgoing} iconColor="#2563eb" iconBg="#eff6ff" />
-          <StatCard title="Missed"       value={stats.byType?.find(t => t._id === 'missed')?.count || 0}        icon={FiPhoneMissed}   iconColor="#dc2626" iconBg="#fef2f2" />
+          <StatCard title="Total Calls" value={stats.totalCalls?.toLocaleString() || 0} icon={FiPhone} iconColor="#2563eb" iconBg="#eff6ff" />
+          <StatCard title="Incoming" value={stats.byType?.find(t => t._id === 'incoming')?.count || 0} icon={FiPhoneIncoming} iconColor="#16a34a" iconBg="#dcfce7" />
+          <StatCard title="Outgoing" value={stats.byType?.find(t => t._id === 'outgoing')?.count || 0} icon={FiPhoneOutgoing} iconColor="#2563eb" iconBg="#eff6ff" />
+          <StatCard title="Missed" value={stats.byType?.find(t => t._id === 'missed')?.count || 0} icon={FiPhoneMissed} iconColor="#dc2626" iconBg="#fef2f2" />
         </Grid>
       )}
 
@@ -921,16 +921,16 @@ export default function CallLogs() {
                 {sims.map(s => <option key={s._id} value={s._id}>{s.mobileNumber} ({s.operator})</option>)}
               </select>
 
-             <input
-  type="date"
-  value={dateRange.start}
-  max={today} // ✅ restrict future dates
-  onKeyDown={(e) => e.preventDefault()}
-  onChange={(e) =>
-    setDateRange(p => ({ ...p, start: e.target.value }))
-  }
-  style={{ ...inputBase, cursor: 'pointer' }}
-/>
+              <input
+                type="date"
+                value={dateRange.start}
+                max={today} // ✅ restrict future dates
+                onKeyDown={(e) => e.preventDefault()}
+                onChange={(e) =>
+                  setDateRange(p => ({ ...p, start: e.target.value }))
+                }
+                style={{ ...inputBase, cursor: 'pointer' }}
+              />
               <input
                 type="date" value={dateRange.end}
                 onKeyDown={(e) => e.preventDefault()}
@@ -986,11 +986,7 @@ export default function CallLogs() {
             <div style={{ padding: '48px 24px', textAlign: 'center', color: '#6b7280' }}>
               <FiPhone style={{ width: '36px', height: '36px', color: '#d1d5db', marginBottom: '12px' }} />
               <p style={{ marginBottom: '16px', fontSize: '14px' }}>No Call Logs Found</p>
-              <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', maxWidth: '380px', margin: '0 auto', textAlign: 'left' }}>
-                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}><strong>Mobile API Endpoint:</strong></p>
-                <code style={{ fontSize: '12px', color: '#2563eb', display: 'block', marginBottom: '6px' }}>POST /api/call-logs/sync</code>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Send call logs from mobile devices using the sync endpoint with authentication token.</p>
-              </div>
+
             </div>
           ) : (
             <>
@@ -1010,9 +1006,9 @@ export default function CallLogs() {
                   </thead>
                   <tbody>
                     {callLogs.map((log) => {
-                      const Icon  = getIcon(log.callType)
+                      const Icon = getIcon(log.callType)
                       const color = getColor(log.callType)
-                      const dt    = formatDT(log.timestamp)
+                      const dt = formatDT(log.timestamp)
                       return (
                         <tr key={log._id}>
                           {/* Type */}
@@ -1081,259 +1077,259 @@ export default function CallLogs() {
               </div>
 
               {/* ── Mobile card list (≤480px) ── */}
-<div className="cl-mobile">
-  {callLogs.map((log) => {
-    const Icon  = getIcon(log.callType)
-    const color = getColor(log.callType)
-    const dt    = formatDT(log.timestamp)
-    return (
-      <div key={log._id} style={{
-        padding: '12px 14px',
-        borderBottom: '1px solid #f3f4f6',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-      }}>
+              <div className="cl-mobile">
+                {callLogs.map((log) => {
+                  const Icon = getIcon(log.callType)
+                  const color = getColor(log.callType)
+                  const dt = formatDT(log.timestamp)
+                  return (
+                    <div key={log._id} style={{
+                      padding: '12px 14px',
+                      borderBottom: '1px solid #f3f4f6',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                    }}>
 
-        {/* ── Row 1: Type badge + Flag indicator + Date/Time ── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                      {/* ── Row 1: Type badge + Flag indicator + Date/Time ── */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
 
-          {/* Left: icon + type badge + flagged dot */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '8px',
-              backgroundColor: color.bg, display: 'flex',
-              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <Icon style={{ width: '14px', height: '14px', color: color.text }} />
-            </div>
-            <span style={{
-              padding: '3px 9px', borderRadius: '99px',
-              fontSize: '11px', fontWeight: '600',
-              backgroundColor: color.bg, color: color.text,
-              textTransform: 'capitalize', whiteSpace: 'nowrap',
-            }}>
-              {log.callType}
-            </span>
-            {log.isFlagged && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '3px',
-                padding: '3px 7px', borderRadius: '99px',
-                backgroundColor: '#fef2f2', fontSize: '11px',
-                fontWeight: '500', color: '#dc2626', whiteSpace: 'nowrap',
-              }}>
-                <FiFlag style={{ width: '10px', height: '10px' }} /> Flagged
-              </span>
-            )}
-          </div>
+                        {/* Left: icon + type badge + flagged dot */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{
+                            width: '28px', height: '28px', borderRadius: '8px',
+                            backgroundColor: color.bg, display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}>
+                            <Icon style={{ width: '14px', height: '14px', color: color.text }} />
+                          </div>
+                          <span style={{
+                            padding: '3px 9px', borderRadius: '99px',
+                            fontSize: '11px', fontWeight: '600',
+                            backgroundColor: color.bg, color: color.text,
+                            textTransform: 'capitalize', whiteSpace: 'nowrap',
+                          }}>
+                            {log.callType}
+                          </span>
+                          {log.isFlagged && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '3px',
+                              padding: '3px 7px', borderRadius: '99px',
+                              backgroundColor: '#fef2f2', fontSize: '11px',
+                              fontWeight: '500', color: '#dc2626', whiteSpace: 'nowrap',
+                            }}>
+                              <FiFlag style={{ width: '10px', height: '10px' }} /> Flagged
+                            </span>
+                          )}
+                        </div>
 
-          {/* Right: Date stacked above Time */}
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: '500', color: '#111827', whiteSpace: 'nowrap' }}>
-              {dt.date}
-            </div>
-            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', whiteSpace: 'nowrap' }}>
-              {dt.time}
-            </div>
-          </div>
-        </div>
+                        {/* Right: Date stacked above Time */}
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: '12px', fontWeight: '500', color: '#111827', whiteSpace: 'nowrap' }}>
+                            {dt.date}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                            {dt.time}
+                          </div>
+                        </div>
+                      </div>
 
-        {/* ── Row 2: Phone + Duration side by side ── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr auto',
-          gap: '12px',
-          alignItems: 'start',
-          backgroundColor: '#f9fafb',
-          borderRadius: '8px',
-          padding: '10px 12px',
-        }}>
-          <div>
-            <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phone</p>
-            <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827', margin: 0, wordBreak: 'break-all' }}>
-              {log.phoneNumber || '-'}
-            </p>
-            {log.contactName && (
-              <p style={{ fontSize: '11px', color: '#6b7280', margin: '3px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <FiUser style={{ width: '10px', height: '10px', flexShrink: 0 }} />
-                {log.contactName}
-              </p>
-            )}
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duration</p>
-            <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827', margin: 0, whiteSpace: 'nowrap' }}>
-              {formatDuration(log.duration)}
-            </p>
-          </div>
-        </div>
+                      {/* ── Row 2: Phone + Duration side by side ── */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        gap: '12px',
+                        alignItems: 'start',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                      }}>
+                        <div>
+                          <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Phone</p>
+                          <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827', margin: 0, wordBreak: 'break-all' }}>
+                            {log.phoneNumber || '-'}
+                          </p>
+                          {log.contactName && (
+                            <p style={{ fontSize: '11px', color: '#6b7280', margin: '3px 0 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <FiUser style={{ width: '10px', height: '10px', flexShrink: 0 }} />
+                              {log.contactName}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duration</p>
+                          <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827', margin: 0, whiteSpace: 'nowrap' }}>
+                            {formatDuration(log.duration)}
+                          </p>
+                        </div>
+                      </div>
 
-        {/* ── Row 3: SIM info + Action button ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SIM</p>
-            <p style={{ fontSize: '12px', color: '#374151', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {log.simId?.mobileNumber || 'N/A'}
-              {log.simId?.operator && (
-                <span style={{ color: '#9ca3af', marginLeft: '4px' }}>· {log.simId.operator}</span>
-              )}
-            </p>
-          </div>
+                      {/* ── Row 3: SIM info + Action button ── */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SIM</p>
+                          <p style={{ fontSize: '12px', color: '#374151', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {log.simId?.mobileNumber || 'N/A'}
+                            {log.simId?.operator && (
+                              <span style={{ color: '#9ca3af', marginLeft: '4px' }}>· {log.simId.operator}</span>
+                            )}
+                          </p>
+                        </div>
 
-          {/* Flag / Unflag button */}
-          {log.isFlagged ? (
-            <button
-              onClick={() => handleFlag(log._id, false)}
-              style={{
-                flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                padding: '6px 12px', borderRadius: '7px', cursor: 'pointer',
-                fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap',
-                border: '1px solid #fecaca',
-                backgroundColor: '#fef2f2', color: '#dc2626',
-              }}
-            >
-              <FiX style={{ width: '12px', height: '12px' }} /> Unflag
-            </button>
-          ) : (
-            <button
-              onClick={() => handleFlag(log._id, true, 'Flagged for review')}
-              style={{
-                flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                padding: '6px 12px', borderRadius: '7px', cursor: 'pointer',
-                fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap',
-                border: '1px solid #e5e7eb',
-                backgroundColor: '#f9fafb', color: '#374151',
-              }}
-            >
-              <FiFlag style={{ width: '12px', height: '12px' }} /> Flag
-            </button>
-          )}
-        </div>
+                        {/* Flag / Unflag button */}
+                        {log.isFlagged ? (
+                          <button
+                            onClick={() => handleFlag(log._id, false)}
+                            style={{
+                              flexShrink: 0,
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              padding: '6px 12px', borderRadius: '7px', cursor: 'pointer',
+                              fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap',
+                              border: '1px solid #fecaca',
+                              backgroundColor: '#fef2f2', color: '#dc2626',
+                            }}
+                          >
+                            <FiX style={{ width: '12px', height: '12px' }} /> Unflag
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleFlag(log._id, true, 'Flagged for review')}
+                            style={{
+                              flexShrink: 0,
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              padding: '6px 12px', borderRadius: '7px', cursor: 'pointer',
+                              fontSize: '12px', fontWeight: '500', whiteSpace: 'nowrap',
+                              border: '1px solid #e5e7eb',
+                              backgroundColor: '#f9fafb', color: '#374151',
+                            }}
+                          >
+                            <FiFlag style={{ width: '12px', height: '12px' }} /> Flag
+                          </button>
+                        )}
+                      </div>
 
-      </div>
-    )
-  })}
-</div>
+                    </div>
+                  )
+                })}
+              </div>
             </>
           )}
         </CardBody>
       </Card>
 
       {/* ── Pagination ── */}
- {pagination.total > 0 && (
-  <Card style={{ marginTop: '16px' }}>
-    <CardBody style={{ padding: '12px 14px' }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '8px',
-        flexWrap: 'wrap',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
-
-        {/* Info text */}
-        <div style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          whiteSpace: 'nowrap',
-          flexShrink: 1,
-          minWidth: 0,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}>
-          Showing{' '}
-          <strong style={{ color: '#374151' }}>{(pagination.page - 1) * pagination.limit + 1}</strong>
-          {' – '}
-          <strong style={{ color: '#374151' }}>{Math.min(pagination.page * pagination.limit, pagination.total)}</strong>
-          {' of '}
-          <strong style={{ color: '#374151' }}>{pagination.total}</strong>
-        </div>
-
-        {/* Prev + page indicator + Next */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          flexShrink: 0,
-        }}>
-
-          {/* Prev */}
-          <button
-            onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
-            disabled={pagination.page === 1}
-            style={{
-              display: 'inline-flex',
+      {pagination.total > 0 && (
+        <Card style={{ marginTop: '16px' }}>
+          <CardBody style={{ padding: '12px 14px' }}>
+            <div style={{
+              display: 'flex',
               alignItems: 'center',
-              gap: '3px',
-              padding: '6px 10px',
-              borderRadius: '8px',
-              border: '1px solid #d1d5db',
-              backgroundColor: '#fff',
-              color: '#374151',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: pagination.page === 1 ? 'not-allowed' : 'pointer',
-              opacity: pagination.page === 1 ? 0.45 : 1,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            <FiChevronLeft style={{ width: '13px', height: '13px' }} />
-            Prev
-          </button>
+              justifyContent: 'space-between',
+              gap: '8px',
+              flexWrap: 'wrap',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}>
 
-          {/* Page indicator pill */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '6px 10px',
-            borderRadius: '8px',
-            border: '1px solid #bfdbfe',
-            backgroundColor: '#eff6ff',
-            fontSize: '12px',
-            fontWeight: '600',
-            color: '#2563eb',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}>
-            {pagination.page} / {totalPages}
-          </div>
+              {/* Info text */}
+              <div style={{
+                fontSize: '12px',
+                color: '#6b7280',
+                whiteSpace: 'nowrap',
+                flexShrink: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                Showing{' '}
+                <strong style={{ color: '#374151' }}>{(pagination.page - 1) * pagination.limit + 1}</strong>
+                {' – '}
+                <strong style={{ color: '#374151' }}>{Math.min(pagination.page * pagination.limit, pagination.total)}</strong>
+                {' of '}
+                <strong style={{ color: '#374151' }}>{pagination.total}</strong>
+              </div>
 
-          {/* Next */}
-          <button
-            onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
-            disabled={pagination.page >= totalPages}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
-              padding: '6px 10px',
-              borderRadius: '8px',
-              border: '1px solid #d1d5db',
-              backgroundColor: '#fff',
-              color: '#374151',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: pagination.page >= totalPages ? 'not-allowed' : 'pointer',
-              opacity: pagination.page >= totalPages ? 0.45 : 1,
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            Next
-            <FiChevronRight style={{ width: '13px', height: '13px' }} />
-          </button>
+              {/* Prev + page indicator + Next */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexShrink: 0,
+              }}>
 
-        </div>
-      </div>
-    </CardBody>
-  </Card>
-)}
+                {/* Prev */}
+                <button
+                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                  disabled={pagination.page === 1}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    backgroundColor: '#fff',
+                    color: '#374151',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: pagination.page === 1 ? 'not-allowed' : 'pointer',
+                    opacity: pagination.page === 1 ? 0.45 : 1,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  <FiChevronLeft style={{ width: '13px', height: '13px' }} />
+                  Prev
+                </button>
+
+                {/* Page indicator pill */}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid #bfdbfe',
+                  backgroundColor: '#eff6ff',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#2563eb',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}>
+                  {pagination.page} / {totalPages}
+                </div>
+
+                {/* Next */}
+                <button
+                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                  disabled={pagination.page >= totalPages}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    backgroundColor: '#fff',
+                    color: '#374151',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: pagination.page >= totalPages ? 'not-allowed' : 'pointer',
+                    opacity: pagination.page >= totalPages ? 0.45 : 1,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  Next
+                  <FiChevronRight style={{ width: '13px', height: '13px' }} />
+                </button>
+
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </PageContainer>
   )
 }

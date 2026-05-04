@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Company = require('../../models/company/company.model');
 const User = require('../../models/auth/user.model');
 const Subscription = require('../../models/subscription/subscription.model');
+const SubscriptionHistory = require('../../models/subscription/subscriptionHistory.model');
 const Sim = require('../../models/sim/sim.model');
 const Recharge = require('../../models/recharge/recharge.model');
 const CallLog = require('../../models/callLog/callLog.model');
@@ -274,82 +275,205 @@ class CompanyService {
 
   /**
    * Renew or upgrade subscription
-   * Handles: trial to paid, plan changes, billing cycle changes
+   * Handles: trial to paid, plan changes, billing cycle changes, same plan renewal
    * @param {String} companyId - Company ID
    * @param {String} subscriptionId - New subscription plan ID
    * @param {String} billingCycle - 'monthly' or 'yearly' (default: 'monthly')
+   * @param {String} adminId - Admin user ID who initiated the renewal (optional)
+   * @returns {Object} Result with company, message, and details
    */
-  async renewSubscription(companyId, subscriptionId, billingCycle = 'monthly') {
+  async renewSubscription(companyId, subscriptionId, billingCycle = 'monthly', adminId = null) {
     const company = await Company.findById(companyId);
     if (!company) {
       throw new NotFoundError('Company');
     }
 
-    const subscription = await Subscription.findById(subscriptionId);
-    if (!subscription) {
+    const newPlan = await Subscription.findById(subscriptionId);
+    if (!newPlan) {
       throw new NotFoundError('Subscription');
     }
 
-    // Calculate duration based on plan type and billing cycle
-    let durationDays;
-    if (subscription.planType === 'free_trial') {
-      durationDays = 14; // Free trial is always 14 days
-    } else {
-      durationDays = billingCycle === 'yearly'
-        ? (subscription.durationDays?.yearly || 336)
-        : (subscription.durationDays?.monthly || 28);
+    // Get current plan if exists
+    const currentPlanId = company.subscriptionId;
+    let currentPlan = null;
+    if (currentPlanId) {
+      currentPlan = await Subscription.findById(currentPlanId);
     }
 
-    // Check if upgrading from trial to paid
-    const wasOnTrial = company.isTrial && company.trialEndsAt && new Date(company.trialEndsAt) > new Date();
-    const isUpgradingToPaid = company.isTrial && subscription.planType !== 'free_trial';
+    // Constants
+    const MAX_BONUS_DAYS = 7;
+
+    // Helper to calculate remaining days
+    const calculateRemainingDays = (endDate) => {
+      if (!endDate) return 0;
+      const now = new Date();
+      const end = new Date(endDate);
+      const diffMs = end - now;
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return Math.max(0, diffDays);
+    };
+
+    // Helper to calculate plan duration
+    const getPlanDuration = (plan, cycle) => {
+      if (plan.planType === 'free_trial') return 14;
+      return cycle === 'yearly'
+        ? (plan.durationDays?.yearly || 365)
+        : (plan.durationDays?.monthly || 30);
+    };
+
+    // Determine change type and calculate dates
+    let changeType;
+    let startDate;
+    let endDate;
+    let bonusDays = 0;
+    let remainingDays = 0;
+    let message;
+
+    const durationDays = getPlanDuration(newPlan, billingCycle);
+
+    // Case 1: New subscription or trial conversion
+    if (!currentPlan || company.isTrial) {
+      changeType = company.isTrial ? 'trial_convert' : 'new';
+      startDate = new Date();
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + durationDays);
+      message = company.isTrial
+        ? 'Your trial has been converted to a paid plan successfully.'
+        : 'Your subscription has been activated successfully.';
+
+      // Clear trial fields
+      if (company.isTrial) {
+        company.isTrial = false;
+        company.hasConverted = true;
+        company.trialConvertedAt = new Date();
+        company.trialEndsAt = null;
+      }
+    }
+    // Case 2: Same plan renewal
+    else if (currentPlanId.toString() === subscriptionId.toString()) {
+      changeType = 'renewal';
+      remainingDays = calculateRemainingDays(company.subscriptionEndDate);
+      const currentEndDate = company.subscriptionEndDate ? new Date(company.subscriptionEndDate) : new Date();
+      const now = new Date();
+
+      // Start from current end date (no loss of remaining days)
+      startDate = currentEndDate > now ? currentEndDate : now;
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + durationDays);
+
+      message = 'Your plan has been renewed successfully. Your remaining days have been extended without any loss.';
+    }
+    // Case 3: Plan upgrade (higher price)
+    else {
+      const currentPrice = company.billingCycle === 'yearly'
+        ? currentPlan.price.yearly
+        : currentPlan.price.monthly;
+      const newPrice = billingCycle === 'yearly'
+        ? newPlan.price.yearly
+        : newPlan.price.monthly;
+
+      if (newPrice > currentPrice) {
+        // Upgrade - apply bonus days logic
+        changeType = 'upgrade';
+        remainingDays = calculateRemainingDays(company.subscriptionEndDate);
+        bonusDays = Math.min(remainingDays, MAX_BONUS_DAYS);
+
+        startDate = new Date();
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + durationDays + bonusDays);
+
+        if (remainingDays > 0) {
+          message = `You have upgraded your plan successfully. Your new plan is activated immediately. Your remaining ${remainingDays} days from the previous plan have been converted into ${bonusDays} bonus days and added to your new plan.`;
+        } else {
+          message = 'Your new plan is activated successfully.';
+        }
+      } else {
+        // Downgrade - no bonus days
+        changeType = 'downgrade';
+        remainingDays = calculateRemainingDays(company.subscriptionEndDate);
+
+        startDate = new Date();
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + durationDays);
+
+        message = 'Your plan has been downgraded. Note: Your previous subscription benefits will end immediately and your new plan is now active.';
+      }
+    }
 
     // Update company subscription
     company.subscriptionId = subscriptionId;
     company.billingCycle = billingCycle;
-    company.subscriptionStartDate = new Date();
-    company.subscriptionEndDate = new Date();
-    company.subscriptionEndDate.setDate(company.subscriptionEndDate.getDate() + durationDays);
+    company.subscriptionStartDate = startDate;
+    company.subscriptionEndDate = endDate;
     company.isActive = true;
 
-    // Handle trial to paid conversion
-    if (isUpgradingToPaid) {
-      company.isTrial = false;
-      company.hasConverted = true;
-      company.trialConvertedAt = new Date();
-      company.trialEndsAt = null; // Clear trial end date
-    }
-
     // If switching to free trial (edge case)
-    if (subscription.planType === 'free_trial') {
+    if (newPlan.planType === 'free_trial') {
       company.isTrial = true;
-      company.trialEndsAt = company.subscriptionEndDate;
+      company.trialEndsAt = endDate;
       company.hasConverted = false;
       company.trialConvertedAt = null;
     }
 
     await company.save();
 
+    // Create subscription history
+    await SubscriptionHistory.create({
+      companyId: company._id,
+      userId: adminId, // May be null for self-service renewals
+      oldPlanId: currentPlanId || null,
+      newPlanId: newPlan._id,
+      oldPlanName: currentPlan?.name || null,
+      newPlanName: newPlan.name,
+      startDate: startDate,
+      endDate: endDate,
+      bonusDays: bonusDays,
+      remainingDays: remainingDays,
+      paymentId: null, // No payment for manual admin renewal
+      type: changeType,
+      billingCycle: billingCycle,
+      amount: 0, // Manual renewal, no direct payment
+      notes: changeType === 'renewal'
+        ? 'Same plan renewal - remaining days preserved'
+        : changeType === 'upgrade'
+          ? bonusDays > 0
+            ? `Plan upgrade. ${remainingDays} remaining days converted to ${bonusDays} bonus days.`
+            : 'Plan upgrade with no remaining days.'
+          : changeType === 'downgrade'
+            ? 'Plan downgrade. Remaining days not carried over.'
+            : changeType === 'trial_convert'
+              ? 'Trial converted to paid plan'
+              : 'New subscription',
+    });
+
     // Send notification for subscription renewal/upgrade
     try {
-      if (isUpgradingToPaid) {
+      if (changeType === 'trial_convert') {
         await notificationHelper.notifyTrialConverted(
           company,
           company.subscriptionEndDate,
-          subscription.name
+          newPlan.name
         );
       } else {
         await notificationHelper.notifySubscriptionRenewed(
           company,
           company.subscriptionEndDate,
-          subscription.name
+          newPlan.name
         );
       }
     } catch (notificationError) {
       console.error('Failed to send subscription renewal notification:', notificationError.message);
     }
 
-    return company;
+    return {
+      company,
+      message,
+      type: changeType,
+      bonusDays,
+      remainingDays,
+      startDate,
+      endDate,
+    };
   }
 
   /**
@@ -1047,6 +1171,34 @@ class CompanyService {
     await company.save();
 
     return { success: true };
+  }
+
+  /**
+   * Get subscription history for a company
+   * @param {String} companyId - Company ID
+   * @param {Object} options - Pagination options
+   * @returns {Object} Subscription history with pagination
+   */
+  async getSubscriptionHistory(companyId, options = {}) {
+    // Verify company exists
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    const { page = 1, limit = 20 } = options;
+    const history = await SubscriptionHistory.getCompanyHistory(companyId, { page, limit });
+    const total = await SubscriptionHistory.countDocuments({ companyId });
+
+    return {
+      data: history,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
 

@@ -172,7 +172,7 @@ export default function SmsLogs() {
       link.remove()
       toast.success('Export completed')
     } catch (error) {
-      toast.error('Export failed')
+      toast.error('This feature is available in higher plans. Upgrade your plan to access it.')
     }
   }
 
@@ -526,19 +526,7 @@ export default function SmsLogs() {
             columns={columns}
             data={smsLogs}
             emptyMessage="No SMS Logs Found"
-            emptyAction={
-              <div style={{ backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', maxWidth: '400px', margin: '0 auto' }}>
-                <p style={{ fontSize: '14px', color: '#475569', marginBottom: '8px' }}>
-                  <strong>Mobile API Endpoint:</strong>
-                </p>
-                <code style={{ fontSize: '12px', color: '#2563eb', display: 'block', marginBottom: '8px' }}>
-                  POST /api/sms/sync
-                </code>
-                <p style={{ fontSize: '12px', color: '#6b7280' }}>
-                  Send SMS logs from mobile devices using the sync endpoint with authentication token.
-                </p>
-              </div>
-            }
+
           />
         </CardBody>
       </Card>

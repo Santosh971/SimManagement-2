@@ -3,6 +3,14 @@ const User = require('../../models/auth/user.model');
 const Company = require('../../models/company/company.model');
 const Sim = require('../../models/sim/sim.model');
 const Notification = require('../../models/notification/notification.model');
+const Recharge = require('../../models/recharge/recharge.model');
+const CallLog = require('../../models/callLog/callLog.model');
+const TelegramMessage = require('../../models/telegram/telegram.model');
+const WhatsAppMessage = require('../../models/whatsapp/whatsapp.model');
+const Sms = require('../../models/sms/sms.model');
+const WifiMetric = require('../../models/wifi/wifiMetric.model');
+const WifiNetwork = require('../../models/wifi/wifiNetwork.model');
+const CallAutomationConfig = require('../../models/callAutomation/callAutomation.model');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError, AppError } = require('../../utils/errors');
 const notificationHelper = require('../../utils/notificationHelper');
 const crypto = require('crypto');
@@ -153,6 +161,13 @@ class UserService {
       throw new NotFoundError('User');
     }
 
+    // Store original values for audit log
+    const originalValues = {
+      name: user.name,
+      phone: user.phone,
+      isActive: user.isActive,
+    };
+
     // Track if isActive is being changed
     const wasActive = user.isActive;
     const becomingActive = updateData.isActive === true;
@@ -191,7 +206,8 @@ class UserService {
       }
     }
 
-    return updatedUser;
+    // Return both updated user and original values for audit log
+    return { user: updatedUser, originalValues };
   }
 
   async deleteUser(userId, adminUser) {
@@ -205,12 +221,81 @@ class UserService {
     session.startTransaction();
 
     try {
-      // Unassign SIMs from this user
-      await Sim.updateMany(
-        { assignedTo: userId },
-        { assignedTo: null },
-        { session }
-      );
+      // Find all SIMs assigned to this user
+      const assignedSims = await Sim.find({ assignedTo: userId }).session(session);
+      const simIds = assignedSims.map(sim => sim._id);
+
+      if (simIds.length > 0) {
+        console.log(`[DELETE] Deleting ${simIds.length} SIMs assigned to user ${user.email}`);
+
+        // Delete all related data for these SIMs
+        // 1. Delete recharges
+        const rechargesDeleted = await Recharge.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${rechargesDeleted.deletedCount} recharges`);
+
+        // 2. Delete call logs
+        const callLogsDeleted = await CallLog.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${callLogsDeleted.deletedCount} call logs`);
+
+        // 3. Delete telegram messages
+        const telegramDeleted = await TelegramMessage.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${telegramDeleted.deletedCount} telegram messages`);
+
+        // 4. Delete whatsapp messages
+        const whatsappDeleted = await WhatsAppMessage.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${whatsappDeleted.deletedCount} whatsapp messages`);
+
+        // 5. Delete SMS logs
+        const smsDeleted = await Sms.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${smsDeleted.deletedCount} SMS logs`);
+
+        // 6. Delete wifi metrics
+        const wifiMetricsDeleted = await WifiMetric.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${wifiMetricsDeleted.deletedCount} wifi metrics`);
+
+        // 7. Delete notifications related to these SIMs
+        const simNotificationsDeleted = await Notification.deleteMany({ simId: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${simNotificationsDeleted.deletedCount} SIM-related notifications`);
+
+        // 8. Remove SIM references from WifiNetwork.assignedSims array
+        const wifiNetworksUpdated = await WifiNetwork.updateMany(
+          { assignedSims: { $in: simIds } },
+          { $pull: { assignedSims: { $in: simIds } } }
+        ).session(session);
+        console.log(`[DELETE] Updated ${wifiNetworksUpdated.modifiedCount} wifi networks`);
+
+        // 9. Remove SIM references from CallAutomationConfig.callerSimIds and targetSimIds arrays
+        const callAutomationUpdated = await CallAutomationConfig.updateMany(
+          { $or: [
+            { callerSimIds: { $in: simIds } },
+            { targetSimIds: { $in: simIds } }
+          ]},
+          {
+            $pull: {
+              callerSimIds: { $in: simIds },
+              targetSimIds: { $in: simIds }
+            }
+          }
+        ).session(session);
+        console.log(`[DELETE] Updated ${callAutomationUpdated.modifiedCount} call automation configs`);
+
+        // 10. Finally, delete the SIMs
+        const simsDeleted = await Sim.deleteMany({ _id: { $in: simIds } }).session(session);
+        console.log(`[DELETE] Deleted ${simsDeleted.deletedCount} SIMs`);
+
+        // Update company stats after deleting SIMs
+        const company = await Company.findById(adminUser.companyId);
+        if (company) {
+          const totalSims = await Sim.countDocuments({ companyId: adminUser.companyId });
+          const activeSims = await Sim.countDocuments({ companyId: adminUser.companyId, status: 'active' });
+          company.stats = {
+            ...company.stats,
+            totalSims,
+            activeSims,
+          };
+          await company.save({ session });
+        }
+      }
 
       // Delete notifications for this user
       await Notification.deleteMany({ userId }).session(session);
@@ -222,9 +307,10 @@ class UserService {
       await session.commitTransaction();
       session.endSession();
 
-      console.log(`[DELETE] User ${user.email} (${userId}) deleted`);
+      console.log(`[DELETE] User ${user.email} (${userId}) deleted with ${simIds.length} SIMs`);
 
-      return { message: 'User deleted successfully' };
+      // Return the user object for audit logging
+      return user;
     } catch (error) {
       await session.abortTransaction();
       session.endSession();
@@ -252,7 +338,8 @@ class UserService {
       console.error('Failed to send password reset notification:', notificationError.message);
     }
 
-    return { message: 'Password reset successfully' };
+    // Return the user object for audit logging
+    return user;
   }
 
   async getCompanyUsers(companyId) {

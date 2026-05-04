@@ -13,9 +13,12 @@ const createPlanValidation = [
   body('price.yearly').isFloat({ min: 0 }).withMessage('Yearly price is required'),
   body('planType').optional().isIn(['free_trial', 'paid']).withMessage('Plan type must be free_trial or paid'),
   body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
-  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
-  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
-  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
+  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max SIMs cannot be negative (use -1 for unlimited, 0 or positive number)'),
+  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max Users cannot be negative (use -1 for unlimited, 0 or positive number)'),
+  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max Recharges cannot be negative (use -1 for unlimited, 0 or positive number)'),
 ];
 
 const updatePlanValidation = [
@@ -26,9 +29,12 @@ const updatePlanValidation = [
   body('price.yearly').optional().isFloat({ min: 0 }),
   body('planType').optional().isIn(['free_trial', 'paid']).withMessage('Plan type must be free_trial or paid'),
   body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
-  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
-  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
-  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
+  body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max SIMs cannot be negative (use -1 for unlimited, 0 or positive number)'),
+  body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max Users cannot be negative (use -1 for unlimited, 0 or positive number)'),
+  body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number')
+    .custom(value => value === -1 || value >= 0).withMessage('Max Recharges cannot be negative (use -1 for unlimited, 0 or positive number)'),
 ];
 
 // Public routes - get plans (for landing page)

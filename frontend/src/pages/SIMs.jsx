@@ -1569,7 +1569,7 @@ export default function SIMs() {
       link.remove()
       toast.success('Export completed')
     } catch (error) {
-      toast.error('Export failed')
+      toast.error('This feature is available in higher plans. Upgrade your plan to access it.')
     }
   }
 
