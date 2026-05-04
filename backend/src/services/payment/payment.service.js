@@ -863,6 +863,237 @@ class PaymentService {
       console.error('Error sending superadmin renewal notifications:', error.message);
     }
   }
+
+  /**
+   * Free trial registration (no payment required)
+   * Creates company and admin user with free trial plan
+   */
+  async freeTrialRegister({ subscriptionId, name, email, password, companyName, phone }) {
+    // Validate plan
+    const plan = await Subscription.findById(subscriptionId);
+    if (!plan) {
+      throw new NotFoundError('Subscription plan');
+    }
+
+    // Verify it's a free trial plan
+    if (plan.planType !== 'free_trial') {
+      throw new AppError('This endpoint is only for free trial plans', 400);
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      throw new ConflictError('This email is already registered in the system.');
+    }
+
+    // Check if company with same name exists
+    const existingCompany = await Company.findOne({
+      name: { $regex: new RegExp(`^${companyName}$`, 'i') }
+    });
+    if (existingCompany) {
+      throw new ConflictError('A company with this name already exists.');
+    }
+
+    // Check if company email exists
+    const existingCompanyEmail = await Company.findOne({ email: email.toLowerCase() });
+    if (existingCompanyEmail) {
+      throw new ConflictError('This email is already used by another company.');
+    }
+
+    // Calculate subscription dates for 14-day trial
+    const subscriptionStartDate = new Date();
+    const subscriptionEndDate = new Date();
+    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 14); // 14 days trial
+
+    // Create company with trial
+    const company = new Company({
+      name: companyName,
+      email: email.toLowerCase(),
+      phone: phone || '',
+      subscriptionId,
+      subscriptionStartDate,
+      subscriptionEndDate,
+      billingCycle: 'monthly',
+      isTrial: true,
+      trialEndsAt: subscriptionEndDate,
+      hasConverted: false,
+      isActive: true,
+    });
+
+    await company.save();
+
+    // Create admin user
+    const user = new User({
+      email: email.toLowerCase(),
+      password,
+      name,
+      phone: phone || '',
+      role: 'admin',
+      companyId: company._id,
+      isActive: true,
+      emailVerified: true,
+    });
+
+    await user.save();
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: user._id, role: user.role, companyId: company._id },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      config.jwt.secret,
+      { expiresIn: config.jwt.refreshExpiresIn }
+    );
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    // Create a payment record (for tracking, but with zero amount)
+    const payment = new Payment({
+      companyId: company._id,
+      userId: user._id,
+      subscriptionId,
+      planName: plan.name,
+      planDuration: 14,
+      amount: 0,
+      currency: 'INR',
+      billingCycle: 'monthly',
+      status: 'completed',
+      paidAt: new Date(),
+      razorpayOrderId: `free_trial_${Date.now()}`,
+      razorpayPaymentId: `free_trial_${company._id}`,
+    });
+
+    await payment.save();
+
+    // Send welcome email
+    try {
+      await notificationHelper.createWithNotification(
+        {
+          companyId: company._id,
+          userId: user._id,
+          type: 'system',
+          title: 'Welcome to SIM Management!',
+          message: `Your 14-day free trial has started. Explore all features until ${subscriptionEndDate.toDateString()}.`,
+          priority: 'medium',
+          metadata: {
+            companyName: company.name,
+            planName: plan.name,
+            expiryDate: subscriptionEndDate,
+            isTrial: true,
+          },
+        },
+        {
+          to: user.email,
+          subject: `Welcome to SIM Management - Your Free Trial Has Started`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="margin: 0;">Welcome to SIM Management!</h1>
+              </div>
+              <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2>Hello ${user.name},</h2>
+                <p>Your company <strong>${company.name}</strong> has been successfully registered!</p>
+                <div style="background: #dcfce7; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #bbf7d0;">
+                  <p style="margin: 0; color: #16a34a;"><strong>🎉 14-Day Free Trial Started!</strong></p>
+                  <p style="margin: 10px 0 0 0;"><strong>Plan:</strong> ${plan.name}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Trial Ends:</strong> ${subscriptionEndDate.toDateString()}</p>
+                </div>
+                <p>You can now log in with your email: <strong>${user.email}</strong></p>
+                <p>Explore all features during your trial period. Upgrade anytime to continue using SIM Management.</p>
+                <p>Best regards,<br>SIM Management Team</p>
+              </div>
+            </div>
+          `,
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to send welcome notification:', notificationError.message);
+    }
+
+    // Notify superadmins
+    try {
+      await this.notifySuperadminsFreeTrial(company, user, plan);
+    } catch (error) {
+      console.error('Error sending superadmin notifications:', error.message);
+    }
+
+    // Return user without sensitive data
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.refreshToken;
+    delete userObj.__v;
+
+    return {
+      success: true,
+      user: userObj,
+      accessToken,
+      refreshToken,
+      company: {
+        id: company._id,
+        name: company.name,
+        subscriptionEnds: company.subscriptionEndDate,
+        isTrial: true,
+        trialEndsAt: company.trialEndsAt,
+      },
+      payment: {
+        id: payment._id,
+        amount: 0,
+        planName: plan.name,
+        billingCycle: 'monthly',
+      },
+    };
+  }
+
+  /**
+   * Send notification to all superadmins about free trial registration
+   */
+  async notifySuperadminsFreeTrial(company, user, plan) {
+    try {
+      const superadmins = await User.find({
+        role: 'super_admin',
+        isActive: true,
+      }).select('name email');
+
+      if (!superadmins || superadmins.length === 0) {
+        return;
+      }
+
+      const emailPromises = superadmins.map(superadmin =>
+        emailService.sendEmail({
+          to: superadmin.email,
+          subject: `New Free Trial Registration - ${company.name}`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
+                <h2 style="margin: 0;">New Free Trial Registration</h2>
+              </div>
+              <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <p>A new company has registered for a free trial:</p>
+                <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                  <p style="margin: 0;"><strong>Company:</strong> ${company.name}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${company.email}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Phone:</strong> ${company.phone || 'N/A'}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Admin:</strong> ${user.name} (${user.email})</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Plan:</strong> ${plan.name} (Free Trial)</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Trial Ends:</strong> ${new Date(company.trialEndsAt).toDateString()}</p>
+                </div>
+              </div>
+            </div>
+          `,
+        })
+      );
+
+      await Promise.allSettled(emailPromises);
+      console.log(`Free trial registration notification sent to ${superadmins.length} superadmin(s)`);
+    } catch (error) {
+      console.error('Error sending superadmin notifications:', error.message);
+    }
+  }
 }
 
 module.exports = new PaymentService();

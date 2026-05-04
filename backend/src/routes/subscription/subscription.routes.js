@@ -11,8 +11,8 @@ const createPlanValidation = [
   body('description').optional().trim().isLength({ max: 500 }),
   body('price.monthly').isFloat({ min: 0 }).withMessage('Monthly price is required'),
   body('price.yearly').isFloat({ min: 0 }).withMessage('Yearly price is required'),
-  body('trialDays').optional().isInt({ min: 0 }).withMessage('Trial days cannot be negative'),
-  body('subscriptionDuration').optional().isInt({ min: 1 }).withMessage('Subscription duration must be at least 1 day'),
+  body('planType').optional().isIn(['free_trial', 'paid']).withMessage('Plan type must be free_trial or paid'),
+  body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
   body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
   body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
@@ -24,8 +24,8 @@ const updatePlanValidation = [
   body('description').optional().trim().isLength({ max: 500 }),
   body('price.monthly').optional().isFloat({ min: 0 }),
   body('price.yearly').optional().isFloat({ min: 0 }),
-  body('trialDays').optional().isInt({ min: 0 }).withMessage('Trial days cannot be negative'),
-  body('subscriptionDuration').optional().isInt({ min: 1 }).withMessage('Subscription duration must be at least 1 day'),
+  body('planType').optional().isIn(['free_trial', 'paid']).withMessage('Plan type must be free_trial or paid'),
+  body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('limits.maxSims').optional().isInt({ min: -1 }).withMessage('Max SIMs must be -1 (unlimited) or a positive number'),
   body('limits.maxUsers').optional().isInt({ min: -1 }).withMessage('Max Users must be -1 (unlimited) or a positive number'),
   body('limits.maxRecharges').optional().isInt({ min: -1 }).withMessage('Max Recharges must be -1 (unlimited) or a positive number'),
@@ -33,6 +33,7 @@ const updatePlanValidation = [
 
 // Public routes - get plans (for landing page)
 router.get('/compare', subscriptionController.compare);
+router.get('/free-trial', subscriptionController.getFreeTrialPlan);
 
 // Protected routes
 router.use(authenticate);

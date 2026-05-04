@@ -651,6 +651,8 @@ class TelegramService {
    * @param {string} text - Reply text
    */
   async handleReply(chatId, text) {
+    logger.info(`[Telegram handleReply] Processing reply from chat ${chatId}`);
+
     // Find the SIM linked to this chat
     // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sim = await Sim.findOne({
@@ -658,9 +660,11 @@ class TelegramService {
     });
 
     if (!sim) {
-      logger.warn(`[Telegram] No SIM found for chat ${chatId}`);
+      logger.warn(`[Telegram handleReply] No SIM found for chat ${chatId}`);
       return { success: false, message: 'No SIM linked to this chat' };
     }
+
+    logger.info(`[Telegram handleReply] Found SIM: ${sim.mobileNumber} (ID: ${sim._id})`);
 
     // Find the latest pending message for this SIM
     const latestMessage = await TelegramMessage.findOne({
@@ -670,7 +674,24 @@ class TelegramService {
     }).sort({ sentAt: -1 });
 
     if (!latestMessage) {
-      logger.info(`[Telegram] No pending message found for SIM ${sim.mobileNumber}`);
+      logger.warn(`[Telegram handleReply] No pending message found for SIM ${sim.mobileNumber}`, {
+        simId: sim._id,
+        chatId: chatId,
+      });
+
+      // Check if there are ANY messages for this SIM
+      const anyMessage = await TelegramMessage.findOne({ simId: sim._id }).sort({ sentAt: -1 });
+      if (anyMessage) {
+        logger.info(`[Telegram handleReply] Latest message for SIM ${sim.mobileNumber}:`, {
+          messageId: anyMessage._id,
+          status: anyMessage.status,
+          isActive: anyMessage.isActive,
+          sentAt: anyMessage.sentAt,
+        });
+      } else {
+        logger.warn(`[Telegram handleReply] No messages at all for SIM ${sim.mobileNumber}`);
+      }
+
       return { success: false, message: 'No pending message found' };
     }
 
@@ -679,11 +700,13 @@ class TelegramService {
     const oneHour = 60 * 60 * 1000;
     const isWithinOneHour = timeSinceSent <= oneHour;
 
-    logger.info(`[Telegram] Found pending message for SIM ${sim.mobileNumber}`, {
+    logger.info(`[Telegram handleReply] Found pending message for SIM ${sim.mobileNumber}`, {
       messageId: latestMessage._id,
       timeSinceSent: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       isWithinOneHour,
       updateSimStatus: latestMessage.updateSimStatus,
+      currentIsActive: latestMessage.isActive,
+      currentStatus: latestMessage.status,
     });
 
     // Update message record
@@ -692,7 +715,15 @@ class TelegramService {
     latestMessage.replyMessage = text;
     latestMessage.isActive = isWithinOneHour;
 
+    // Save and verify
     await latestMessage.save();
+
+    logger.info(`[Telegram handleReply] Message updated successfully`, {
+      messageId: latestMessage._id,
+      newStatus: latestMessage.status,
+      newIsActive: latestMessage.isActive,
+      repliedAt: latestMessage.repliedAt,
+    });
 
     // Update SIM's Telegram last active timestamp
     sim.telegramLastActive = new Date();
@@ -723,7 +754,7 @@ class TelegramService {
         },
       });
 
-      logger.info(`[Telegram] SIM ${sim.mobileNumber} marked ACTIVE (updateSimStatus enabled)`);
+      logger.info(`[Telegram handleReply] SIM ${sim.mobileNumber} marked ACTIVE (updateSimStatus enabled)`);
     } else {
       await sim.save();
     }
@@ -735,7 +766,7 @@ class TelegramService {
         `Your reply for SIM <b>${sim.mobileNumber}</b> has been recorded.`
       );
 
-      logger.info(`[Telegram] Reply received for SIM ${sim.mobileNumber}`, {
+      logger.info(`[Telegram handleReply] Reply received for SIM ${sim.mobileNumber}`, {
         simId: sim._id,
         responseTime: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       });
@@ -748,7 +779,7 @@ class TelegramService {
         `Please contact your administrator if you need assistance.`
       );
 
-      logger.info(`[Telegram] Reply too late for SIM ${sim.mobileNumber}`, {
+      logger.info(`[Telegram handleReply] Reply too late for SIM ${sim.mobileNumber}`, {
         timeSinceSent: Math.round(timeSinceSent / 1000 / 60) + ' minutes',
       });
     }

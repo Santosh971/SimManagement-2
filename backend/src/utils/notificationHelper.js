@@ -412,6 +412,37 @@ class NotificationHelper {
   }
 
   /**
+   * Notify when trial is converted to paid plan
+   * @param {Object} company - Company document
+   * @param {Date} newEndDate - New subscription end date
+   * @param {string} planName - New plan name
+   */
+  async notifyTrialConverted(company, newEndDate, planName) {
+    const notificationData = {
+      companyId: company._id,
+      type: 'system',
+      title: 'Subscription Activated',
+      message: `Congratulations! Your subscription has been upgraded to ${planName}. Valid until ${new Date(newEndDate).toDateString()}.`,
+      priority: 'high',
+      metadata: {
+        companyName: company.name,
+        planName: planName,
+        expiryDate: newEndDate,
+      },
+      data: { companyId: company._id },
+    };
+
+    // Send email
+    try {
+      await emailService.sendTrialConvertedEmail(company, newEndDate, planName);
+    } catch (error) {
+      console.error('Failed to send trial converted email:', error.message);
+    }
+
+    return this.createNotification(notificationData);
+  }
+
+  /**
    * Notify when password is reset by admin
    * @param {Object} user - User whose password was reset
    * @param {string} newPassword - The new password

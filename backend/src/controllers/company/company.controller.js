@@ -103,24 +103,24 @@ class CompanyController {
 
   async renewSubscription(req, res, next) {
     try {
-      const { subscriptionId, duration } = req.body;
+      const { subscriptionId, billingCycle = 'monthly' } = req.body;
       const company = await companyService.renewSubscription(
         req.params.id,
         subscriptionId,
-        duration
+        billingCycle
       );
 
       // Audit log: COMPANY_SUBSCRIPTION_RENEW
       await auditLogService.logAction({
         action: 'COMPANY_SUBSCRIPTION_RENEW',
         module: 'COMPANY',
-        description: `Renewed subscription for company ${company.name}`,
+        description: `Renewed subscription for company ${company.name} to plan ${company.subscriptionId}`,
         performedBy: req.user._id,
         role: req.user.role,
         companyId: company._id,
         entityId: company._id,
         entityType: 'COMPANY',
-        metadata: { subscriptionId, duration },
+        metadata: { subscriptionId, billingCycle },
         req,
       });
 

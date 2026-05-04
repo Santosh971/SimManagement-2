@@ -57,6 +57,23 @@ const CompanySchema = new Schema({
     enum: ['monthly', 'yearly'],
     default: 'monthly',
   },
+  // Trial-related fields
+  isTrial: {
+    type: Boolean,
+    default: true, // New companies start with trial
+  },
+  trialEndsAt: {
+    type: Date,
+    default: null, // Set when company is created (14 days from creation)
+  },
+  hasConverted: {
+    type: Boolean,
+    default: false, // True when trial converts to paid plan
+  },
+  trialConvertedAt: {
+    type: Date,
+    default: null, // When trial was converted to paid
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -116,6 +133,23 @@ CompanySchema.virtual('subscriptionStatus').get(function () {
   const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
   if (daysLeft <= 7) return 'expiring';
   return 'active';
+});
+
+// Virtual for trial status
+CompanySchema.virtual('trialStatus').get(function () {
+  if (!this.isTrial) return 'not_trial';
+  if (!this.trialEndsAt) return 'trial_not_set';
+  const now = new Date();
+  const trialEnd = new Date(this.trialEndsAt);
+  if (trialEnd < now) return 'trial_expired';
+  const daysLeft = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+  return `trial_active_${daysLeft}_days_left`;
+});
+
+// Virtual to check if company is on active trial
+CompanySchema.virtual('isOnTrial').get(function () {
+  if (!this.isTrial || !this.trialEndsAt) return false;
+  return new Date(this.trialEndsAt) > new Date();
 });
 
 // Static method to find active companies

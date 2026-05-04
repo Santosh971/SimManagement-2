@@ -41,11 +41,6 @@ const SubscriptionSchema = new Schema({
     apiAccess: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false },
   },
-  // Custom features array for additional features beyond predefined ones
-  customFeatures: {
-    type: [String],
-    default: [],
-  },
   limits: {
     maxSims: { type: Number, default: 10, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
     maxUsers: { type: Number, default: 5, min: [-1, 'Must be -1 (unlimited) or a positive number'] },
@@ -54,15 +49,17 @@ const SubscriptionSchema = new Schema({
     whatsappStatus: { type: Boolean, default: false },
     reports: { type: Boolean, default: true },
   },
-  trialDays: {
-    type: Number,
-    default: 14,
-    min: [0, 'Trial days cannot be negative'],
+  // Plan type: 'free_trial' for free trial plan, 'paid' for regular plans
+  planType: {
+    type: String,
+    enum: ['free_trial', 'paid'],
+    default: 'paid',
   },
-  subscriptionDuration: {
-    type: Number,
-    default: 30,
-    min: [1, 'Subscription duration must be at least 1 day'],
+  // Duration in days (internal calculation: monthly = 28 days, yearly = 336 days)
+  // For free_trial plan, this is the trial duration (14 days)
+  durationDays: {
+    monthly: { type: Number, default: 28 },  // 28 days for monthly
+    yearly: { type: Number, default: 336 },  // 336 days (12 × 28) for yearly
   },
   isPopular: {
     type: Boolean,
@@ -85,13 +82,28 @@ const SubscriptionSchema = new Schema({
 // Indexes
 SubscriptionSchema.index({ name: 1 });
 SubscriptionSchema.index({ isActive: 1, sortOrder: 1 });
+SubscriptionSchema.index({ planType: 1 });
 
 // Virtual for formatted price
 SubscriptionSchema.virtual('formattedPrice').get(function () {
+  if (this.planType === 'free_trial') {
+    return {
+      monthly: 'Free',
+      yearly: 'Free',
+    };
+  }
   return {
     monthly: `₹${this.price.monthly}/month`,
     yearly: `₹${this.price.yearly}/year`,
   };
+});
+
+// Virtual for duration in days based on billing cycle
+SubscriptionSchema.virtual('durationInDays').get(function () {
+  if (this.planType === 'free_trial') {
+    return 14; // Free trial is always 14 days
+  }
+  return this.billingCycle === 'yearly' ? this.durationDays.yearly : this.durationDays.monthly;
 });
 
 // Static method to find active plans
@@ -104,14 +116,73 @@ SubscriptionSchema.statics.findPopular = function () {
   return this.find({ isActive: true, isPopular: true }).sort({ sortOrder: 1 });
 };
 
+// Static method to find free trial plan
+SubscriptionSchema.statics.findFreeTrialPlan = async function () {
+  let plan = await this.findOne({ planType: 'free_trial', isActive: true });
+  if (!plan) {
+    // Create default free trial plan if not exists
+    plan = await this.createFreeTrialPlan();
+  }
+  return plan;
+};
+
+// Static method to create default free trial plan
+SubscriptionSchema.statics.createFreeTrialPlan = async function () {
+  const existing = await this.findOne({ planType: 'free_trial' });
+  if (existing) return existing;
+
+  const freeTrialPlan = new this({
+    name: 'Free Trial',
+    description: '14-day free trial to explore all features. No credit card required.',
+    price: { monthly: 0, yearly: 0 },
+    billingCycle: 'monthly',
+    planType: 'free_trial',
+    features: {
+      callLogSync: true,
+      whatsappStatus: true,
+      telegramStatus: true,
+      emailNotifications: true,
+      smsNotifications: false,
+      advancedReports: true,
+      excelExport: true,
+      apiAccess: false,
+      prioritySupport: false,
+    },
+    limits: {
+      maxSims: 10,
+      maxUsers: 5,
+      maxRecharges: 50,
+      callLogSync: true,
+      whatsappStatus: true,
+      reports: true,
+    },
+    durationDays: { monthly: 14, yearly: 14 }, // 14 days for free trial
+    isPopular: false,
+    sortOrder: 0, // First plan
+    isActive: true,
+  });
+
+  await freeTrialPlan.save();
+  return freeTrialPlan;
+};
+
 // Method to calculate savings for yearly plan
 SubscriptionSchema.methods.calculateYearlySavings = function () {
+  if (this.planType === 'free_trial') return 0;
   const monthlyCost = this.price.monthly * 12;
   const yearlyCost = this.price.yearly;
   return monthlyCost - yearlyCost;
 };
 
-// Predefined subscription plans
+// Method to get duration for billing cycle
+SubscriptionSchema.methods.getDuration = function (billingCycle = 'monthly') {
+  if (this.planType === 'free_trial') {
+    return 14; // Free trial is always 14 days
+  }
+  return billingCycle === 'yearly' ? this.durationDays.yearly : this.durationDays.monthly;
+};
+
+// Predefined subscription plans (paid plans only)
 const defaultPlans = [
   {
     name: 'Starter',
@@ -129,8 +200,8 @@ const defaultPlans = [
       prioritySupport: false,
     },
     limits: { maxSims: 10, maxUsers: 3, maxRecharges: 50, callLogSync: false, whatsappStatus: false, reports: true },
-    trialDays: 14,
-    subscriptionDuration: 30,
+    durationDays: { monthly: 28, yearly: 336 },
+    planType: 'paid',
     isPopular: false,
     sortOrder: 1,
   },
@@ -150,8 +221,8 @@ const defaultPlans = [
       prioritySupport: false,
     },
     limits: { maxSims: 50, maxUsers: 10, maxRecharges: 500, callLogSync: true, whatsappStatus: true, reports: true },
-    trialDays: 14,
-    subscriptionDuration: 30,
+    durationDays: { monthly: 28, yearly: 336 },
+    planType: 'paid',
     isPopular: true,
     sortOrder: 2,
   },
@@ -171,8 +242,8 @@ const defaultPlans = [
       prioritySupport: true,
     },
     limits: { maxSims: -1, maxUsers: -1, maxRecharges: -1, callLogSync: true, whatsappStatus: true, reports: true },
-    trialDays: 14,
-    subscriptionDuration: 30,
+    durationDays: { monthly: 28, yearly: 336 },
+    planType: 'paid',
     isPopular: false,
     sortOrder: 3,
   },

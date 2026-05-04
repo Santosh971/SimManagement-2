@@ -101,6 +101,39 @@ export default function Register() {
     setLoading(true)
 
     try {
+      // Check if plan is free trial - no payment required
+      if (plan.planType === 'free_trial') {
+        // Register directly without payment
+        const response = await fetch(`${API_URL}/payments/public/free-trial-register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            companyName: formData.companyName,
+            phone: formData.phone,
+            subscriptionId: plan._id,
+            billingCycle: 'monthly', // Free trial is always monthly (14 days)
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!data.success) {
+          throw new Error(data.message || 'Registration failed')
+        }
+
+        // Store tokens
+        localStorage.setItem('token', data.data.accessToken)
+        localStorage.setItem('user', JSON.stringify(data.data.user))
+
+        toast.success('Registration successful! Your 14-day free trial has started.')
+        navigate('/app/dashboard')
+        return
+      }
+
+      // For paid plans - proceed with payment
       // Create order
       const orderResponse = await fetch(`${API_URL}/payments/public/create-order`, {
         method: 'POST',
@@ -232,12 +265,30 @@ export default function Register() {
           <div className="mb-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center">
               <div>
-                <p className="font-semibold text-slate-900">{plan.name}</p>
-                <p className="text-sm text-slate-500">{billingCycle} subscription</p>
+                <p className="font-semibold text-slate-900">
+                  {plan.name}
+                  {plan.planType === 'free_trial' && (
+                    <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                      Free Trial
+                    </span>
+                  )}
+                </p>
+                <p className="text-sm text-slate-500">
+                  {plan.planType === 'free_trial' ? '14 days free' : `${billingCycle} subscription`}
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-primary-600">₹{price?.toLocaleString()}</p>
-                <p className="text-xs text-slate-400">/{billingCycle === 'monthly' ? 'month' : 'year'}</p>
+                {plan.planType === 'free_trial' ? (
+                  <>
+                    <p className="text-lg font-bold text-green-600">Free</p>
+                    <p className="text-xs text-slate-400">No credit card required</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-bold text-primary-600">₹{price?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-400">/{billingCycle === 'monthly' ? 'month' : 'year'}</p>
+                  </>
+                )}
               </div>
             </div>
           </div>

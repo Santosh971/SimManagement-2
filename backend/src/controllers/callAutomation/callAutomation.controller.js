@@ -16,6 +16,10 @@ class CallAutomationController {
    */
   async saveConfig(req, res, next) {
     try {
+      logger.info('[CALL AUTOMATION CONTROLLER] saveConfig request body:', {
+        body: req.body,
+      });
+
       const config = await callAutomationService.saveConfig(req.body, req.user);
 
       // Audit log
@@ -33,6 +37,8 @@ class CallAutomationController {
           targetCount: config.targetSimIds.length,
           callDuration: config.callDuration,
           frequency: config.frequency,
+          scheduledTime: config.scheduledTime,
+          scheduledDay: config.scheduledDay,
           isActive: config.isActive
         },
         req,

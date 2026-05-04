@@ -117,13 +117,15 @@ class WifiService {
           wifiId: network._id,
           status: 'active'
         });
-        const latestMetrics = await WifiMetric.getAverageSpeed(network._id, 5);
+        // Use getRecentOrLatestSpeed to show speed from last 30 min, or latest available
+        const latestMetrics = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
 
         return {
           ...network.toObject(),
           deviceCount,
           activeAlerts,
           currentAvgSpeed: latestMetrics ? ((latestMetrics.avgDownload + latestMetrics.avgUpload) / 2).toFixed(2) : null,
+          lastMetricTime: latestMetrics?.lastTimestamp || null,
         };
       })
     );
@@ -681,13 +683,13 @@ class WifiService {
     // Active alerts
     const activeAlerts = await WifiAlert.countDocuments({ companyId, status: 'active' });
 
-    // Average speed across all networks
+    // Average speed across all networks (use recent or latest speed from last 30 minutes)
     const networks = await WifiNetwork.find({ companyId, isActive: true });
     let totalAvgSpeed = 0;
     let networksWithData = 0;
 
     for (const network of networks) {
-      const avgSpeed = await WifiMetric.getAverageSpeed(network._id, 5);
+      const avgSpeed = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
       if (avgSpeed) {
         totalAvgSpeed += (avgSpeed.avgDownload + avgSpeed.avgUpload) / 2;
         networksWithData++;
@@ -700,7 +702,8 @@ class WifiService {
     const networkStats = await Promise.all(
       networks.map(async (network) => {
         const deviceCount = await WifiDevice.countDocuments({ wifiId: network._id, isActive: true });
-        const avgMetrics = await WifiMetric.getAverageSpeed(network._id, 5);
+        // Use getRecentOrLatestSpeed for more reliable speed display
+        const avgMetrics = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
         const activeAlertsCount = await WifiAlert.countDocuments({ wifiId: network._id, status: 'active' });
 
         return {
@@ -713,6 +716,7 @@ class WifiService {
           avgUpload: avgMetrics?.avgUpload || 0,
           avgLatency: avgMetrics?.avgLatency || 0,
           avgSpeed: avgMetrics ? ((avgMetrics.avgDownload + avgMetrics.avgUpload) / 2).toFixed(2) : 0,
+          lastMetricTime: avgMetrics?.lastTimestamp || null,
           activeAlerts: activeAlertsCount,
           status: activeAlertsCount > 0 ? 'alert' : (avgMetrics ? 'healthy' : 'unknown'),
         };

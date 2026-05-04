@@ -93,6 +93,49 @@ class PaymentController {
   }
 
   /**
+   * Free trial registration (public, no auth, no payment)
+   * POST /api/payments/public/free-trial-register
+   */
+  async freeTrialRegister(req, res, next) {
+    try {
+      const { subscriptionId, name, email, password, companyName, phone } = req.body;
+
+      const result = await paymentService.freeTrialRegister({
+        subscriptionId,
+        name,
+        email,
+        password,
+        companyName,
+        phone,
+      });
+
+      // Audit log: REGISTRATION (free trial)
+      try {
+        await auditLogService.logAction({
+          action: 'REGISTRATION',
+          module: 'AUTH',
+          description: `Free trial registration completed for ${companyName}`,
+          role: 'public',
+          companyId: result.company?._id,
+          metadata: {
+            email,
+            companyName,
+            subscriptionId,
+            planType: 'free_trial',
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log REGISTRATION', { error: auditError.message });
+      }
+
+      return successResponse(res, result, 'Registration successful! Your 14-day free trial has started.', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Verify payment and complete registration (public, no auth)
    * POST /api/payments/public/verify-and-register
    */

@@ -574,7 +574,7 @@ class EmailService {
       ['Role', user.role || 'User'],
       ['Company', company.name],
     ])}
-      ${tempPassword ? passwordBox(tempPassword) : ''}
+  
       ${paragraph('Click below to log in and get started:')}
       ${ctaButton('Log In to Dashboard', loginUrl)}
       ${divider()}
@@ -924,6 +924,38 @@ class EmailService {
       headerIcon: '&#128197;',
       headerTitle: 'Trial Period Extended',
       headerSubtitle: `${additionalDays} additional days added`,
+      bodyContent: body,
+    });
+
+    return this.sendEmail({ to: company.email, subject, html });
+  }
+
+  // ─── Trial Converted to Paid Email ─────────────────────────────────────────────
+
+  async sendTrialConvertedEmail(company, newEndDate, planName) {
+    const subject = `Welcome to ${planName} — Subscription Activated`;
+    const formattedDate = new Date(newEndDate).toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    const body = `
+      ${greeting(company.name)}
+      ${paragraph(`Congratulations! Your subscription has been successfully upgraded to <strong>${planName}</strong>.`)}
+      ${paragraph('Thank you for choosing SIM Management. Your subscription is now active and you have full access to all plan features.')}
+      ${infoCard([
+      ['Plan', `<strong style="color:#16A34A;">${planName}</strong>`],
+      ['Valid Until', formattedDate],
+      ['Status', '<span style="color:#16A34A; font-weight:600;">Active</span>'],
+    ], { bg: '#F0FDF4', border: '#22C55E' })}
+      ${ctaButton('Access Dashboard', `${config.app.frontendUrl || 'http://localhost:3000'}/dashboard`, '#16A34A')}
+      ${paragraph('If you have any questions, our support team is here to help.')}
+    `;
+
+    const html = baseLayout({
+      headerBg: `linear-gradient(135deg, #16A34A 0%, #15803D 100%)`,
+      headerIcon: '&#9989;',
+      headerTitle: 'Subscription Activated',
+      headerSubtitle: `Welcome to ${planName}`,
       bodyContent: body,
     });
 

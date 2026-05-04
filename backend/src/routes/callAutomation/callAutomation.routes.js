@@ -29,6 +29,14 @@ const saveConfigValidation = [
     .optional()
     .isIn(['hourly', 'daily', 'weekly'])
     .withMessage('Frequency must be hourly, daily, or weekly'),
+  body('scheduledTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Scheduled time must be in HH:MM format'),
+  body('scheduledDay')
+    .optional()
+    .isIn(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'])
+    .withMessage('Scheduled day must be a valid day of week'),
   body('isActive')
     .optional()
     .isBoolean()

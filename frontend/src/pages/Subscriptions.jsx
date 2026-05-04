@@ -45,12 +45,9 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
       apiAccess: false,
       prioritySupport: false,
     },
-    customFeatures: [],
-    trialDays: 14,
-    subscriptionDuration: 30,
+    planType: 'paid',
     isPopular: false,
   })
-  const [newCustomFeature, setNewCustomFeature] = useState('')
 
   useEffect(() => {
     if (plan) {
@@ -77,9 +74,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           apiAccess: plan.features?.apiAccess || false,
           prioritySupport: plan.features?.prioritySupport || false,
         },
-        customFeatures: plan.customFeatures || [],
-        trialDays: plan.trialDays || 14,
-        subscriptionDuration: plan.subscriptionDuration || 30,
+        planType: plan.planType || 'paid',
         isPopular: plan.isPopular || false,
       })
     } else {
@@ -99,13 +94,10 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
           apiAccess: false,
           prioritySupport: false,
         },
-        customFeatures: [],
-        trialDays: 14,
-        subscriptionDuration: 30,
+        planType: 'paid',
         isPopular: false,
       })
     }
-    setNewCustomFeature('')
   }, [plan])
 
   const handleChange = (e) => {
@@ -298,7 +290,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
                 Max SIMs
@@ -342,35 +334,15 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Trial Days</label>
-              <input
-                type="number"
-                name="trialDays"
-                value={formData.trialDays}
-                onChange={handleChange}
-                min="0"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Subscription Duration (days)
+                Max Recharges
               </label>
               <input
                 type="number"
-                name="subscriptionDuration"
-                value={formData.subscriptionDuration}
+                name="limits.maxRecharges"
+                value={formData.limits.maxRecharges}
                 onChange={handleChange}
-                min="1"
-                placeholder="e.g., 30"
+                min="-1"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
@@ -382,6 +354,34 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 }}
               />
             </div>
+          </div>
+
+          {/* Plan Type */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Plan Type</label>
+            <select
+              name="planType"
+              value={formData.planType}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                backgroundColor: '#fff',
+              }}
+            >
+              <option value="paid">Paid Plan</option>
+              <option value="free_trial">Free Trial (14 days)</option>
+            </select>
+            <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+              {formData.planType === 'free_trial'
+                ? 'Free trial plan with 14 days duration. Price will be set to ₹0 automatically.'
+                : 'Monthly = 28 days, Yearly = 336 days (12 × 28 days)'}
+            </p>
           </div>
 
           {/* Mark as Popular */}
@@ -412,10 +412,9 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 { key: 'telegramStatus', label: 'Telegram Status' },
                 { key: 'emailNotifications', label: 'Email Notifications' },
                 { key: 'smsNotifications', label: 'SMS Notifications' },
-                { key: 'advancedReports', label: 'Advanced Reports' },
+
                 { key: 'excelExport', label: 'Excel Export' },
-                { key: 'apiAccess', label: 'API Access' },
-                { key: 'prioritySupport', label: 'Priority Support' },
+              
               ].map((feature) => (
                 <label key={feature.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input
@@ -429,105 +428,6 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
                 </label>
               ))}
             </div>
-          </div>
-
-          {/* Custom Features */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>Custom Features</label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <input
-                type="text"
-                value={newCustomFeature}
-                onChange={(e) => setNewCustomFeature(e.target.value)}
-                placeholder="e.g., Free setup assistance"
-                style={{
-                  flex: 1,
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    if (newCustomFeature.trim()) {
-                      setFormData(prev => ({
-                        ...prev,
-                        customFeatures: [...prev.customFeatures, newCustomFeature.trim()]
-                      }))
-                      setNewCustomFeature('')
-                    }
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (newCustomFeature.trim()) {
-                    setFormData(prev => ({
-                      ...prev,
-                      customFeatures: [...prev.customFeatures, newCustomFeature.trim()]
-                    }))
-                    setNewCustomFeature('')
-                  }
-                }}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#2563eb',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <FiPlus style={{ width: '16px', height: '16px' }} />
-                Add
-              </button>
-            </div>
-            {formData.customFeatures.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {formData.customFeatures.map((feature, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
-                      backgroundColor: '#f3f4f6',
-                      borderRadius: '20px',
-                      fontSize: '13px',
-                    }}
-                  >
-                    <span>{feature}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          customFeatures: prev.customFeatures.filter((_, i) => i !== index)
-                        }))
-                      }}
-                      style={{
-                        padding: '2px',
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#6b7280',
-                        display: 'flex',
-                      }}
-                    >
-                      <FiX style={{ width: '14px', height: '14px' }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -982,7 +882,22 @@ export default function Subscriptions() {
       >
         {/* Popular Badge — fixed height so all cards align even without it */}
         <div style={{ height: '28px', flexShrink: 0 }}>
-          {plan.isPopular && (
+          {plan.planType === 'free_trial' ? (
+            <div style={{
+              backgroundColor: '#16a34a',
+              color: '#ffffff',
+              textAlign: 'center',
+              padding: '4px',
+              fontSize: '12px',
+              fontWeight: '500',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              Free Trial — 14 Days
+            </div>
+          ) : plan.isPopular ? (
             <div style={{
               backgroundColor: '#2563eb',
               color: '#ffffff',
@@ -997,7 +912,7 @@ export default function Subscriptions() {
             }}>
               Most Popular
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Card Body — flex column so button always sticks to bottom */}
@@ -1070,18 +985,34 @@ export default function Subscriptions() {
 
           {/* ── Pricing ──────────────────────────────────────────────── */}
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              <span style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>
-                ₹{plan.price?.monthly}
-              </span>
-              <span style={{ color: '#6b7280', fontSize: '14px' }}>/month</span>
-            </div>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
-              ₹{plan.price?.yearly}/year&nbsp;
-              <span style={{ color: '#16a34a', fontWeight: '500' }}>
-                (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
-              </span>
-            </p>
+            {plan.planType === 'free_trial' ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '28px', fontWeight: '700', color: '#16a34a' }}>
+                    Free
+                  </span>
+                  <span style={{ color: '#6b7280', fontSize: '14px' }}>14 days</span>
+                </div>
+                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+                  No credit card required
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>
+                    ₹{plan.price?.monthly}
+                  </span>
+                  <span style={{ color: '#6b7280', fontSize: '14px' }}>/month</span>
+                </div>
+                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+                  ₹{plan.price?.yearly}/year&nbsp;
+                  <span style={{ color: '#16a34a', fontWeight: '500' }}>
+                    (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
+                  </span>
+                </p>
+              </>
+            )}
           </div>
 
           {/* ── Limits & Features — flex:1 so this section stretches ── */}
@@ -1104,7 +1035,7 @@ export default function Subscriptions() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '12px' }}>
               <span style={{ color: '#6b7280' }}>Duration</span>
               <span style={{ fontWeight: '600', color: '#111827' }}>
-                {plan.subscriptionDuration || 30} days
+                {plan.planType === 'free_trial' ? '14 days (Free Trial)' : 'Monthly: 28 days / Yearly: 336 days'}
               </span>
             </div>
 
@@ -1126,16 +1057,6 @@ export default function Subscriptions() {
               <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
               <span>Advanced Reports</span>
             </div>
-
-            {plan.customFeatures?.map((feature, index) => (
-              <div key={index} style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                fontSize: '14px', marginBottom: '6px', color: '#16a34a',
-              }}>
-                <FiCheck style={{ width: '15px', height: '15px', flexShrink: 0 }} />
-                <span>{feature}</span>
-              </div>
-            ))}
           </div>
 
           {/* ── Action Buttons — always at bottom ────────────────────── */}
@@ -1178,20 +1099,31 @@ export default function Subscriptions() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 'auto' }}>
-              <Button
-                disabled={!plan.isActive}
-                onClick={() => openCheckout(plan, 'monthly')}
-              >
-                Subscribe Monthly
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!plan.isActive}
-                onClick={() => openCheckout(plan, 'yearly')}
-              >
-                Subscribe Yearly&nbsp;
-                (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
-              </Button>
+              {plan.planType === 'free_trial' ? (
+                <Button
+                  disabled={!plan.isActive}
+                  onClick={() => openCheckout(plan, 'monthly')}
+                >
+                  Start Free Trial
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    disabled={!plan.isActive}
+                    onClick={() => openCheckout(plan, 'monthly')}
+                  >
+                    Subscribe Monthly
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={!plan.isActive}
+                    onClick={() => openCheckout(plan, 'yearly')}
+                  >
+                    Subscribe Yearly&nbsp;
+                    (Save {Math.round((plan.price?.monthly * 12 - plan.price?.yearly) / (plan.price?.monthly * 12) * 100)}%)
+                  </Button>
+                </>
+              )}
             </div>
           )}
 

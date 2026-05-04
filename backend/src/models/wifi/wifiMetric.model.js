@@ -111,6 +111,65 @@ WifiMetricSchema.statics.getAverageSpeed = async function (wifiId, minutes = 5) 
   return result[0] || null;
 };
 
+// Static method to get latest metrics for a wifi (most recent speed test)
+WifiMetricSchema.statics.getLatestSpeed = async function (wifiId) {
+  const result = await this.findOne({
+    wifiId: new mongoose.Types.ObjectId(wifiId),
+  })
+    .sort({ timestamp: -1 })
+    .select('downloadSpeed uploadSpeed latency timestamp');
+  return result;
+};
+
+// Static method to get average speed in last N minutes, or latest metric if no recent data
+WifiMetricSchema.statics.getRecentOrLatestSpeed = async function (wifiId, minutes = 30) {
+  // First try to get average from last N minutes
+  const startDate = new Date(Date.now() - minutes * 60 * 1000);
+  const result = await this.aggregate([
+    {
+      $match: {
+        wifiId: new mongoose.Types.ObjectId(wifiId),
+        timestamp: { $gte: startDate },
+      },
+    },
+    {
+      $group: {
+        _id: '$wifiId',
+        avgDownload: { $avg: '$downloadSpeed' },
+        avgUpload: { $avg: '$uploadSpeed' },
+        avgLatency: { $avg: '$latency' },
+        count: { $sum: 1 },
+        lastTimestamp: { $max: '$timestamp' },
+      },
+    },
+  ]);
+
+  if (result.length > 0) {
+    return result[0];
+  }
+
+  // If no recent data, get the latest metric (regardless of time)
+  const latest = await this.findOne({
+    wifiId: new mongoose.Types.ObjectId(wifiId),
+  })
+    .sort({ timestamp: -1 })
+    .select('downloadSpeed uploadSpeed latency timestamp');
+
+  if (latest) {
+    return {
+      _id: wifiId,
+      avgDownload: latest.downloadSpeed,
+      avgUpload: latest.uploadSpeed,
+      avgLatency: latest.latency,
+      count: 1,
+      lastTimestamp: latest.timestamp,
+      isLatest: true, // Flag to indicate this is the latest single metric
+    };
+  }
+
+  return null;
+};
+
 // Static method to get metrics by company
 WifiMetricSchema.statics.getByCompany = function (companyId, limit = 100) {
   return this.find({ companyId })

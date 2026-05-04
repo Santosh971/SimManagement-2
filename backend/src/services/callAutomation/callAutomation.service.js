@@ -71,6 +71,16 @@ class CallAutomationService {
     // Check for existing config
     let config = await CallAutomationConfig.findOne({ companyId });
 
+    logger.info('[CALL AUTOMATION] saveConfig called with:', {
+      companyId,
+      frequency,
+      scheduledTime,
+      scheduledDay,
+      callDuration,
+      isActive,
+      existingConfig: config ? config._id : 'new',
+    });
+
     if (config) {
       // Update existing config
       config.callerSimIds = callerSimIds;
@@ -100,6 +110,17 @@ class CallAutomationService {
 
     await config.save();
 
+    logger.info('[CALL AUTOMATION] Config saved successfully:', {
+      configId: config._id,
+      companyId,
+      frequency: config.frequency,
+      scheduledTime: config.scheduledTime,
+      scheduledDay: config.scheduledDay,
+      callDuration: config.callDuration,
+      isActive: config.isActive,
+      nextRunAt: config.nextRunAt,
+    });
+
     // Populate for response
     await config.populate('callerSimIds', 'mobileNumber operator status');
     await config.populate('targetSimIds', 'mobileNumber operator status');
@@ -128,6 +149,20 @@ class CallAutomationService {
     }
 
     const config = await CallAutomationConfig.findByCompany(targetCompanyId);
+
+    if (config) {
+      logger.info('[CALL AUTOMATION] getConfig returning:', {
+        configId: config._id,
+        companyId: config.companyId,
+        frequency: config.frequency,
+        scheduledTime: config.scheduledTime,
+        scheduledDay: config.scheduledDay,
+        callDuration: config.callDuration,
+        isActive: config.isActive,
+      });
+    } else {
+      logger.info('[CALL AUTOMATION] No config found for company:', targetCompanyId);
+    }
 
     return config;
   }
@@ -168,34 +203,64 @@ class CallAutomationService {
         targets: [],
         callDuration: 10,
         frequency: 'daily',
+        scheduledTime: '09:00',
+        scheduledDay: 'monday',
         isActive: false,
       };
     }
 
+    logger.info('[CALL AUTOMATION] SIM found:', {
+      simId: sim._id,
+      mobileNumber: sim.mobileNumber,
+      isActive: sim.isActive,
+      status: sim.status,
+      companyId: sim.companyId?._id || sim.companyId,
+    });
+
     if (!sim.isActive || sim.status !== 'active') {
-      logger.warn('[CALL AUTOMATION] SIM not active:', simNumber);
+      logger.warn('[CALL AUTOMATION] SIM not active:', simNumber, {
+        isActive: sim.isActive,
+        status: sim.status,
+      });
       return {
         role: 'NONE',
         targets: [],
         callDuration: 10,
         frequency: 'daily',
+        scheduledTime: '09:00',
+        scheduledDay: 'monday',
         isActive: false,
+        simId: sim._id,
+        mobileNumber: sim.mobileNumber,
       };
     }
 
     // Get company's call automation config
+    const configCompanyId = sim.companyId?._id || sim.companyId;
+    logger.info('[CALL AUTOMATION] Looking for config with companyId:', configCompanyId);
+
     const config = await CallAutomationConfig.findOne({
-      companyId: sim.companyId._id || sim.companyId,
+      companyId: configCompanyId,
       isActive: true
     }).populate('targetSimIds', 'mobileNumber');
 
+    logger.info('[CALL AUTOMATION] Config found:', config ? {
+      configId: config._id,
+      companyId: config.companyId,
+      isActive: config.isActive,
+      callerSimIds: config.callerSimIds,
+      targetSimIds: config.targetSimIds?.map(t => t._id || t),
+    } : 'No config found');
+
     if (!config) {
-      logger.info('[CALL AUTOMATION] No active config for company:', sim.companyId._id || sim.companyId);
+      logger.info('[CALL AUTOMATION] No active config for company:', configCompanyId);
       return {
         role: 'NONE',
         targets: [],
         callDuration: 10,
         frequency: 'daily',
+        scheduledTime: '09:00',
+        scheduledDay: 'monday',
         isActive: false,
         simId: sim._id,
         mobileNumber: sim.mobileNumber,
@@ -218,7 +283,10 @@ class CallAutomationService {
       simNumber,
       role,
       isCaller,
-      isTarget
+      isTarget,
+      simIdStr,
+      callerSimIds: config.callerSimIds.map(id => id.toString()),
+      targetSimIds: config.targetSimIds.map(id => id.toString()),
     });
 
     // If caller, get target phone numbers with rotation
@@ -227,7 +295,7 @@ class CallAutomationService {
       targets = await this.getTargetsWithRotation(config, sim._id);
     }
 
-    return {
+    const result = {
       role,
       targets,
       callDuration: config.callDuration,
@@ -239,6 +307,19 @@ class CallAutomationService {
       mobileNumber: sim.mobileNumber,
       configId: config._id,
     };
+
+    logger.info('[CALL AUTOMATION] Returning device config:', {
+      simNumber,
+      role,
+      frequency: result.frequency,
+      scheduledTime: result.scheduledTime,
+      scheduledDay: result.scheduledDay,
+      isActive: result.isActive,
+      isCaller,
+      isTarget,
+    });
+
+    return result;
   }
 
   /**

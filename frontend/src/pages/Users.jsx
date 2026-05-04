@@ -534,7 +534,9 @@ export default function Users() {
 
     try {
       await api.delete(`/users/${id}`)
-      toast.success('User deactivated successfully')
+      toast.success('User Remove successfully')
+      setUsers(prev => prev.filter(user => user._id !== id))
+
       fetchUsers()
           fetchStats() // ✅ ADD THIS
 

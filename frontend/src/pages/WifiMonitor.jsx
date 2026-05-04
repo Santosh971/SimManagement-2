@@ -548,6 +548,18 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
               <div style={{ fontSize: '24px', fontWeight: '600', color: stats?.avgSpeed && parseFloat(stats.avgSpeed) < wifi.alertThreshold ? '#dc2626' : '#16a34a' }}>
                 {stats?.avgSpeed || '0'} Mbps
               </div>
+              {stats?.lastMetricTime && (
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                  Last measured: {new Date(stats.lastMetricTime).toLocaleString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </div>
+              )}
             </div>
             {/* <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
               <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Devices</div>
@@ -1016,9 +1028,23 @@ export default function WifiMonitor() {
                         <td style={{ padding: '12px 16px' }}>{network.expectedSpeed} Mbps</td>
                         <td style={{ padding: '12px 16px' }}>{network.alertThreshold} Mbps</td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{ color: network.currentAvgSpeed && parseFloat(network.currentAvgSpeed) < network.alertThreshold ? '#dc2626' : '#16a34a' }}>
-                            {network.currentAvgSpeed || '0'} Mbps
-                          </span>
+                          <div>
+                            <span style={{ color: network.currentAvgSpeed && parseFloat(network.currentAvgSpeed) < network.alertThreshold ? '#dc2626' : '#16a34a' }}>
+                              {network.currentAvgSpeed || '0'} Mbps
+                            </span>
+                            {network.lastMetricTime && (
+                              <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                                {new Date(network.lastMetricTime).toLocaleString('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         {/* <td style={{ padding: '12px 16px' }}>{network.deviceCount || 0}</td> */}
                         {/* <td style={{ padding: '12px 16px' }}>

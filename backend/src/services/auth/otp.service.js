@@ -14,6 +14,7 @@ class OTPService {
     this.OTP_COOLDOWN_SECONDS = 10;
     this.OTP_SALT_ROUNDS = 10; // For hashing OTP
     // Bypass email for testing (set BYPASS_EMAIL_OTP=true in environment)
+    // ONLY use this for automated testing - NEVER in production
     this.BYPASS_EMAIL = process.env.BYPASS_EMAIL_OTP === 'true';
   }
 
@@ -45,6 +46,7 @@ class OTPService {
   /**
    * Send OTP to user's email
    * [EMAIL OTP FIX] - Changed from mobile-based to email-based OTP authentication
+   * The OTP is sent ONLY via email and NOT returned in the response (unless BYPASS_EMAIL_OTP=true)
    */
   async sendOTP(email) {
     try {
@@ -105,17 +107,16 @@ class OTPService {
         expiresAt: otpExpires
       });
 
+      // Log OTP to console for testing/development (remove in production)
+      console.log(`[OTP] Email: ${email}, OTP: ${otp}`);
 
-      console.log("Email OTP : ", otp); // Log OTP for testing (remove in production)
-      // Check if email bypass is enabled (for testing without SMTP)
-      const isDevelopment = config.app.env === 'development';
-      const bypassEmail = this.BYPASS_EMAIL || isDevelopment;
-
-      if (bypassEmail) {
+      // Check if email bypass is EXPLICITLY enabled (set BYPASS_EMAIL_OTP=true in .env)
+      // This should ONLY be used for automated testing purposes
+      if (this.BYPASS_EMAIL) {
         logger.info('[EMAIL OTP FIX] Email bypass enabled - returning OTP directly', { email });
         return {
           success: true,
-          message: 'OTP generated (email bypassed)',
+          message: 'OTP generated (email bypassed - for testing only)',
           otp: otp, // Only when bypass is enabled
           expiresAt: otpExpires,
           bypassed: true,
@@ -132,17 +133,6 @@ class OTPService {
             error: emailResult.error
           });
 
-          // For development or when email timeout/connection fails, return OTP in response
-          // This helps when SMTP ports are blocked (like on Render free tier)
-          if (isDevelopment || emailResult.error === 'Connection timeout' || bypassEmail) {
-            return {
-              success: true,
-              message: 'OTP generated (email delivery failed - check SMTP config)',
-              otp: otp, // Return OTP directly for testing
-              expiresAt: otpExpires,
-            };
-          }
-
           return {
             success: false,
             message: 'Failed to send OTP email. Please try again or contact support.',
@@ -154,9 +144,10 @@ class OTPService {
           userId: user._id
         });
 
+        // SUCCESS - OTP sent via email, do NOT return OTP in response
         return {
           success: true,
-          message: 'OTP sent to your email',
+          message: 'OTP sent to your email. Please check your inbox.',
           expiresAt: otpExpires,
         };
       } catch (emailError) {
@@ -164,16 +155,6 @@ class OTPService {
           email,
           error: emailError.message
         });
-
-        // Fallback for development or connection errors (like SMTP port blocked on Render)
-        if (isDevelopment || emailError.code === 'ETIMEDOUT' || bypassEmail) {
-          return {
-            success: true,
-            message: 'OTP generated (email service error - connection timeout)',
-            otp: otp,
-            expiresAt: otpExpires,
-          };
-        }
 
         return {
           success: false,

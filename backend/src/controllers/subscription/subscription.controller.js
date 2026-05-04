@@ -16,7 +16,7 @@ class SubscriptionController {
         role: req.user.role,
         entityId: plan._id,
         entityType: 'SUBSCRIPTION',
-        metadata: { name: plan.name, price: plan.price },
+        metadata: { name: plan.name, price: plan.price, planType: plan.planType },
         req,
       });
 
@@ -165,6 +165,15 @@ class SubscriptionController {
     try {
       const usage = await subscriptionService.getAllPlansUsage();
       return successResponse(res, usage);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getFreeTrialPlan(req, res, next) {
+    try {
+      const plan = await subscriptionService.getFreeTrialPlan();
+      return successResponse(res, plan);
     } catch (error) {
       next(error);
     }

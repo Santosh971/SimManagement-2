@@ -12,6 +12,19 @@ class SubscriptionService {
       throw new ConflictError('Subscription plan with this name already exists');
     }
 
+    // Set default durationDays if not provided
+    if (!data.durationDays) {
+      data.durationDays = {
+        monthly: 28,  // 28 days for monthly
+        yearly: 336   // 336 days (12 × 28) for yearly
+      };
+    }
+
+    // Set planType based on price
+    if (!data.planType) {
+      data.planType = (data.price?.monthly === 0 && data.price?.yearly === 0) ? 'free_trial' : 'paid';
+    }
+
     const plan = new Subscription(data);
     await plan.save();
 
@@ -113,33 +126,49 @@ class SubscriptionService {
       }
     }
 
+    // Also ensure free trial plan exists
+    await this.ensureFreeTrialPlan();
+
     return {
       message: `Created ${createdPlans.length} default plans`,
       plans: createdPlans,
     };
   }
 
+  /**
+   * Ensure free trial plan exists
+   */
+  async ensureFreeTrialPlan() {
+    const existingTrial = await Subscription.findOne({ planType: 'free_trial' });
+    if (!existingTrial) {
+      await Subscription.createFreeTrialPlan();
+    }
+  }
+
   async getPlanStats() {
     const totalPlans = await Subscription.countDocuments();
     const activePlans = await Subscription.countDocuments({ isActive: true });
     const popularPlans = await Subscription.find({ isPopular: true, isActive: true });
+    const freeTrialPlans = await Subscription.countDocuments({ planType: 'free_trial', isActive: true });
 
     return {
       totalPlans,
       activePlans,
       popularPlans,
+      freeTrialPlans,
     };
   }
 
   async comparePlans() {
     const plans = await Subscription.find({ isActive: true })
       .sort({ sortOrder: 1 })
-      .select('name description price features customFeatures limits isPopular');
+      .select('name description price features limits isPopular planType durationDays');
 
     return plans.map((plan) => ({
       ...plan.toObject(),
-      yearlySavings: plan.calculateYearlySavings(),
+      yearlySavings: plan.planType === 'paid' ? plan.calculateYearlySavings() : 0,
       formattedPrice: plan.formattedPrice,
+      durationInDays: plan.durationInDays,
     }));
   }
 
@@ -187,6 +216,13 @@ class SubscriptionService {
     );
 
     return plansWithUsage;
+  }
+
+  /**
+   * Get free trial plan
+   */
+  async getFreeTrialPlan() {
+    return Subscription.findFreeTrialPlan();
   }
 }
 

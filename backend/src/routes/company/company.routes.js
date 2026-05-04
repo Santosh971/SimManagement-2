@@ -12,7 +12,7 @@ const createCompanyValidation = [
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
   body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
-  body('subscriptionDuration').optional().isInt({ min: 1 }).withMessage('Invalid subscription duration'),
+  body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('address.street').optional().isString(),
   body('address.city').optional().isString(),
   body('address.state').optional().isString(),
@@ -50,7 +50,7 @@ const updateMyCompanyValidation = [
 const renewSubscriptionValidation = [
   param('id').isMongoId().withMessage('Invalid company ID'),
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
-  body('duration').optional().isInt({ min: 1 }).withMessage('Invalid duration'),
+  body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
 ];
 
 const extendTrialValidation = [

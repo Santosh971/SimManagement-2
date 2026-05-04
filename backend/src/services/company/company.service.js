@@ -20,8 +20,15 @@ const notificationHelper = require('../../utils/notificationHelper');
 const config = require('../../config');
 
 class CompanyService {
-  async createCompany(data, createdBy) {
-    const { name, email, phone, address, subscriptionId, subscriptionDuration = 30 } = data;
+  /**
+   * Create a new company with subscription
+   * Handles both free trial and paid plans
+   * @param {Object} data - Company data
+   * @param {String} createdBy - User ID who created the company
+   * @param {String} billingCycle - 'monthly' or 'yearly' (default: 'monthly')
+   */
+  async createCompany(data, createdBy, billingCycle = 'monthly') {
+    const { name, email, phone, address, subscriptionId } = data;
 
     // [GLOBAL UNIQUE EMAIL] Check if company email exists in companies
     const existingCompany = await Company.findOne({ email: email.toLowerCase() });
@@ -42,10 +49,28 @@ class CompanyService {
       throw new NotFoundError('Subscription');
     }
 
-    // Calculate subscription dates
+    // Calculate subscription dates based on plan type
     const subscriptionStartDate = new Date();
-    const subscriptionEndDate = new Date();
-    subscriptionEndDate.setDate(subscriptionEndDate.getDate() + subscriptionDuration);
+    let subscriptionEndDate = new Date();
+    let trialEndsAt = null;
+    let isTrial = false;
+
+    if (subscription.planType === 'free_trial') {
+      // Free trial plan - 14 days
+      isTrial = true;
+      trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 days trial
+      subscriptionEndDate = new Date(trialEndsAt); // End date same as trial end
+    } else {
+      // Paid plan - calculate duration based on billing cycle
+      const durationDays = billingCycle === 'yearly'
+        ? (subscription.durationDays?.yearly || 336)
+        : (subscription.durationDays?.monthly || 28);
+
+      isTrial = false;
+      subscriptionEndDate.setDate(subscriptionEndDate.getDate() + durationDays);
+      trialEndsAt = null; // No trial for paid plans
+    }
 
     // Create company
     const company = new Company({
@@ -56,6 +81,11 @@ class CompanyService {
       subscriptionId,
       subscriptionStartDate,
       subscriptionEndDate,
+      billingCycle: billingCycle,
+      isTrial,
+      trialEndsAt,
+      hasConverted: false,
+      trialConvertedAt: null,
       createdBy,
     });
 
@@ -242,7 +272,14 @@ class CompanyService {
     }
   }
 
-  async renewSubscription(companyId, subscriptionId, duration = 30) {
+  /**
+   * Renew or upgrade subscription
+   * Handles: trial to paid, plan changes, billing cycle changes
+   * @param {String} companyId - Company ID
+   * @param {String} subscriptionId - New subscription plan ID
+   * @param {String} billingCycle - 'monthly' or 'yearly' (default: 'monthly')
+   */
+  async renewSubscription(companyId, subscriptionId, billingCycle = 'monthly') {
     const company = await Company.findById(companyId);
     if (!company) {
       throw new NotFoundError('Company');
@@ -253,37 +290,93 @@ class CompanyService {
       throw new NotFoundError('Subscription');
     }
 
+    // Calculate duration based on plan type and billing cycle
+    let durationDays;
+    if (subscription.planType === 'free_trial') {
+      durationDays = 14; // Free trial is always 14 days
+    } else {
+      durationDays = billingCycle === 'yearly'
+        ? (subscription.durationDays?.yearly || 336)
+        : (subscription.durationDays?.monthly || 28);
+    }
+
+    // Check if upgrading from trial to paid
+    const wasOnTrial = company.isTrial && company.trialEndsAt && new Date(company.trialEndsAt) > new Date();
+    const isUpgradingToPaid = company.isTrial && subscription.planType !== 'free_trial';
+
+    // Update company subscription
     company.subscriptionId = subscriptionId;
+    company.billingCycle = billingCycle;
     company.subscriptionStartDate = new Date();
     company.subscriptionEndDate = new Date();
-    company.subscriptionEndDate.setDate(company.subscriptionEndDate.getDate() + duration);
+    company.subscriptionEndDate.setDate(company.subscriptionEndDate.getDate() + durationDays);
     company.isActive = true;
+
+    // Handle trial to paid conversion
+    if (isUpgradingToPaid) {
+      company.isTrial = false;
+      company.hasConverted = true;
+      company.trialConvertedAt = new Date();
+      company.trialEndsAt = null; // Clear trial end date
+    }
+
+    // If switching to free trial (edge case)
+    if (subscription.planType === 'free_trial') {
+      company.isTrial = true;
+      company.trialEndsAt = company.subscriptionEndDate;
+      company.hasConverted = false;
+      company.trialConvertedAt = null;
+    }
 
     await company.save();
 
-    // Send notification for subscription renewal
+    // Send notification for subscription renewal/upgrade
     try {
-      await notificationHelper.notifySubscriptionRenewed(
-        company,
-        company.subscriptionEndDate,
-        subscription.name
-      );
+      if (isUpgradingToPaid) {
+        await notificationHelper.notifyTrialConverted(
+          company,
+          company.subscriptionEndDate,
+          subscription.name
+        );
+      } else {
+        await notificationHelper.notifySubscriptionRenewed(
+          company,
+          company.subscriptionEndDate,
+          subscription.name
+        );
+      }
     } catch (notificationError) {
-      // Don't fail renewal if notification fails
       console.error('Failed to send subscription renewal notification:', notificationError.message);
     }
 
     return company;
   }
 
+  /**
+   * Extend trial period (for free trial companies only)
+   * @param {String} companyId - Company ID
+   * @param {Number} days - Number of days to extend
+   */
   async extendTrial(companyId, days = 7) {
     const company = await Company.findById(companyId);
     if (!company) {
       throw new NotFoundError('Company');
     }
 
+    // Can only extend trial if company is still on trial
+    if (!company.isTrial) {
+      throw new AppError('Can only extend trial for companies on free trial', 400);
+    }
+
+    // Extend subscription end date
     company.subscriptionEndDate = new Date(company.subscriptionEndDate);
     company.subscriptionEndDate.setDate(company.subscriptionEndDate.getDate() + days);
+
+    // Also extend trial end date if set
+    if (company.trialEndsAt) {
+      company.trialEndsAt = new Date(company.trialEndsAt);
+      company.trialEndsAt.setDate(company.trialEndsAt.getDate() + days);
+    }
 
     await company.save();
 
@@ -295,7 +388,6 @@ class CompanyService {
         days
       );
     } catch (notificationError) {
-      // Don't fail extension if notification fails
       console.error('Failed to send trial extension notification:', notificationError.message);
     }
 
