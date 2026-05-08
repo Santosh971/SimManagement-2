@@ -8,7 +8,7 @@ const { validate } = require('../../middleware/validate');
 
 // Validation rules
 const registerValidation = [
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   // body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('password')
     .if(body('role').isIn(['admin', 'super_admin']))
@@ -24,7 +24,7 @@ const registerValidation = [
 ];
 
 const loginValidation = [
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
@@ -57,7 +57,6 @@ const sendOTPValidation = [
   body('email')
     .isEmail()
     .withMessage('Please enter a valid email address')
-    .normalizeEmail()
     .trim(),
 ];
 
@@ -65,7 +64,6 @@ const verifyOTPValidation = [
   body('email')
     .isEmail()
     .withMessage('Please enter a valid email address')
-    .normalizeEmail()
     .trim(),
   body('otp')
     .matches(/^\d{6}$/)
@@ -83,23 +81,23 @@ router.post('/forgot-password', [body('email').isEmail()], validate, authControl
 router.post('/reset-password/:token', resetPasswordValidation, validate, authController.resetPassword);
 router.post('/init-super-admin', [
   // All fields are optional - if not provided, defaults/environment variables will be used
-  body('email').optional().isEmail().withMessage('Please provide a valid email address').normalizeEmail().trim(),
+  body('email').optional().isEmail().withMessage('Please provide a valid email address').trim(),
   body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('name').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Name must be between 1 and 50 characters'),
 ], validate, authController.initSuperAdmin);
 
 // Forgot Password OTP routes (for admin users)
 router.post('/forgot-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail().trim()
+  body('email').isEmail().withMessage('Please enter a valid email address').trim()
 ], validate, authController.forgotPasswordOTP);
 
 router.post('/verify-forgot-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail().trim(),
+  body('email').isEmail().withMessage('Please enter a valid email address').trim(),
   body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits')
 ], validate, authController.verifyForgotPasswordOTP);
 
 router.post('/reset-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').normalizeEmail().trim(),
+  body('email').isEmail().withMessage('Please enter a valid email address').trim(),
   body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits'),
   body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], validate, authController.resetPasswordWithOTP);
@@ -119,7 +117,7 @@ router.post('/change-password', changePasswordValidation, validate, authControll
 
 // Email Change Routes (protected)
 router.post('/email-change/request', [
-  body('newEmail').isEmail().withMessage('Please enter a valid new email address').normalizeEmail(),
+  body('newEmail').isEmail().withMessage('Please enter a valid new email address').trim(),
   body('password').notEmpty().withMessage('Password is required to change email'),
 ], validate, authController.requestEmailChange);
 

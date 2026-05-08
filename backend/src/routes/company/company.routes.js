@@ -8,7 +8,7 @@ const { validate } = require('../../middleware/validate');
 // Validation rules
 const createCompanyValidation = [
   body('name').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
   body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
@@ -37,7 +37,7 @@ const updateCompanyValidation = [
 // Validation for admin updating their own company
 const updateMyCompanyValidation = [
   body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Company name must be between 1 and 100 characters'),
-  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').optional().isEmail().withMessage('Valid email is required').trim(),
   body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
   body('website').optional().isURL().withMessage('Valid website URL is required'),
   body('address.street').optional().isString(),
@@ -62,7 +62,7 @@ const extendTrialValidation = [
 const createAdminValidation = [
   param('companyId').isMongoId().withMessage('Invalid company ID'),
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
   body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),

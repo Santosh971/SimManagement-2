@@ -9,7 +9,7 @@ const { validate } = require('../../middleware/validate');
 // Validation rules
 const createUserValidation = [
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   // body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('password')
     .optional({ checkFalsy: true })

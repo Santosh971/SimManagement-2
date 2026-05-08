@@ -117,15 +117,22 @@ class WifiService {
           wifiId: network._id,
           status: 'active'
         });
-        // Use getRecentOrLatestSpeed to show speed from last 30 min, or latest available
-        const latestMetrics = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
+        // Get the latest single metric (current speed) - not averaged
+        const latestMetric = await WifiMetric.getLatestSpeed(network._id);
+        // Also get 30-min average for reference
+        const avgMetrics = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
 
         return {
           ...network.toObject(),
           deviceCount,
           activeAlerts,
-          currentAvgSpeed: latestMetrics ? ((latestMetrics.avgDownload + latestMetrics.avgUpload) / 2).toFixed(2) : null,
-          lastMetricTime: latestMetrics?.lastTimestamp || null,
+          // Current Speed = Latest single metric (what mobile app shows)
+          currentSpeed: latestMetric ? latestMetric.downloadSpeed : null,
+          currentUploadSpeed: latestMetric ? latestMetric.uploadSpeed : null,
+          currentLatency: latestMetric ? latestMetric.latency : null,
+          // Average Speed = 30 min average
+          currentAvgSpeed: avgMetrics ? ((avgMetrics.avgDownload + avgMetrics.avgUpload) / 2).toFixed(2) : null,
+          lastMetricTime: latestMetric?.timestamp || avgMetrics?.lastTimestamp || null,
         };
       })
     );
@@ -702,7 +709,9 @@ class WifiService {
     const networkStats = await Promise.all(
       networks.map(async (network) => {
         const deviceCount = await WifiDevice.countDocuments({ wifiId: network._id, isActive: true });
-        // Use getRecentOrLatestSpeed for more reliable speed display
+        // Get the latest single metric (current speed)
+        const latestMetric = await WifiMetric.getLatestSpeed(network._id);
+        // Get 30-min average for reference
         const avgMetrics = await WifiMetric.getRecentOrLatestSpeed(network._id, 30);
         const activeAlertsCount = await WifiAlert.countDocuments({ wifiId: network._id, status: 'active' });
 
@@ -712,13 +721,18 @@ class WifiService {
           expectedSpeed: network.expectedSpeed,
           alertThreshold: network.alertThreshold,
           deviceCount,
+          // Current Speed (latest single metric)
+          currentSpeed: latestMetric ? latestMetric.downloadSpeed : 0,
+          currentUploadSpeed: latestMetric ? latestMetric.uploadSpeed : 0,
+          currentLatency: latestMetric ? latestMetric.latency : 0,
+          // Average Speed (30 min average)
           avgDownload: avgMetrics?.avgDownload || 0,
           avgUpload: avgMetrics?.avgUpload || 0,
           avgLatency: avgMetrics?.avgLatency || 0,
           avgSpeed: avgMetrics ? ((avgMetrics.avgDownload + avgMetrics.avgUpload) / 2).toFixed(2) : 0,
-          lastMetricTime: avgMetrics?.lastTimestamp || null,
+          lastMetricTime: latestMetric?.timestamp || avgMetrics?.lastTimestamp || null,
           activeAlerts: activeAlertsCount,
-          status: activeAlertsCount > 0 ? 'alert' : (avgMetrics ? 'healthy' : 'unknown'),
+          status: activeAlertsCount > 0 ? 'alert' : (latestMetric ? 'healthy' : 'unknown'),
         };
       })
     );

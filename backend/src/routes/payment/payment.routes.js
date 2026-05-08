@@ -22,7 +22,7 @@ const createOrderForRegistrationValidation = [
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
   body('billingCycle').isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
-  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('email').isEmail().withMessage('Valid email is required').trim(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('companyName').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
   body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
@@ -44,7 +44,7 @@ router.post(
   [
     body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
     body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
-    body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+    body('email').isEmail().withMessage('Valid email is required').trim(),
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
     body('companyName').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
     body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
