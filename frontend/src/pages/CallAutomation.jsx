@@ -21,6 +21,7 @@ import {
   FiInfo,
   FiSmartphone,
 } from 'react-icons/fi'
+import {  FiSettings } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
   PageContainer,
@@ -623,49 +624,128 @@ export default function CallAutomation() {
             </Button>
           </div>
 
-          {/* Stats */}
-          {/* {config && (
-            <div style={{
-              marginTop: '24px',
-              padding: '16px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Last Run</div>
-                <div style={{ fontWeight: '600', fontSize: '14px' }}>
-                  {config.lastRunAt
-                    ? new Date(config.lastRunAt).toLocaleString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : 'Never'}
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Next Run</div>
-                <div style={{ fontWeight: '600', fontSize: '14px' }}>
-                  {config.nextRunAt && isActive
-                    ? new Date(config.nextRunAt).toLocaleString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : 'Paused'}
-                </div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total Targets</div>
-                <div style={{ fontWeight: '600', fontSize: '14px' }}>{targetSimIds.length}</div>
-              </div>
-            </div>
-          )} */}
+    {/* ── Mobile App Sync Note ── */}
+    <div style={{
+      marginTop: '20px',
+      padding: '14px 16px',
+      backgroundColor: '#fffbeb',
+      border: '1px solid #fde68a',
+      borderLeft: '4px solid #f59e0b',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '12px',
+    }}>
+      {/* Warning icon */}
+      <div style={{ flexShrink: 0, marginTop: '1px' }}>
+        <FiInfo style={{ width: '18px', height: '18px', color: '#d97706' }} />
+      </div>
+
+      <div style={{ minWidth: 0 }}>
+        <p style={{
+          fontSize: '13px',
+          fontWeight: '600',
+          color: '#92400e',
+          margin: '0 0 6px 0',
+        }}>
+          Important: Sync Required on Mobile App
+        </p>
+        <p style={{
+          fontSize: '13px',
+          color: '#78350f',
+          margin: '0 0 10px 0',
+          lineHeight: '1.6',
+        }}>
+          After saving or scheduling the automation, you must refresh the schedule on the mobile app for changes to take effect.
+        </p>
+
+        {/* Steps */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '6px',
+        }}>
+          {/* Step 1 */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#92400e',
+            whiteSpace: 'nowrap',
+          }}>
+            <FiSmartphone style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+            "More" Tab
+          </div>
+
+          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
+
+          {/* Step 2 */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#92400e',
+            whiteSpace: 'nowrap',
+          }}>
+            <FiSettings style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+            "Settings"
+          </div>
+
+          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
+
+          {/* Step 3 */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#92400e',
+            whiteSpace: 'nowrap',
+          }}>
+            "Call Automation" section
+          </div>
+
+          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
+
+          {/* Step 4 */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            backgroundColor: '#d97706',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#fff',
+            whiteSpace: 'nowrap',
+          }}>
+            <FiRefreshCw style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+            Tap "Refresh"
+          </div>
+        </div>
+      </div>
+    </div>
+
+
         </CardBody>
       </Card>
     </PageContainer>

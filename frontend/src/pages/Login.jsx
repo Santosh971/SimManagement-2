@@ -91,13 +91,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember & Forgot */}
-            {/* <div className="flex items-center justify-between mb-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-secondary-300" />
-                <span className="text-sm text-secondary-600">Remember me</span>
-              </label>
-            </div>   */}
+        
 
             {/* Submit */}
             <button

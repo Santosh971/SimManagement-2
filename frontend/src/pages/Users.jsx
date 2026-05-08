@@ -237,60 +237,7 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
             />
           </div>
 
-          {/* {!user && (
-            <div style={{ marginBottom: '16px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '6px',
-                  fontWeight: '500',
-                  fontSize: '13px',
-                  color: '#374151',
-                }}
-              >
-                Password (Optional)
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Leave empty for auto-generated password"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    paddingRight: '40px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                  }}
-                >
-                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                </button>
-              </div>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                If left empty, a secure password will be auto-generated and sent to the user's email.
-              </p>
-            </div>
-          )} */}
-
+      
           {user && (
             <div
               style={{

@@ -22,7 +22,7 @@ import {
   Button,
   Spinner,
 } from '../components/ui'
-
+import {  FiInfo } from 'react-icons/fi'
 // Add WiFi Modal (Updated with SSID, BSSID, and SIM Assignment)
 function AddWifiModal({ isOpen, onClose, wifi, onSave }) {
   const { api } = useAuth()
@@ -544,9 +544,9 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
               <div style={{ fontSize: '24px', fontWeight: '600' }}>{wifi.alertThreshold} Mbps</div>
             </div>
             <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Current Avg Speed</div>
-              <div style={{ fontSize: '24px', fontWeight: '600', color: stats?.avgSpeed && parseFloat(stats.avgSpeed) < wifi.alertThreshold ? '#dc2626' : '#16a34a' }}>
-                {stats?.avgSpeed || '0'} Mbps
+              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Current Speed</div>
+              <div style={{ fontSize: '24px', fontWeight: '600', color: stats?.currentSpeed && parseFloat(stats.currentSpeed) < wifi.alertThreshold ? '#dc2626' : '#16a34a' }}>
+                {stats?.currentSpeed ? parseFloat(stats.currentSpeed).toFixed(2) : '0'} Mbps
               </div>
               {stats?.lastMetricTime && (
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
@@ -919,6 +919,21 @@ export default function WifiMonitor() {
     </CardBody>
   </Card>
 
+     </div>
+
+{/* ── Setup hint ── */}
+<div className="flex items-start gap-2 sm:gap-3 bg-blue-50 border border-blue-100 rounded-xl px-3 sm:px-4 py-3 mb-6">
+  <FiInfo className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 mt-0.5 shrink-0" />
+  <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+    <span className="font-semibold">After adding or registering a WiFi network,</span>{" "}
+    go to the mobile app and navigate to{" "}
+    <span className="font-medium">More → Settings → WiFi Speed Monitoring</span>{" "}
+    section, then tap the{" "}
+    <span className="inline-flex items-center gap-1 font-semibold bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-md text-xs">
+      Initialize
+    </span>{" "}
+    button to activate monitoring on your device.
+  </p>
 </div>
 
       {/* Active Alerts */}
@@ -1029,8 +1044,8 @@ export default function WifiMonitor() {
                         <td style={{ padding: '12px 16px' }}>{network.alertThreshold} Mbps</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div>
-                            <span style={{ color: network.currentAvgSpeed && parseFloat(network.currentAvgSpeed) < network.alertThreshold ? '#dc2626' : '#16a34a' }}>
-                              {network.currentAvgSpeed || '0'} Mbps
+                            <span style={{ color: network.currentSpeed && parseFloat(network.currentSpeed) < network.alertThreshold ? '#dc2626' : '#16a34a' }}>
+                              {network.currentSpeed ? parseFloat(network.currentSpeed).toFixed(2) : '0'} Mbps
                             </span>
                             {network.lastMetricTime && (
                               <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>

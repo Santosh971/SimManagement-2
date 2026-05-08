@@ -445,7 +445,6 @@ export default function SuperAdminDashboard() {
       </div>
     ) : (
       <div style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af' }}>
-        {/* <FiClock style={{ width: '28px', height: '28px', marginBottom: '8px', opacity: 0.4 }} /> */}
         <p style={{ margin: 0, fontSize: '13px' }}>No expiring subscriptions</p>
       </div>
     )}

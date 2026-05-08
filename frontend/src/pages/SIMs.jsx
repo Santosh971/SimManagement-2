@@ -856,11 +856,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                 required
               />
             </div>
-            {/* {currentConfig.autoDetectOperator && formData.mobileNumber.length === 10 && (
-              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                {detectingOperator ? 'Detecting operator...' : 'Operator will be auto-detected'}
-              </p>
-            )} */}
+            
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>

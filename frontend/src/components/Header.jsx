@@ -158,7 +158,7 @@ export default function Header({ setSidebarOpen }) {
         {/* Download App - For admin and super_admin */}
         {(user?.role === 'admin' || user?.role === 'super_admin') && (
           <a
-            href="http://node.simtrackr.b100x.in/public/apk/simtrack.apk"
+            href="https://node.simtrackr.b100x.in/public/apk/simtrack.apk"
             style={{
               display: 'flex',
               alignItems: 'center',
