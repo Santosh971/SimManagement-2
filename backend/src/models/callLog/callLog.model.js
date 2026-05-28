@@ -126,12 +126,18 @@ CallLogSchema.statics.findByCompany = function (companyId, options = {}) {
 };
 
 // Static method to get call statistics
-CallLogSchema.statics.getStats = async function (companyId, startDate, endDate) {
+CallLogSchema.statics.getStats = async function (companyId, startDate, endDate, filters = {}) {
   const match = { companyId: new mongoose.Types.ObjectId(companyId) };
   if (startDate || endDate) {
     match.timestamp = {};
     if (startDate) match.timestamp.$gte = new Date(startDate);
     if (endDate) match.timestamp.$lte = new Date(endDate);
+  }
+  if (filters.simId) match.simId = new mongoose.Types.ObjectId(filters.simId);
+  if (filters.callType) match.callType = filters.callType;
+  if (filters.phoneNumber) {
+    const escaped = filters.phoneNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    match.phoneNumber = { $regex: escaped, $options: 'i' };
   }
 
   const stats = await this.aggregate([

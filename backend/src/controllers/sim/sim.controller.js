@@ -119,7 +119,7 @@ class SimController {
         req,
       });
 
-      return successResponse(res, sim, 'SIM updated successfully');
+      return successResponse(res, sim, 'SIM updated successfully.');
     } catch (error) {
       next(error);
     }
@@ -143,7 +143,7 @@ class SimController {
         req,
       });
 
-      return successResponse(res, null, 'SIM deleted successfully');
+      return successResponse(res, null, 'SIM deleted successfully.');
     } catch (error) {
       next(error);
     }
@@ -230,11 +230,13 @@ class SimController {
       // Create Excel file
       const workbook = xlsx.utils.book_new();
       const data = sims.map((sim) => ({
-        'Contact Number': sim.mobileNumber,
+        'Company Contact Number': sim.mobileNumber,
         'Operator': sim.operator,
         'Circle': sim.circle || '',
         'Status': sim.status,
-        'Assigned User Email': sim.assignedTo?.email || '',
+        'User Name': sim.assignedTo?.name || '',
+        'User Email': sim.assignedTo?.email || '',
+        'User Personal Contact Number': sim.assignedTo?.phoneNumber || '',
         'Notes': sim.notes || '',
         'Created At': sim.createdAt.toISOString().split('T')[0],
       }));

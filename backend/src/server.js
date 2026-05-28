@@ -44,12 +44,26 @@ const errorHandler = require('./middleware/errorHandler');
 // Import services
 const cronService = require('./jobs');
 const pageContentService = require('./services/pageContent.service');
+const Sim = require('./models/sim/sim.model');
 
 // Create Express app
 const app = express();
 
 // Connect to database
 connectDB().then(async () => {
+  // Migrate deprecated SIM statuses to 'inactive'
+  try {
+    const result = await Sim.updateMany(
+      { status: { $in: ['suspended', 'lost'] } },
+      { $set: { status: 'inactive' } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[Migration] ${result.modifiedCount} SIM(s) migrated from suspended/lost → inactive`);
+    }
+  } catch (err) {
+    console.error('[Migration] Failed to migrate SIM statuses:', err.message);
+  }
+
   // Initialize cron jobs after database connection
   cronService.initJobs();
   // Initialize default legal pages

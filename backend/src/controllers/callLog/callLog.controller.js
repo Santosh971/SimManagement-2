@@ -147,8 +147,9 @@ class CallLogController {
   async getStats(req, res, next) {
     try {
       const companyId = req.user.role === 'super_admin' ? req.query.companyId : req.user.companyId;
-      const { startDate, endDate } = req.query;
-      const stats = await callLogService.getCallStats(companyId, startDate, endDate);
+      const { startDate, endDate, simId, callType, phoneNumber } = req.query;
+      const filters = { simId, callType, phoneNumber };
+      const stats = await callLogService.getCallStats(companyId, startDate, endDate, filters);
       return successResponse(res, stats);
     } catch (error) {
       next(error);

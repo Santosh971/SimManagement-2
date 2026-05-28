@@ -39,11 +39,13 @@ export default function SmsLogs() {
   const [sender, setSender] = useState('')
   const [search, setSearch] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [activeDateRange, setActiveDateRange] = useState({ start: '', end: '' })
   const [uniqueSenders, setUniqueSenders] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
   const [stats, setStats] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
   const isInitialMount = useRef(true)
+  const fetchSmsLogsRef = useRef(null)
 
   // Initial data load (SIMs, users, stats — only once)
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function SmsLogs() {
   useEffect(() => {
     // Skip the initial mount since fetchSmsLogs is already called in the first useEffect
     if (isInitialMount.current) return
+    // In unique sender mode, pagination is client-side — no API fetch needed on page change
+    if (type === 'unique_sender') return
     fetchSmsLogs(true)
   }, [pagination.page])
 
@@ -67,13 +71,21 @@ export default function SmsLogs() {
   useEffect(() => {
     // Skip the initial mount since fetchSmsLogs is already called in the first useEffect
     if (isInitialMount.current) return
+    // In unique sender mode, always fetch directly (pagination is client-side, page useEffect won't fetch)
+    if (type === 'unique_sender') {
+      if (pagination.page !== 1) {
+        setPagination((prev) => ({ ...prev, page: 1 }))
+      }
+      fetchSmsLogs(true)
+      return
+    }
     if (pagination.page === 1) {
       fetchSmsLogs(true)
     } else {
       setPagination((prev) => ({ ...prev, page: 1 }))
       // Page change will trigger the above useEffect which calls fetchSmsLogs
     }
-  }, [type, simId, userId, sender, dateRange.start, dateRange.end])
+  }, [type, simId, userId, sender, activeDateRange.start, activeDateRange.end])
 
   // Debounced search — skip on initial mount to avoid double-fetch
   useEffect(() => {
@@ -82,6 +94,14 @@ export default function SmsLogs() {
       return
     }
     const timer = setTimeout(() => {
+      // In unique sender mode, always fetch directly (pagination is client-side)
+      if (type === 'unique_sender') {
+        if (pagination.page !== 1) {
+          setPagination((prev) => ({ ...prev, page: 1 }))
+        }
+        fetchSmsLogsRef.current?.(true)
+        return
+      }
       if (pagination.page === 1) {
         fetchSmsLogs(true)
       } else {
@@ -96,8 +116,8 @@ export default function SmsLogs() {
     if (!autoRefresh) return
 
     const interval = setInterval(() => {
-      // Silent refresh - don't show loading spinner
-      fetchSmsLogs(true)
+      // Silent refresh - use ref to avoid stale closure capturing old pagination/filters
+      fetchSmsLogsRef.current?.(true)
       fetchStats()
     }, 20000)
 
@@ -128,7 +148,7 @@ export default function SmsLogs() {
         setLoading(true)
       }
       // For toDate, append end-of-day so the filter includes the full selected day
-      const toDateParam = dateRange.end ? `${dateRange.end}T23:59:59` : ''
+      const toDateParam = activeDateRange.end ? `${activeDateRange.end}T23:59:59` : ''
       const isUniqueSender = type === 'unique_sender'
 
       // Build base params (common to both modes)
@@ -139,7 +159,7 @@ export default function SmsLogs() {
         ...(userId && { userId }),
         ...(sender && { sender }),
         ...(search && { search }),
-        ...(dateRange.start && { fromDate: dateRange.start }),
+        ...(activeDateRange.start && { fromDate: activeDateRange.start }),
         ...(toDateParam && { toDate: toDateParam }),
       }
 
@@ -189,7 +209,10 @@ export default function SmsLogs() {
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
         )
         setSmsLogs(uniqueLogs)
-        setPagination((prev) => ({ ...prev, total: uniqueLogs.length, page: 1 }))
+        setPagination((prev) => {
+          const maxPage = Math.max(1, Math.ceil(uniqueLogs.length / prev.limit))
+          return { ...prev, total: uniqueLogs.length, page: Math.min(prev.page, maxPage) }
+        })
       } else {
         // Normal mode — single page fetch
         const params = new URLSearchParams({
@@ -200,7 +223,11 @@ export default function SmsLogs() {
 
         const response = await api.get(`/sms?${params}`)
         setSmsLogs(response.data.data || [])
-        setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
+        setPagination((prev) => {
+          const newTotal = response.data.pagination?.total || 0
+          const maxPage = Math.max(1, Math.ceil(newTotal / prev.limit))
+          return { ...prev, total: newTotal, page: Math.min(prev.page, maxPage) }
+        })
       }
     } catch (error) {
       // Only show toast error for manual refresh, not polling
@@ -214,6 +241,9 @@ export default function SmsLogs() {
       }
     }
   }
+
+  // Keep ref updated so auto-refresh and debounced search always use latest function with current state
+  fetchSmsLogsRef.current = fetchSmsLogs
 
   const fetchStats = async () => {
     try {
@@ -235,12 +265,14 @@ export default function SmsLogs() {
 
   const handleSearch = (e) => {
     e.preventDefault()
-    fetchSmsLogs()
+    setActiveDateRange({ start: dateRange.start, end: dateRange.end })
+    if (pagination.page === 1) fetchSmsLogs()
+    else setPagination(p => ({ ...p, page: 1 }))
   }
 
   const handleExport = async () => {
     try {
-      const toDateParam = dateRange.end ? `${dateRange.end}T23:59:59` : ''
+      const toDateParam = activeDateRange.end ? `${activeDateRange.end}T23:59:59` : ''
       const params = new URLSearchParams({
         // When "unique_sender" is selected, don't send type filter for export
         ...(type && type !== 'unique_sender' && { type }),
@@ -248,7 +280,7 @@ export default function SmsLogs() {
         ...(userId && { userId }),
         ...(sender && { sender }),
         ...(search && { search }),
-        ...(dateRange.start && { fromDate: dateRange.start }),
+        ...(activeDateRange.start && { fromDate: activeDateRange.start }),
         ...(toDateParam && { toDate: toDateParam }),
       })
       const response = await api.get(`/sms/export?${params}`, { responseType: 'blob' })
@@ -557,7 +589,8 @@ export default function SmsLogs() {
               <input
                 type="date"
                 value={dateRange.start}
-                max={today}
+                max={dateRange.end || today}
+                onKeyDown={(e) => e.preventDefault()}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
                 style={{
                   padding: '10px 14px',
@@ -565,6 +598,7 @@ export default function SmsLogs() {
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
+                  cursor: 'pointer',
                 }}
               />
             </div>
@@ -573,7 +607,9 @@ export default function SmsLogs() {
               <input
                 type="date"
                 value={dateRange.end}
+                min={dateRange.start || undefined}
                 max={today}
+                onKeyDown={(e) => e.preventDefault()}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
                 style={{
                   padding: '10px 14px',
@@ -581,6 +617,7 @@ export default function SmsLogs() {
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
+                  cursor: 'pointer',
                 }}
               />
             </div>
@@ -640,7 +677,15 @@ export default function SmsLogs() {
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
           limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onPageChange={(page) => {
+            setPagination((prev) => {
+              const totalPages = Math.ceil(prev.total / prev.limit)
+              if (page >= 1 && page <= totalPages) {
+                return { ...prev, page }
+              }
+              return prev
+            })
+          }}
         />
       )}
       {isUniqueSenderMode && smsLogs.length > pagination.limit && (
@@ -649,7 +694,12 @@ export default function SmsLogs() {
           totalPages={Math.ceil(smsLogs.length / pagination.limit)}
           total={smsLogs.length}
           limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+          onPageChange={(page) => {
+            const totalPages = Math.ceil(smsLogs.length / pagination.limit)
+            if (page >= 1 && page <= totalPages) {
+              setPagination((prev) => ({ ...prev, page }))
+            }
+          }}
         />
       )}
     </PageContainer>

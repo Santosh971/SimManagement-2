@@ -95,7 +95,7 @@ function highlightMessage(message, metadata = {}) {
 
   const statusPatterns = [
     { words: ['Active', 'Enabled', 'Activated'], type: 'status-success' },
-    { words: ['Inactive', 'Disabled', 'Expired', 'Suspended', 'Deactivated'], type: 'status-danger' },
+    { words: ['Inactive', 'Disabled', 'Expired', 'Deactivated'], type: 'status-danger' },
     { words: ['Pending', 'Processing'], type: 'status-warning' },
   ]
   statusPatterns.forEach(({ words, type }) => {

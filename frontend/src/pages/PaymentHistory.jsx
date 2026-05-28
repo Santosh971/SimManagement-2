@@ -36,6 +36,12 @@ export default function PaymentHistory() {
     startDate: '',
     endDate: '',
   })
+  const [activeFilters, setActiveFilters] = useState({
+    status: '',
+    companyId: '',
+    startDate: '',
+    endDate: '',
+  })
 
   useEffect(() => {
     fetchCompanies()
@@ -51,16 +57,17 @@ export default function PaymentHistory() {
     }
   }
 
-  const fetchPaymentHistory = async () => {
+  const fetchPaymentHistory = async (overrideFilters) => {
     try {
       setLoading(true)
+      const f = overrideFilters || activeFilters
       const params = new URLSearchParams()
       params.append('page', pagination.page)
       params.append('limit', pagination.limit)
-      if (filters.status) params.append('status', filters.status)
-      if (filters.companyId) params.append('companyId', filters.companyId)
-      if (filters.startDate) params.append('startDate', filters.startDate)
-      if (filters.endDate) params.append('endDate', filters.endDate)
+      if (f.status) params.append('status', f.status)
+      if (f.companyId) params.append('companyId', f.companyId)
+      if (f.startDate) params.append('startDate', f.startDate)
+      if (f.endDate) params.append('endDate', f.endDate)
 
       const response = await api.get(`/payments/history/all?${params.toString()}`)
       setPayments(response.data.data.payments || [])
@@ -82,19 +89,22 @@ export default function PaymentHistory() {
   }
 
   const applyFilters = () => {
+    setActiveFilters({ ...filters })
     setPagination(prev => ({ ...prev, page: 1 }))
-    fetchPaymentHistory()
+    fetchPaymentHistory(filters)
   }
 
   const clearFilters = () => {
-    setFilters({
+    const clearedFilters = {
       status: '',
       companyId: '',
       startDate: '',
       endDate: '',
-    })
+    }
+    setFilters(clearedFilters)
+    setActiveFilters(clearedFilters)
     setPagination(prev => ({ ...prev, page: 1 }))
-    setTimeout(() => fetchPaymentHistory(), 100)
+    setTimeout(() => fetchPaymentHistory(clearedFilters), 100)
   }
 
   const formatDate = (dateString) => {
@@ -213,7 +223,7 @@ const filterInputStyle = {
   <input
     type="date"
     value={filters.startDate}
-    max={today} // ✅ restrict future dates
+    max={filters.endDate || today}
     onChange={(e) => handleFilterChange('startDate', e.target.value)}
     onKeyDown={(e) => e.preventDefault()}
     style={{ ...filterInputStyle, cursor: 'pointer' }}
@@ -227,6 +237,8 @@ const filterInputStyle = {
         <input
           type="date"
           value={filters.endDate}
+          min={filters.startDate || undefined}
+          max={today}
           onChange={(e) => handleFilterChange('endDate', e.target.value)}
           onKeyDown={(e) => e.preventDefault()}
           style={{ ...filterInputStyle, cursor: 'pointer' }}

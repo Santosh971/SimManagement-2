@@ -32,6 +32,8 @@ const AuditLogs = () => {
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState(null)
   const [endDate, setEndDate] = useState(null)
+  const [activeStartDate, setActiveStartDate] = useState(null)
+  const [activeEndDate, setActiveEndDate] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
 
   // Available options
@@ -76,8 +78,8 @@ const AuditLogs = () => {
       if (module) params.append('module', module)
       if (action) params.append('action', action)
       if (search) params.append('search', search)
-      if (startDate) params.append('startDate', startDate.toISOString())
-      if (endDate) params.append('endDate', endDate.toISOString())
+      if (activeStartDate) params.append('startDate', activeStartDate.toISOString())
+      if (activeEndDate) params.append('endDate', activeEndDate.toISOString())
 
       const response = await api.get(`/audit-logs?${params.toString()}`)
       const data = response.data
@@ -95,7 +97,7 @@ const AuditLogs = () => {
 
   useEffect(() => {
     fetchLogs()
-  }, [pagination.page, module, action, startDate, endDate])
+  }, [pagination.page, module, action, activeStartDate, activeEndDate])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -123,11 +125,15 @@ const AuditLogs = () => {
 
   const handleStartDateChange = (date) => {
     setStartDate(date)
-    setPagination((prev) => ({ ...prev, page: 1 }))
   }
 
   const handleEndDateChange = (date) => {
     setEndDate(date)
+  }
+
+  const applyDateFilters = () => {
+    setActiveStartDate(startDate)
+    setActiveEndDate(endDate)
     setPagination((prev) => ({ ...prev, page: 1 }))
   }
 
@@ -137,6 +143,8 @@ const AuditLogs = () => {
     setSearch('')
     setStartDate(null)
     setEndDate(null)
+    setActiveStartDate(null)
+    setActiveEndDate(null)
     setPagination((prev) => ({ ...prev, page: 1 }))
   }
 
@@ -145,8 +153,8 @@ const AuditLogs = () => {
       const params = new URLSearchParams()
       if (module) params.append('module', module)
       if (action) params.append('action', action)
-      if (startDate) params.append('startDate', startDate.toISOString())
-      if (endDate) params.append('endDate', endDate.toISOString())
+      if (activeStartDate) params.append('startDate', activeStartDate.toISOString())
+      if (activeEndDate) params.append('endDate', activeEndDate.toISOString())
 
       const response = await api.get(`/audit-logs/export?${params.toString()}`, {
         responseType: 'blob',
@@ -330,8 +338,10 @@ const AuditLogs = () => {
                 <input
                   type="date"
                   value={startDate ? startDate.toISOString().split('T')[0] : ''}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={endDate ? endDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                  onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
+                  onBlur={applyDateFilters}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -339,6 +349,7 @@ const AuditLogs = () => {
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                 />
                 </div>
@@ -352,7 +363,10 @@ const AuditLogs = () => {
                   type="date"
                   value={endDate ? endDate.toISOString().split('T')[0] : ''}
                   min={startDate ? startDate.toISOString().split('T')[0] : ''}
+                  max={new Date().toISOString().split('T')[0]}
+                  onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
+                  onBlur={applyDateFilters}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -360,6 +374,7 @@ const AuditLogs = () => {
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                 />
                 </div>

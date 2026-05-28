@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [simStats, setSimStats] = useState(null)
   const [rechargeStats, setRechargeStats] = useState(null)
   const [callStats, setCallStats] = useState(null)
+  const [callPeriod, setCallPeriod] = useState('month')
 
   useEffect(() => {
     fetchDashboardData()
@@ -54,7 +55,7 @@ export default function Dashboard() {
         api.get('/dashboard/overview'),
         api.get('/dashboard/sims'),
         api.get('/dashboard/recharges'),
-        api.get('/dashboard/calls'),
+        api.get(`/dashboard/calls?period=${callPeriod}`),
       ])
 
       setOverview(overviewRes.data.data)
@@ -68,6 +69,18 @@ export default function Dashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const fetchCallStats = async () => {
+      try {
+        const callRes = await api.get(`/dashboard/calls?period=${callPeriod}`)
+        setCallStats(callRes.data.data)
+      } catch (error) {
+        console.error('Error fetching call stats:', error)
+      }
+    }
+    fetchCallStats()
+  }, [callPeriod])
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -142,7 +155,7 @@ export default function Dashboard() {
   const simColumns = [
     { key: 'mobileNumber', header: 'Contact Number', render: (row) => <span style={{ fontWeight: '500' }}>{row.mobileNumber}</span> },
     { key: 'operator', header: 'Operator', render: (row) => <Badge variant="default">{row.operator}</Badge> },
-    { key: 'status', header: 'Status', render: (row) => <Badge variant={row.status === 'active' ? 'success' : row.status === 'inactive' ? 'danger' : 'warning'}>{row.status}</Badge> },
+    { key: 'status', header: 'Status', render: (row) => <Badge variant={row.status === 'active' ? 'success' : 'danger'}>{row.status}</Badge> },
     { key: 'createdAt', header: 'Added On', render: (row) => formatDate(row.createdAt) },
   ]
 
@@ -212,9 +225,28 @@ export default function Dashboard() {
         {/* Call Stats */}
         <Card>
           <CardBody>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
-              Call Statistics
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
+                Call Statistics
+              </h3>
+              <select
+                value={callPeriod}
+                onChange={(e) => setCallPeriod(e.target.value)}
+                style={{
+                  fontSize: '12px',
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  color: '#6b7280',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="week">Last 7 days</option>
+                <option value="month">Last 30 days</option>
+                <option value="year">Last 12 months</option>
+              </select>
+            </div>
             {callStats ? (
               <div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>

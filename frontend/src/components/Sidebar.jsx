@@ -128,7 +128,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0
         `}
       >
         {/* Logo */}
@@ -141,7 +140,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
+            className="p-2 rounded-lg hover:bg-slate-100"
           >
             <FiX className="text-lg" />
           </button>
@@ -154,6 +153,9 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => {
+                  if (window.innerWidth < 1024) setSidebarOpen(false)
+                }}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
                   ${isActive(item.href)

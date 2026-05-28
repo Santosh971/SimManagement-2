@@ -221,7 +221,6 @@ export const getStatusColor = (status) => {
   const statusColors = {
     active: { bg: colors.success.light, text: colors.success.main },
     inactive: { bg: colors.danger.light, text: colors.danger.main },
-    suspended: { bg: colors.warning.light, text: colors.warning.main },
     pending: { bg: colors.warning.light, text: colors.warning.main },
     completed: { bg: colors.success.light, text: colors.success.main },
     failed: { bg: colors.danger.light, text: colors.danger.main },

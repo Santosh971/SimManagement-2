@@ -10,7 +10,7 @@ const logger = require('../../utils/logger');
 
 class RechargeService {
   async createRecharge(data, user) {
-    const { simId, amount, validity, plan, rechargeDate, paymentMethod, transactionId, notes } = data;
+    const { simId, amount, validity, plan, rechargeDate, paymentMethod, transactionId, notes, receiptImage } = data;
 
     // Get SIM
     const sim = await Sim.findById(simId);
@@ -34,6 +34,7 @@ class RechargeService {
       paymentMethod: paymentMethod || 'cash',
       transactionId,
       notes,
+      receiptImage: receiptImage || null,
       createdBy: user.id,
     });
 
@@ -226,7 +227,7 @@ class RechargeService {
       filter.companyId = user.companyId;
     }
 
-    const allowedUpdates = ['amount', 'validity', 'plan', 'notes', 'status'];
+    const allowedUpdates = ['amount', 'validity', 'plan', 'notes', 'status', 'receiptImage'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -540,6 +541,35 @@ class RechargeService {
     } catch (error) {
       logger.error('Error sending auto-recharge notification:', error.message);
     }
+  }
+
+  async exportRecharges(query, user) {
+    const { simId, status, startDate, endDate } = query;
+
+    const filter = {};
+
+    if (user.role !== 'super_admin') {
+      filter.companyId = user.companyId;
+    } else if (query.companyId) {
+      filter.companyId = query.companyId;
+    }
+
+    if (simId) filter.simId = simId;
+    if (status) filter.status = status;
+
+    if (startDate || endDate) {
+      filter.rechargeDate = {};
+      if (startDate) filter.rechargeDate.$gte = new Date(startDate);
+      if (endDate) filter.rechargeDate.$lte = new Date(endDate);
+    }
+
+    const recharges = await Recharge.find(filter)
+      .populate('simId', 'mobileNumber operator status')
+      .populate('createdBy', 'name')
+      .sort({ rechargeDate: -1 })
+      .limit(10000);
+
+    return recharges;
   }
 }
 

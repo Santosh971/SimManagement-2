@@ -707,8 +707,7 @@ class EmailService {
       sim.circle ? ['Circle', sim.circle] : null,
       ['Assigned By', assignedBy.name],
     ])}
-      ${paragraph('You can view full SIM details, recharge history, and usage information in your dashboard.')}
-      ${ctaButton('View SIM Details', `${config.app.frontendUrl || 'http://localhost:3000'}/dashboard`)}
+    
     `;
 
     const html = baseLayout({

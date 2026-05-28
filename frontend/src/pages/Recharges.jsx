@@ -10,6 +10,8 @@ import {
   FiClock,
   FiCheckCircle,
   FiSearch,
+  FiDownload,
+  FiEye,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -24,7 +26,12 @@ import {
   Spinner,
   Pagination,
   Table,
+  Modal,
 } from '../components/ui'
+
+const paymentMethodLabels = { cash: 'Cash', upi: 'UPI', card: 'Card', netbanking: 'Net Banking', wallet: 'Wallet', other: 'Other' }
+const paymentMethodColors = { cash: '#f0fdf4', upi: '#eff6ff', card: '#fdf4ff', netbanking: '#fff7ed', wallet: '#fefce8', other: '#f9fafb' }
+const paymentMethodTextColors = { cash: '#15803d', upi: '#1d4ed8', card: '#a21caf', netbanking: '#c2410c', wallet: '#a16207', other: '#6b7280' }
 
 // Recharge Modal Component
 function RechargeModal({ isOpen, onClose, onSave, sims }) {
@@ -54,6 +61,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     paymentMethod: 'cash',
     notes: '',
   })
+  const [receiptFile, setReceiptFile] = useState(null)
 
   const paymentMethods = [
     { value: 'cash', label: 'Cash' },
@@ -64,7 +72,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     { value: 'other', label: 'Other' },
   ]
 
-  const requiredAsterisk = <span style={{ color: '#dc2626', marginLeft: '2px' }}>*</span>
+  const requiredAsterisk = <span style={{ color: '#dc2626' }}>*</span>
 
   const validate = () => {
     const newErrors = {}
@@ -72,10 +80,9 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Please enter a valid amount'
     if (!formData.validity || parseInt(formData.validity) <= 0) newErrors.validity = 'Please enter validity in days'
     if (!formData.plan.name.trim()) newErrors.planName = 'Please enter a plan name'
-    if (!formData.plan.data.trim()) newErrors.planData = 'Please enter data info'
-    if (!formData.plan.calls.trim()) newErrors.planCalls = 'Please enter calls info'
-    if (!formData.plan.sms.trim()) newErrors.planSms = 'Please enter SMS info'
     if (!formData.paymentMethod) newErrors.paymentMethod = 'Please select a payment method'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -125,25 +132,26 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     setLoading(true)
 
     try {
-      const payload = {
-        simId: formData.simId,
-        amount: parseFloat(formData.amount),
-        validity: parseInt(formData.validity),
-        paymentMethod: formData.paymentMethod,
-        notes: formData.notes,
-      }
+      const fd = new FormData()
+      fd.append('simId', formData.simId)
+      fd.append('amount', parseFloat(formData.amount))
+      fd.append('validity', parseInt(formData.validity))
+      fd.append('paymentMethod', formData.paymentMethod)
+      fd.append('notes', formData.notes)
 
       if (formData.plan.name) {
-        payload.plan = {
-          name: formData.plan.name,
-          validity: parseInt(formData.plan.validity) || parseInt(formData.validity),
-          data: formData.plan.data || '',
-          calls: formData.plan.calls || '',
-          sms: formData.plan.sms || '',
-        }
+        fd.append('plan[name]', formData.plan.name)
+        fd.append('plan[validity]', parseInt(formData.plan.validity) || parseInt(formData.validity))
+        fd.append('plan[data]', formData.plan.data || '')
+        fd.append('plan[calls]', formData.plan.calls || '')
+        fd.append('plan[sms]', formData.plan.sms || '')
       }
 
-      await onSave(payload)
+      if (receiptFile) {
+        fd.append('receipt', receiptFile)
+      }
+
+      await onSave(fd)
       toast.success('Recharge added successfully')
       onClose()
       setFormData({
@@ -154,6 +162,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
         paymentMethod: 'cash',
         notes: '',
       })
+      setReceiptFile(null)
       setErrors({})
     } catch (error) {
       toast.error(error.response?.data?.message || 'Operation failed')
@@ -305,7 +314,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Data {requiredAsterisk}
+                Data (optional)
               </label>
               <input
                 type="text"
@@ -316,18 +325,17 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: `1px solid ${errors.planData ? '#dc2626' : '#d1d5db'}`,
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
-              {errors.planData && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planData}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Calls {requiredAsterisk}
+                Calls (optional)
               </label>
               <input
                 type="text"
@@ -338,18 +346,17 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: `1px solid ${errors.planCalls ? '#dc2626' : '#d1d5db'}`,
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
-              {errors.planCalls && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planCalls}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                SMS {requiredAsterisk}
+                SMS (optional)
               </label>
               <input
                 type="text"
@@ -360,14 +367,13 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: `1px solid ${errors.planSms ? '#dc2626' : '#d1d5db'}`,
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
-              {errors.planSms && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planSms}</p>}
             </div>
           </div>
 
@@ -403,7 +409,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
           {/* Notes — optional, no asterisk */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Notes
+              Notes (optional)
             </label>
             <textarea
               name="notes"
@@ -424,6 +430,36 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
             />
           </div>
 
+          {/* Payment Proof — optional */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+              Payment Proof (optional)
+            </label>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={(e) => setReceiptFile(e.target.files[0] || null)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#374151',
+                boxSizing: 'border-box',
+                backgroundColor: '#fff',
+              }}
+            />
+            {receiptFile && (
+              <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                {receiptFile.name} ({(receiptFile.size / 1024).toFixed(1)} KB)
+              </span>
+            )}
+            <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
+              JPG, PNG, or PDF — max 5 MB
+            </span>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button variant="secondary" onClick={onClose}>
               Cancel
@@ -439,18 +475,17 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
 }
 
 // Mobile Card View for each recharge record
-function RechargeCard({ row, getRechargeStatusBadge, getDisplayStatus, getNextRechargeStatus, formatDate }) {
+function RechargeCard({ row, getNextRechargeStatus, formatDate, onPreviewReceipt }) {
   const nextRecharge = getNextRechargeStatus(row.nextRechargeDate)
 
   return (
     <div className="p-4 border border-gray-200 rounded-xl mb-3 bg-white shadow-sm">
-      {/* Top Row: SIM info + Status Badge */}
+      {/* Top Row: SIM info */}
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-gray-800">{row.simId?.mobileNumber || 'N/A'}</p>
           <p className="text-xs text-gray-500">{row.simId?.operator || ''}</p>
         </div>
-        <Badge variant={getRechargeStatusBadge(getDisplayStatus(row))}>{getDisplayStatus(row)}</Badge>
       </div>
 
       {/* Amount + Plan */}
@@ -462,16 +497,30 @@ function RechargeCard({ row, getRechargeStatusBadge, getDisplayStatus, getNextRe
         <div className="text-right">
           <p className="text-xs text-gray-500 mb-0.5">Plan</p>
           <p className="text-sm text-gray-700">{row.plan?.name || 'N/A'}</p>
-          {(row.plan?.data || row.validity) && (
-            <p className="text-xs text-gray-400">
-              {row.plan?.data && `${row.plan.data} • `}{row.validity ? `${row.validity} day${row.validity !== 1 ? 's' : ''}` : ''}
-            </p>
+          {(row.plan?.data || row.plan?.calls || row.plan?.sms || row.validity) && (
+            <div className="flex flex-wrap gap-1 justify-end mt-1">
+              {row.plan?.data && <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#eff6ff', color: '#1d4ed8' }}>Data: {row.plan.data}</span>}
+              {row.plan?.calls && <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#f0fdf4', color: '#15803d' }}>Calls: {row.plan.calls}</span>}
+              {row.plan?.sms && <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#fdf4ff', color: '#a21caf' }}>SMS: {row.plan.sms}</span>}
+              {row.validity ? <span className="text-[11px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#f3f4f6', color: '#6b7280' }}>{row.validity}d</span> : null}
+            </div>
           )}
         </div>
       </div>
 
       {/* Divider */}
       <div className="border-t border-gray-100 mb-3" />
+
+      {/* Payment Method */}
+      {row.paymentMethod && (
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-500">Payment</p>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{
+            background: paymentMethodColors[row.paymentMethod] || '#f9fafb',
+            color: paymentMethodTextColors[row.paymentMethod] || '#6b7280',
+          }}>{paymentMethodLabels[row.paymentMethod] || row.paymentMethod}</span>
+        </div>
+      )}
 
       {/* Dates */}
       <div className="flex items-start justify-between">
@@ -490,6 +539,28 @@ function RechargeCard({ row, getRechargeStatusBadge, getDisplayStatus, getNextRe
           </div>
         </div>
       </div>
+
+      {/* Notes */}
+      {row.notes && (
+        <>
+          <div className="border-t border-gray-100 mt-3 mb-3" />
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Notes</p>
+            <p className="text-sm text-gray-700">{row.notes}</p>
+          </div>
+        </>
+      )}
+
+      {/* Receipt */}
+      {row.receiptImage && (
+        <>
+          <div className="border-t border-gray-100 mt-3 mb-3" />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">Payment Proof</p>
+            <button onClick={() => onPreviewReceipt(row.receiptImage)} className="text-blue-600 bg-transparent border-0 cursor-pointer p-0"><FiEye size={15} /></button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -499,10 +570,11 @@ export default function Recharges() {
   const [recharges, setRecharges] = useState([])
   const [sims, setSims] = useState([])
   const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [activeDateRange, setActiveDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
   const [showModal, setShowModal] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState(null)
   const [stats, setStats] = useState(null)
   const [upcomingRecharges, setUpcomingRecharges] = useState([])
   const [overdueRecharges, setOverdueRecharges] = useState([])
@@ -522,7 +594,7 @@ export default function Recharges() {
     } else {
       setPagination((prev) => ({ ...prev, page: 1 }))
     }
-  }, [status, dateRange.start, dateRange.end])
+  }, [activeDateRange.start, activeDateRange.end])
 
   const fetchSims = async () => {
     try {
@@ -533,15 +605,15 @@ export default function Recharges() {
     }
   }
 
-  const fetchRecharges = async () => {
+  const fetchRecharges = async (dates) => {
     try {
       setLoading(true)
+      const filterDates = dates || activeDateRange
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit,
-        ...(status && { status }),
-        ...(dateRange.start && { startDate: dateRange.start }),
-        ...(dateRange.end && { endDate: dateRange.end }),
+        ...(filterDates.start && { startDate: filterDates.start }),
+        ...(filterDates.end && { endDate: filterDates.end }),
       })
 
       const response = await api.get(`/recharges?${params}`)
@@ -584,7 +656,17 @@ export default function Recharges() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    fetchRecharges()
+    if (!searchQuery.trim() && !dateRange.start && !dateRange.end) {
+      toast.error('Please select at least one filter')
+      return
+    }
+    const dates = { start: dateRange.start, end: dateRange.end }
+    setActiveDateRange(dates)
+    if (pagination.page === 1) {
+      fetchRecharges(dates)
+    } else {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    }
   }
 
   const handleAddRecharge = async (formData) => {
@@ -601,22 +683,20 @@ export default function Recharges() {
     }
   }
 
-  const getRechargeStatusBadge = (status) => {
-    const badges = {
-      completed: 'success',
-      pending: 'warning',
-      failed: 'danger',
-      refunded: 'default',
-      overdue: 'danger',
-    }
-    return badges[status] || 'default'
-  }
-
-  const getDisplayStatus = (row) => {
-    if (row.status === 'completed' && row.nextRechargeDate && new Date(row.nextRechargeDate) < new Date()) {
-      return 'overdue'
-    }
-    return row.status
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams({
+        ...(activeDateRange.start && { startDate: activeDateRange.start }),
+        ...(activeDateRange.end && { endDate: activeDateRange.end }),
+      })
+      const r = await api.get(`/recharges/export?${params}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([r.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', 'recharges-export.xlsx')
+      document.body.appendChild(link); link.click(); link.remove()
+      toast.success('Export completed')
+    } catch { toast.error('This feature is available in higher plans. Upgrade your plan to access it.') }
   }
 
   const getNextRechargeStatus = (nextRechargeDate) => {
@@ -649,13 +729,11 @@ export default function Recharges() {
   const filteredRecharges = searchQuery.trim()
     ? recharges.filter((r) => {
         const q = searchQuery.toLowerCase().trim()
-        const displayStatus = getDisplayStatus(r)
         return (
           (r.simId?.mobileNumber || '').toLowerCase().includes(q) ||
           (r.simId?.operator || '').toLowerCase().includes(q) ||
           (r.simId?.circle || '').toLowerCase().includes(q) ||
           (r.plan?.name || '').toLowerCase().includes(q) ||
-          displayStatus.includes(q) ||
           (r.amount != null && String(r.amount).includes(q)) ||
           (r.paymentMethod || '').toLowerCase().includes(q)
         )
@@ -665,7 +743,7 @@ export default function Recharges() {
   const columns = [
     {
       key: 'simId',
-      header: 'SIM',
+      header: 'SIM Card',
       render: (row) => (
         <div>
           <div style={{ fontWeight: '500' }}>{row.simId?.mobileNumber || 'N/A'}</div>
@@ -680,20 +758,22 @@ export default function Recharges() {
     },
     {
       key: 'plan',
-      header: 'Plan',
+      header: 'Plan Name',
       render: (row) => (
         <div>
           <div style={{ fontSize: '14px' }}>{row.plan?.name || 'N/A'}</div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-            {row.plan?.data && `${row.plan.data} • `}
-            {row.validity ? `${row.validity} day${row.validity !== 1 ? 's' : ''}` : ''}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+            {row.plan?.data && <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: '#eff6ff', color: '#1d4ed8', fontWeight: '500' }}>Data: {row.plan.data}</span>}
+            {row.plan?.calls && <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: '#f0fdf4', color: '#15803d', fontWeight: '500' }}>Calls: {row.plan.calls}</span>}
+            {row.plan?.sms && <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: '#fdf4ff', color: '#a21caf', fontWeight: '500' }}>SMS: {row.plan.sms}</span>}
+            {row.validity ? <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '9999px', background: '#f3f4f6', color: '#6b7280', fontWeight: '500' }}>{row.validity}d</span> : null}
           </div>
         </div>
       )
     },
     {
       key: 'rechargeDate',
-      header: 'Date',
+      header: 'Recharge Date',
       render: (row) => <span style={{ fontSize: '14px' }}>{formatDate(row.rechargeDate)}</span>
     },
     {
@@ -715,12 +795,33 @@ export default function Recharges() {
       }
     },
     {
-      key: 'status',
-      header: 'Status',
+      key: 'paymentMethod',
+      header: 'Payment',
       render: (row) => {
-        const displayStatus = getDisplayStatus(row)
-        return <Badge variant={getRechargeStatusBadge(displayStatus)}>{displayStatus}</Badge>
+        const method = paymentMethodLabels[row.paymentMethod] || row.paymentMethod || '-'
+        return (
+          <span style={{
+            fontSize: '12px',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            background: paymentMethodColors[row.paymentMethod] || '#f3f4f6',
+            color: paymentMethodTextColors[row.paymentMethod] || '#6b7280',
+            fontWeight: '500',
+          }}>{method}</span>
+        )
       }
+    },
+    {
+      key: 'notes',
+      header: 'Notes',
+      render: (row) => <span style={{ fontSize: '13px', color: '#6b7280' }}>{row.notes || '-'}</span>
+    },
+    {
+      key: 'receipt',
+      header: 'Receipt',
+      render: (row) => row.receiptImage
+        ? <button onClick={() => setPreviewUrl(row.receiptImage)} style={{ color: '#2563eb', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}><FiEye size={16} /></button>
+        : <span style={{ fontSize: '13px', color: '#9ca3af' }}>-</span>
     },
   ]
 
@@ -739,9 +840,12 @@ const today = new Date().toISOString().split('T')[0];
         title="Recharges"
         description="Track and manage SIM recharges"
         action={
-          <Button icon={FiPlus} onClick={() => setShowModal(true)}>
-            Add Recharge
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Button variant="secondary" icon={FiDownload} onClick={handleExport}>Export</Button>
+            <Button icon={FiPlus} onClick={() => setShowModal(true)}>
+              Add Recharge
+            </Button>
+          </div>
         }
       />
 
@@ -889,7 +993,7 @@ const today = new Date().toISOString().split('T')[0];
             <input
               type="date"
               value={dateRange.start}
-              max={today}
+              max={dateRange.end || today}
               onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
               onKeyDown={(e) => e.preventDefault()}
               className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
@@ -897,20 +1001,14 @@ const today = new Date().toISOString().split('T')[0];
             <input
               type="date"
               value={dateRange.end}
+              min={dateRange.start || undefined}
+              max={today}
               onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
-              className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none"
+              onKeyDown={(e) => e.preventDefault()}
+              className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
             />
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="flex-1 min-w-[120px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none bg-white"
-            >
-              <option value="">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
             <Button type="submit" className="whitespace-nowrap">Filter</Button>
+            <Button variant="secondary" type="button" onClick={() => { setDateRange({ start: '', end: '' }); setActiveDateRange({ start: '', end: '' }); setSearchQuery('') }}>Clear</Button>
           </form>
         </CardBody>
       </Card>
@@ -945,10 +1043,9 @@ const today = new Date().toISOString().split('T')[0];
             <RechargeCard
               key={row._id}
               row={row}
-              getRechargeStatusBadge={getRechargeStatusBadge}
-              getDisplayStatus={getDisplayStatus}
               getNextRechargeStatus={getNextRechargeStatus}
               formatDate={formatDate}
+              onPreviewReceipt={setPreviewUrl}
             />
           ))
         )}
@@ -972,6 +1069,32 @@ const today = new Date().toISOString().split('T')[0];
         onSave={handleAddRecharge}
         sims={sims}
       />
+
+      {/* Receipt Preview Modal */}
+      {previewUrl && (
+        <Modal isOpen={true} onClose={() => setPreviewUrl(null)} title="Payment Proof" size="xl">
+          {previewUrl.endsWith('.pdf') ? (
+            <iframe
+              src={previewUrl}
+              style={{ width: '100%', height: '70vh', border: 'none', borderRadius: '8px' }}
+              title="Receipt PDF"
+            />
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <img
+                src={previewUrl}
+                alt="Payment Proof"
+                style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px', objectFit: 'contain' }}
+              />
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary">Open in New Tab</Button>
+            </a>
+          </div>
+        </Modal>
+      )}
     </PageContainer>
   )
 }

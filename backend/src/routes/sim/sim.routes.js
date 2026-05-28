@@ -55,8 +55,8 @@ const bulkCreateValidation = [
   body('sims.*.mobileNumber').matches(/^\d{10}$/).withMessage('Valid 10-digit Contact Number required'),
   body('sims.*.countryCode').optional().matches(/^\+\d{1,4}$/).withMessage('Valid country code required (e.g., +91)'),
   body('sims.*.operator').notEmpty().trim().withMessage('Operator is required'),
-  body('sims.*.status').optional().isIn(['active', 'inactive', 'suspended', 'lost']),
-  body('sims.*.assignedUserEmail').optional().isEmail().withMessage('Valid email required for assigned user'),
+  body('sims.*.status').optional().isIn(['active', 'inactive']),
+  body('sims.*.assignedUserEmail').optional({ values: 'falsy' }).isEmail().withMessage('Valid email required for assigned user'),
 ];
 
 const updateSimValidation = [
@@ -65,7 +65,7 @@ const updateSimValidation = [
   body('operator').optional().notEmpty().trim().isLength({ max: 50 }),
   body('circle').optional().isString().isLength({ max: 100 }),
   body('notes').optional().isString().isLength({ max: 500 }),
-  body('status').optional().isIn(['active', 'inactive', 'suspended', 'lost']),
+  body('status').optional().isIn(['active', 'inactive']),
   body('isAdminCaller').optional().isBoolean().withMessage('isAdminCaller must be a boolean'),
 ];
 
@@ -78,7 +78,7 @@ const queryValidation = [
     // Remove tabs, newlines, and extra spaces
     return value.replace(/[\t\n\r]+/g, '').trim();
   }),
-  query('status').optional().isIn(['active', 'inactive', 'suspended', 'lost']),
+  query('status').optional().isIn(['active', 'inactive']),
   query('operator').optional().trim(), // [INTERNATIONAL] - Accept any operator for filtering
   query('sortBy').optional().isIn(['createdAt', 'mobileNumber', 'status', 'operator']),
   query('sortOrder').optional().isIn(['asc', 'desc']),
@@ -86,7 +86,7 @@ const queryValidation = [
 
 const statusValidation = [
   param('id').isMongoId().withMessage('Invalid SIM ID'),
-  body('status').isIn(['active', 'inactive', 'suspended', 'lost']).withMessage('Invalid status'),
+  body('status').isIn(['active', 'inactive']).withMessage('Invalid status'),
 ];
 
 const assignValidation = [

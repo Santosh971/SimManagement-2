@@ -85,7 +85,7 @@ class SimService {
     }
 
     const validOperators = ['Jio', 'Airtel', 'Vi', 'BSNL', 'MTNL', 'Other'];
-    const validStatuses = ['active', 'inactive', 'suspended', 'lost'];
+    const validStatuses = ['active', 'inactive'];
     const errors = [];
     const simsToInsert = [];
     // [BULK UPLOAD FIX] Track created users for response
@@ -426,10 +426,10 @@ class SimService {
       try {
         const countryCode = row['Country Code'] || row.countryCode || row.country_code || '+91';
         const mobileNumberRaw = row['Contact Number'] || row.mobileNumber || row.mobile_number;
-        const assignedUserEmail = row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '';
+        const assignedUserEmail = row['User Email'] || row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '';
         // [BULK UPLOAD FIX] Read additional user fields from Excel
-        const assignedUserName = row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '';
-        const assignedUserPhone = row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '';
+        const assignedUserName = row['User Name'] || row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '';
+        const assignedUserPhone = row['User Contact Number'] || row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '';
 
         // Combine country code with Contact Number
         const mobileNumber = countryCode + mobileNumberRaw;
@@ -1079,7 +1079,7 @@ class SimService {
     if (operator) filter.operator = operator;
 
     const sims = await Sim.find(filter)
-      .populate('assignedTo', 'name email')
+      .populate('assignedTo', 'name email phoneNumber')
       .populate('companyId', 'name')
       .sort({ createdAt: -1 });
 
@@ -1091,7 +1091,6 @@ class SimService {
     const totalSims = await Sim.countDocuments({ companyId });
     const activeSims = await Sim.countDocuments({ companyId, status: 'active' });
     const inactiveSims = await Sim.countDocuments({ companyId, status: 'inactive' });
-    const suspendedSims = await Sim.countDocuments({ companyId, status: 'suspended' });
 
     const operatorStats = await Sim.aggregate([
       { $match: { companyId: companyId } },
@@ -1103,7 +1102,6 @@ class SimService {
       total: totalSims,
       active: activeSims,
       inactive: inactiveSims,
-      suspended: suspendedSims,
       byOperator: operatorStats,
     };
   }
@@ -1127,10 +1125,10 @@ class SimService {
         'Operator': 'Jio',
         'Circle': 'Maharashtra',
         'Status': 'active',
-        'Assigned User Email': 'user@example.com',
+        'User Email': 'user@example.com',
         // [BULK UPLOAD FIX] Added columns for new user creation
-        'Assigned User Name': 'John Doe',
-        'Assigned User Phone': '+919876543210',
+        'User Name': 'John Doe',
+        'User Contact Number': '+919876543210',
         'Notes': 'Optional notes',
       },
     ];

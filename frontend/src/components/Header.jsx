@@ -7,6 +7,7 @@ import {
   FiLogOut,
   FiChevronDown,
   FiMenu,
+  FiX,
   FiCheck,
   FiCreditCard,
   FiAlertCircle,
@@ -15,7 +16,7 @@ import {
   FiDownload,
 } from 'react-icons/fi'
 
-export default function Header({ setSidebarOpen }) {
+export default function Header({ sidebarOpen, onToggleSidebar }) {
   const { user, logout, api } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
@@ -145,9 +146,10 @@ export default function Header({ setSidebarOpen }) {
       {/* Left - Menu button */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <button
-          style={{ padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
-          className="lg:hidden"
-          onClick={() => setSidebarOpen(true)}
+          style={{ padding: '8px', borderRadius: '8px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="hover:bg-slate-100"
+          onClick={onToggleSidebar}
+          title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
           <FiMenu style={{ width: '20px', height: '20px' }} />
         </button>
@@ -458,10 +460,6 @@ export default function Header({ setSidebarOpen }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
-        }
-        .lg\\:hidden { display: none; }
-        @media (max-width: 1024px) {
-          .lg\\:hidden { display: block; }
         }
         .md\\:block { display: block; }
         .hidden { display: none; }

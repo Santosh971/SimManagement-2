@@ -293,8 +293,8 @@ class CallLogService {
     return callLog;
   }
 
-  async getCallStats(companyId, startDate, endDate) {
-    const stats = await CallLog.getStats(companyId, startDate, endDate);
+  async getCallStats(companyId, startDate, endDate, filters = {}) {
+    const stats = await CallLog.getStats(companyId, startDate, endDate, filters);
     const dailyCounts = await CallLog.getDailyCounts(companyId, 30);
     const topContacts = await CallLog.getTopContacts(companyId, 10);
 

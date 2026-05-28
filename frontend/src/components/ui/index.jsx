@@ -694,12 +694,11 @@ export function Pagination({ currentPage, totalPages, onPageChange, total, limit
             Prev
           </button>
 
-          {/* Page pill */}
+          {/* Page indicator */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            padding: '6px 10px', borderRadius: '8px',
-            border: '1px solid #bfdbfe', backgroundColor: '#eff6ff',
-            fontSize: '12px', fontWeight: '600', color: '#2563eb',
+            padding: '6px 10px',
+            fontSize: '12px', fontWeight: '500', color: '#6b7280',
             whiteSpace: 'nowrap', flexShrink: 0,
           }}>
             {currentPage} / {totalPages}

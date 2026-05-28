@@ -3,7 +3,9 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 const rechargeController = require('../../controllers/recharge/recharge.controller');
 const { authenticate, authorize, optionalAuth } = require('../../middleware/auth');
+const { checkSubscriptionFeature } = require('../../middleware/subscription');
 const { validate } = require('../../middleware/validate');
+const { optionalReceiptUpload } = require('../../middleware/upload');
 
 // =============================================
 // AUTO-RECHARGE ROUTE (for SMS integration)
@@ -103,14 +105,15 @@ const queryValidation = [
 ];
 
 // Routes
-router.post('/', createRechargeValidation, validate, rechargeController.create);
+router.post('/', optionalReceiptUpload, createRechargeValidation, validate, rechargeController.create);
 router.get('/', queryValidation, validate, rechargeController.getAll);
+router.get('/export', checkSubscriptionFeature('excelExport'), rechargeController.export);
 router.get('/upcoming', rechargeController.getUpcoming);
 router.get('/overdue', rechargeController.getOverdue);
 router.get('/stats', rechargeController.getStats);
 router.get('/history/:simId', rechargeController.getHistory);
 router.get('/:id', rechargeController.getById);
-router.put('/:id', updateRechargeValidation, validate, rechargeController.update);
+router.put('/:id', optionalReceiptUpload, updateRechargeValidation, validate, rechargeController.update);
 router.delete('/:id', authorize('super_admin', 'admin'), rechargeController.delete);
 
 // Admin only - manual trigger

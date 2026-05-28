@@ -1,6 +1,7 @@
 const rechargeService = require('../../services/recharge/recharge.service');
 const auditLogService = require('../../services/auditLog/auditLog.service');
 const { successResponse, paginatedResponse } = require('../../utils/response');
+const xlsx = require('xlsx');
 
 class RechargeController {
   /**
@@ -40,6 +41,9 @@ class RechargeController {
 
   async create(req, res, next) {
     try {
+      if (req.file) {
+        req.body.receiptImage = req.file.cloudinaryUrl || `/uploads/receipts/${req.file.filename}`;
+      }
       const recharge = await rechargeService.createRecharge(req.body, req.user);
 
       // Audit log: RECHARGE_ADD
@@ -82,6 +86,9 @@ class RechargeController {
 
   async update(req, res, next) {
     try {
+      if (req.file) {
+        req.body.receiptImage = req.file.cloudinaryUrl || `/uploads/receipts/${req.file.filename}`;
+      }
       const recharge = await rechargeService.updateRecharge(req.params.id, req.body, req.user);
 
       // Audit log: RECHARGE_UPDATE
@@ -190,6 +197,48 @@ class RechargeController {
       }
 
       return successResponse(res, result, 'Reminders processed');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async export(req, res, next) {
+    try {
+      const recharges = await rechargeService.exportRecharges(req.query, req.user);
+
+      const workbook = xlsx.utils.book_new();
+      const data = recharges.map((r) => ({
+        'SIM': r.simId?.mobileNumber || 'N/A',
+        'Amount': r.amount,
+        'Plan': r.plan?.name || '',
+        'Date': r.rechargeDate ? new Date(r.rechargeDate).toLocaleDateString('en-IN') : '',
+        'Next Recharge': r.nextRechargeDate ? new Date(r.nextRechargeDate).toLocaleDateString('en-IN') : '',
+      }));
+
+      const sheet = xlsx.utils.json_to_sheet(data);
+      xlsx.utils.book_append_sheet(workbook, sheet, 'Recharges');
+
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      // Audit log: RECHARGE_EXPORT
+      try {
+        await auditLogService.logAction({
+          action: 'RECHARGE_EXPORT',
+          module: 'RECHARGE',
+          description: `Exported ${recharges.length} recharges to Excel`,
+          performedBy: req.user._id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: { count: recharges.length, filters: req.query },
+          req,
+        });
+      } catch (auditError) {
+        console.error('[AUDIT LOG] Failed to log RECHARGE_EXPORT', auditError.message);
+      }
+
+      res.setHeader('Content-Disposition', 'attachment; filename=recharges-export.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
     } catch (error) {
       next(error);
     }

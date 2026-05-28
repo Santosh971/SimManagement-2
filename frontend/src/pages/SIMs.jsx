@@ -28,6 +28,7 @@ import {
   Pagination,
   Grid,
   CountryCodeSelect,
+  ConfirmModal,
 } from '../components/ui'
 import { countryCodes, getFlagUrl, getFlagFromPhone } from '../data/countries'
 
@@ -73,6 +74,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
+      setErrors({})
     } else {
       document.body.style.overflow = ''
     }
@@ -80,6 +82,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   }, [isOpen])
 
   const [detectingOperator, setDetectingOperator] = useState(false)
+  const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     countryCode: '+91',
     mobileNumber: '',
@@ -91,7 +94,48 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     isAdminCaller: false,
   })
 
-  const statuses = ['active', 'inactive', 'suspended', 'lost']
+  const statuses = ['active', 'inactive']
+  const requiredAsterisk = <span style={{ color: '#dc2626' }}>*</span>
+
+  const validate = () => {
+    const newErrors = {}
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = 'Contact number is required'
+    } else if (!/^\d+$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = 'Only digits are allowed'
+    } else if (formData.countryCode === '+91' && !/^\d{10}$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = 'Must be 10 digits for Indian numbers'
+    } else {
+      const totalDigits = (formData.countryCode.length - 1) + formData.mobileNumber.length
+      if (totalDigits < 10 || totalDigits > 15) {
+        newErrors.mobileNumber = 'Combined number must be 10-15 digits'
+      }
+    }
+    if (!formData.operator) {
+      newErrors.operator = 'Operator is required'
+    }
+    if (!hideCircleField && !showCircleInput && !formData.circle) {
+      newErrors.circle = 'Circle is required'
+    }
+    if (!formData.assignedTo) {
+      newErrors.assignedTo = 'Please select a user'
+    }
+    if (formData.notes.trim().length > 0 && formData.notes.trim().length < 10) {
+      newErrors.notes = 'Notes must be at least 10 characters if provided'
+    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const clearFieldError = (field) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+  }
 
   // [DYNAMIC OPERATOR/CIRCLE CONFIG] - Country-specific operators and circles
   // operators: array = dropdown, 'input' = free text input
@@ -464,7 +508,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
 
   // Debounce for operator detection
   const handleMobileNumberChange = (e, currentCountryCode) => {
-    const { value } = e.target
+    const value = e.target.value.replace(/\D/g, '')
     setFormData(prev => ({ ...prev, mobileNumber: value }))
 
     // Only detect for countries with auto-detect enabled
@@ -476,11 +520,13 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    clearFieldError(name)
 
     if (name === 'mobileNumber') {
       handleMobileNumberChange(e, formData.countryCode)
     } else if (name === 'countryCode') {
       // [DYNAMIC OPERATOR/CIRCLE] - When country changes, update operator and circle based on config
+      setErrors({})
       const newConfig = getCountryConfig(value)
       const newOperator = Array.isArray(newConfig.operators) ? newConfig.operators[0] : ''
       const newCircle = Array.isArray(newConfig.circles)
@@ -502,15 +548,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.mobileNumber) {
-      toast.error('Contact Number is required')
-      return
-    }
-
-    if (!/^\d{10}$/.test(formData.mobileNumber)) {
-      toast.error('Contact Number must be 10 digits')
-      return
-    }
+    if (!validate()) return
 
     setLoading(true)
 
@@ -524,7 +562,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     try {
       if (sim) {
         await onSave(sim._id, dataToSave)
-        toast.success('SIM updated successfully')
+        toast.success('SIM updated successfully.')
       } else {
         await onSave(null, dataToSave)
         toast.success('SIM added successfully')
@@ -580,7 +618,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Contact Number <span style={{ color: '#dc2626' }}>*</span>
+              Contact Number {requiredAsterisk}
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <CountryCodeSelect
@@ -592,41 +630,39 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                 name="mobileNumber"
                 value={formData.mobileNumber}
                 onChange={handleChange}
-                // placeholder={currentConfig.autoDetectOperator ? '10-digit Contact Number (operator auto-detected)' : 'Contact Number'}
                 placeholder='9822653371'
-                maxLength={formData.countryCode === '+91' ? '10' : '15'}
+                maxLength={formData.countryCode === '+91' ? 10 : 15 - (formData.countryCode.length - 1)}
                 style={{
                   flex: 1,
                   padding: '10px 14px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.mobileNumber ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
-                required
               />
             </div>
+            {errors.mobileNumber && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.mobileNumber}</p>}
             
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Operator <span style={{ color: '#dc2626' }}>*</span> {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
+                Operator {requiredAsterisk} {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
               </label>
               {/* [DYNAMIC OPERATOR] - Show dropdown for supported countries, input for others */}
               {showOperatorDropdown ? (
                 <select
                   name="operator"
-                  required
                   value={formData.operator}
                   onChange={handleChange}
                   disabled={detectingOperator}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${errors.operator ? '#dc2626' : '#d1d5db'}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     backgroundColor: detectingOperator ? '#f9fafb' : '#ffffff',
@@ -649,7 +685,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${errors.operator ? '#dc2626' : '#d1d5db'}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
@@ -657,14 +693,14 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                   }}
                 />
               )}
+              {errors.operator && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.operator}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Status <span style={{ color: '#dc2626' }}>*</span>
+                Status {requiredAsterisk}
               </label>
               <select
                 name="status"
-                required
                 value={formData.status}
                 onChange={handleChange}
                 style={{
@@ -689,18 +725,17 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           {!hideCircleField && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Circle <span style={{ color: '#dc2626' }}>*</span> {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
+                Circle {!showCircleInput && requiredAsterisk} {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
               </label>
               {showCircleDropdown ? (
                 <select
                   name="circle"
-                  required
                   value={formData.circle}
                   onChange={handleChange}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${errors.circle ? '#dc2626' : '#d1d5db'}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     backgroundColor: '#ffffff',
@@ -730,8 +765,6 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
               ) : showCircleInput ? (
                 <input
                   type="text"
-                  required
-
                   name="circle"
                   value={formData.circle}
                   onChange={handleChange}
@@ -747,12 +780,13 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                   }}
                 />
               ) : null}
+              {errors.circle && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.circle}</p>}
             </div>
           )}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               <FiUser style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
-              Assigned User <span style={{ color: '#dc2626' }}>*</span>
+              Assigned User {requiredAsterisk}
             </label>
             {loadingUsers ? (
               <div style={{ padding: '10px 14px', color: '#6b7280', fontSize: '14px' }}>
@@ -772,13 +806,12 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
             ) : (
               <select
                 name="assignedTo"
-                required
                 value={formData.assignedTo}
                 onChange={handleChange}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.assignedTo ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '14px',
                   backgroundColor: '#ffffff',
@@ -786,7 +819,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                   boxSizing: 'border-box',
                 }}
               >
-                <option value="">Unassigned</option>
+                <option value="">Select User</option>
                 {users.map((u) => (
                   <option key={u._id} value={u._id}>
                     {u.name} {u.email ? `(${u.email})` : ''}
@@ -794,29 +827,44 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                 ))}
               </select>
             )}
+            {errors.assignedTo && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.assignedTo}</p>}
           </div>
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Notes
+              Notes <span style={{ color: '#6b7280', fontSize: '12px', fontWeight: '400' }}>(optional)</span>
             </label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Additional notes..."
-              rows="3"
+              placeholder="Additional notes (minimum 10 characters if provided)..."
+              maxLength={500}
               style={{
                 width: '100%',
-                padding: '10px 14px',
-                border: '1px solid #d1d5db',
+                height: '120px',
+                padding: '12px 14px',
+                border: `1px solid ${formData.notes.length > 0 && formData.notes.trim().length < 10 ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
-                resize: 'vertical',
                 outline: 'none',
                 boxSizing: 'border-box',
+                resize: 'none',
+                overflow: 'auto',
               }}
             />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '12px' }}>
+              {formData.notes.length > 0 && formData.notes.trim().length < 10 ? (
+                <span style={{ color: '#dc2626' }}>
+                  Minimum 10 characters required ({10 - formData.notes.trim().length} more needed)
+                </span>
+              ) : (
+                <span />
+              )}
+              <span style={{ color: formData.notes.length > 450 ? '#dc2626' : '#6b7280' }}>
+                {formData.notes.length}/500
+              </span>
+            </div>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
@@ -977,13 +1025,13 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
   const [uploading, setUploading] = useState(false)
 
   // [INTERNATIONAL OPERATORS] - Removed operator validation, accept any value
-  const validStatuses = ['active', 'inactive', 'suspended', 'lost']
+  const validStatuses = ['active', 'inactive']
 
   const downloadTemplate = () => {
     // [BULK UPLOAD FIX] Added Assigned User Name and Assigned User Phone columns
     // [INTERNATIONAL OPERATORS] - Updated template with example for international use
     const template = [
-      { 'Country Code': '+91', 'Contact Number': '9876543210', 'Operator': 'Jio', 'Circle': 'Maharashtra', 'Status': 'active', 'Assigned User Email': 'user@example.com', 'Assigned User Name': 'John Doe', 'Assigned User Phone': '+919876543210', 'Notes': 'Optional notes' },
+      { 'Country Code': '+91', 'Company Contact Number': '9876543210', 'Operator': 'Jio', 'Circle': 'Maharashtra', 'Status': 'active', 'User Email': 'user@example.com', 'User Name': 'John Doe', 'User Personal Contact Number': '+919876543210', 'Notes': 'Optional notes' },
     ]
     const ws = XLSX.utils.json_to_sheet(template)
     // [BULK UPLOAD FIX] Set column widths for readability
@@ -993,9 +1041,9 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
       { wch: 20 },  // Operator (increased for international names)
       { wch: 16 },  // Circle
       { wch: 10 },  // Status
-      { wch: 26 },  // Assigned User Email
-      { wch: 20 },  // Assigned User Name
-      { wch: 20 },  // Assigned User Phone
+      { wch: 26 },  // User Email
+      { wch: 20 },  // User Name
+      { wch: 22 },  // User Contact Number
       { wch: 25 },  // Notes
     ]
     const wb = XLSX.utils.book_new()
@@ -1022,14 +1070,14 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
         const validationErrors = []
         const validatedData = jsonData.map((row, index) => {
           const countryCode = String(row['Country Code'] || row.countryCode || row.country_code || '+91').trim()
-          const mobileNumber = String(row['Contact Number'] || row.mobileNumber || row.mobile_number || '').trim()
+          const mobileNumber = String(row['Company Contact Number'] || row['Contact Number'] || row.mobileNumber || row.mobile_number || '').trim()
           const operator = String(row['Operator'] || row.operator || 'Other').trim()
           const circle = String(row['Circle'] || row.circle || '').trim()
           const status = String(row['Status'] || row.status || 'active').toLowerCase().trim()
-          const assignedUserEmail = String(row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '').trim().toLowerCase()
-          // [BULK UPLOAD FIX] Parse Assigned User Name and Phone from Excel
-          const assignedUserName = String(row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '').trim()
-          const assignedUserPhone = String(row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '').trim()
+          const assignedUserEmail = String(row['User Email'] || row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '').trim().toLowerCase()
+          // [BULK UPLOAD FIX] Parse User Name and Contact Number from Excel
+          const assignedUserName = String(row['User Name'] || row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '').trim()
+          const assignedUserPhone = String(row['User Personal Contact Number'] || row['User Contact Number'] || row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '').trim()
           const notes = String(row['Notes'] || row.notes || '').trim()
 
           const rowErrors = []
@@ -1148,9 +1196,9 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
     { key: 'circle', header: 'Circle' },
     { key: 'status', header: 'Status' },
     { key: 'assignedUserEmail', header: 'User Email', render: (row) => row.assignedUserEmail || '-' },
-    // [BULK UPLOAD FIX] Added User Name and Phone to preview
+    // [BULK UPLOAD FIX] Added User Name and Contact Number to preview
     { key: 'assignedUserName', header: 'User Name', render: (row) => row.assignedUserName || '-' },
-    { key: 'assignedUserPhone', header: 'User Phone', render: (row) => row.assignedUserPhone || '-' },
+    { key: 'assignedUserPhone', header: 'Personal Contact No.', render: (row) => row.assignedUserPhone || '-' },
   ]
 
   return (
@@ -1195,6 +1243,69 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
           {/* File Upload Area */}
           <div
             onClick={() => document.getElementById('bulk-file-input').click()}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onDragEnter={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              const droppedFile = e.dataTransfer.files[0]
+              if (droppedFile && (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls'))) {
+                setFile(droppedFile)
+                setErrors([])
+                const reader = new FileReader()
+                reader.onload = (event) => {
+                  try {
+                    const data = new Uint8Array(event.target.result)
+                    const workbook = XLSX.read(data, { type: 'array' })
+                    const sheetName = workbook.SheetNames[0]
+                    const sheet = workbook.Sheets[sheetName]
+                    const jsonData = XLSX.utils.sheet_to_json(sheet)
+                    const validationErrors = []
+                    const validatedData = jsonData.map((row, index) => {
+                      const countryCode = String(row['Country Code'] || row.countryCode || row.country_code || '+91').trim()
+                      const mobileNumber = String(row['Company Contact Number'] || row['Contact Number'] || row.mobileNumber || row.mobile_number || '').trim()
+                      const operator = String(row['Operator'] || row.operator || 'Other').trim()
+                      const circle = String(row['Circle'] || row.circle || '').trim()
+                      const status = String(row['Status'] || row.status || 'active').toLowerCase().trim()
+                      const assignedUserEmail = String(row['User Email'] || row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '').trim().toLowerCase()
+                      const assignedUserName = String(row['User Name'] || row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '').trim()
+                      const assignedUserPhone = String(row['User Personal Contact Number'] || row['User Contact Number'] || row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '').trim()
+                      const notes = String(row['Notes'] || row.notes || '').trim()
+                      const rowErrors = []
+                      if (!mobileNumber) {
+                        rowErrors.push('Missing Contact Number')
+                      } else if (!/^\d{10}$/.test(mobileNumber)) {
+                        rowErrors.push('Invalid 10-digit Contact Number')
+                      }
+                      if (!operator || operator.length === 0) {
+                        rowErrors.push('Operator is required')
+                      }
+                      if (!validStatuses.includes(status)) {
+                        rowErrors.push(`Invalid Status. Must be one of: ${validStatuses.join(', ')}`)
+                      }
+                      if (assignedUserEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(assignedUserEmail)) {
+                        rowErrors.push('Invalid email format for Assigned User')
+                      }
+                      if (assignedUserEmail && !assignedUserName) {
+                        rowErrors.push('Assigned User Name is required when email is provided')
+                      }
+                      if (rowErrors.length > 0) {
+                        validationErrors.push({ row: index + 2, errors: rowErrors })
+                      }
+                      return { countryCode, mobileNumber, operator, circle, status, assignedUserEmail, assignedUserName, assignedUserPhone, notes }
+                    })
+                    setParsedData(validatedData)
+                    setErrors(validationErrors)
+                  } catch (error) {
+                    setErrors([{ row: 0, errors: ['Failed to parse Excel file. Please check the format.'] }])
+                    setParsedData([])
+                  }
+                }
+                reader.readAsArrayBuffer(droppedFile)
+              } else {
+                toast.error('Please drop an Excel file (.xlsx or .xls)')
+              }
+            }}
             style={{
               border: '2px dashed #d1d5db',
               borderRadius: '8px',
@@ -1205,7 +1316,7 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
               backgroundColor: file ? '#f0fdf4' : '#f9fafb',
             }}
           >
-            <FiUpload style={{ width: '32px', height: '32px', color: '#6b7280', marginBottom: '8px' }} />
+           
             <p style={{ margin: 0, color: '#374151', fontWeight: '500' }}>
               {file ? file.name : 'Click to select or drag & drop Excel file (.xlsx, .xls)'}
             </p>
@@ -1281,6 +1392,7 @@ export default function SIMs() {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [simListModal, setSimListModal] = useState({ open: false, title: '', sims: [] })
   const [showBulkModal, setShowBulkModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, simId: null, simNumber: '' })
 
   const operators = ['Jio', 'Airtel', 'Vi', 'BSNL', 'MTNL', 'Other']
 
@@ -1392,15 +1504,20 @@ export default function SIMs() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this SIM?')) return
+  const handleDelete = (id) => {
+    const sim = sims.find(s => s._id === id)
+    setDeleteConfirm({ show: true, simId: id, simNumber: sim?.mobileNumber || 'this SIM' })
+  }
 
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/sims/${id}`)
-      toast.success('SIM deleted successfully')
+      await api.delete(`/sims/${deleteConfirm.simId}`)
+      toast.success('SIM deleted successfully.')
       fetchSIMs()
     } catch (error) {
       toast.error('Failed to delete SIM')
+    } finally {
+      setDeleteConfirm({ show: false, simId: null, simNumber: '' })
     }
   }
 
@@ -1419,8 +1536,6 @@ export default function SIMs() {
     const badges = {
       active: { bg: '#dcfce7', color: '#16a34a' },
       inactive: { bg: '#fef2f2', color: '#dc2626' },
-      suspended: { bg: '#fffbeb', color: '#d97706' },
-      lost: { bg: '#f1f5f9', color: '#475569' },
     }
     return badges[status] || badges.inactive
   }
@@ -1720,8 +1835,6 @@ export default function SIMs() {
               <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-              <option value="lost">Lost</option>
             </select>
             <select
               value={operator}
@@ -1797,6 +1910,16 @@ export default function SIMs() {
         isOpen={showBulkModal}
         onClose={() => setShowBulkModal(false)}
         onSuccess={() => { fetchSIMs(); fetchMessagingStats(); setShowBulkModal(false) }}
+      />
+
+      <ConfirmModal
+        isOpen={deleteConfirm.show}
+        onClose={() => setDeleteConfirm({ show: false, simId: null, simNumber: '' })}
+        onConfirm={confirmDelete}
+        title="Delete SIM"
+        message={`Are you sure you want to delete SIM ${deleteConfirm.simNumber}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
       />
     </PageContainer>
   )

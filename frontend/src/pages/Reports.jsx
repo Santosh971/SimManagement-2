@@ -39,6 +39,14 @@ export default function Reports() {
     callType: '',
     uniqueOnly: false,
   })
+  const [activeFilters, setActiveFilters] = useState({
+    startDate: '',
+    endDate: '',
+    status: '',
+    operator: '',
+    callType: '',
+    uniqueOnly: false,
+  })
   const [showFilters, setShowFilters] = useState(false)
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
 
@@ -52,7 +60,7 @@ export default function Reports() {
     ...(isSuperAdmin ? [{ id: 'companies', name: 'Company Report', icon: FiBriefcase, description: 'Export company data and stats (Admin only)' }] : []),
   ]
 
-  const statusOptions = ['active', 'inactive', 'suspended', 'lost']
+  const statusOptions = ['active', 'inactive']
   const operatorOptions = ['Jio', 'Airtel', 'Vi', 'BSNL', 'MTNL', 'Other']
   const callTypeOptions = [
     { value: 'incoming', label: 'Incoming' },
@@ -60,9 +68,9 @@ export default function Reports() {
     { value: 'missed', label: 'Missed' },
   ]
 
-  // Use a ref to store filters for the fetch function
-  const filtersRef = useRef(filters)
-  filtersRef.current = filters
+  // Use a ref to store active filters for the fetch function
+  const filtersRef = useRef(activeFilters)
+  filtersRef.current = activeFilters
 
   const fetchReport = async (page = 1, overrideFilters = null) => {
     try {
@@ -117,10 +125,10 @@ export default function Reports() {
     }
   }, [pagination.page])
 
-  // Reset to page 1 when filters change (but don't fetch until apply is clicked)
+  // Reset to page 1 when active filters change
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }))
-  }, [filters.startDate, filters.endDate, filters.status, filters.operator, filters.callType, filters.uniqueOnly])
+  }, [activeFilters.startDate, activeFilters.endDate, activeFilters.status, activeFilters.operator, activeFilters.callType, activeFilters.uniqueOnly])
 
   const handleExport = async (format) => {
     try {
@@ -166,8 +174,9 @@ export default function Reports() {
   }
 
   const applyFilters = () => {
+    setActiveFilters({ ...filters })
     setPagination((prev) => ({ ...prev, page: 1 }))
-    fetchReport(1)
+    fetchReport(1, filters)
   }
 
   const clearFilters = () => {
@@ -180,6 +189,7 @@ export default function Reports() {
       uniqueOnly: false,
     }
     setFilters(clearedFilters)
+    setActiveFilters(clearedFilters)
     setPagination((prev) => ({ ...prev, page: 1 }))
     // Pass cleared filters directly to avoid stale closure
     fetchReport(1, clearedFilters)
@@ -390,7 +400,7 @@ export default function Reports() {
 
               <td style={{ padding: '12px 16px' }}>{item.operator}</td>
               <td style={{ padding: '12px 16px' }}>
-                <Badge variant={item.status === 'active' ? 'success' : item.status === 'inactive' ? 'danger' : 'warning'}>
+                <Badge variant={item.status === 'active' ? 'success' : 'danger'}>
                   {item.status}
                 </Badge>
               </td>
@@ -576,6 +586,8 @@ export default function Reports() {
                 <input
                   type="date"
                   value={filters.startDate}
+                  max={filters.endDate || new Date().toISOString().split('T')[0]}
+                  onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleFilterChange('startDate', e.target.value)}
                   style={{
                     padding: '8px 12px',
@@ -583,12 +595,16 @@ export default function Reports() {
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                 />
                 <span style={{ color: '#6b7280' }}>to</span>
                 <input
                   type="date"
                   value={filters.endDate}
+                  min={filters.startDate || undefined}
+                  max={new Date().toISOString().split('T')[0]}
+                  onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleFilterChange('endDate', e.target.value)}
                   style={{
                     padding: '8px 12px',
@@ -596,6 +612,7 @@ export default function Reports() {
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
+                    cursor: 'pointer',
                   }}
                 />
               </div>

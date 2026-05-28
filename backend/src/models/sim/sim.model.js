@@ -39,7 +39,7 @@ const SimSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'suspended', 'lost'],
+    enum: ['active', 'inactive'],
     default: 'active',
   },
   activationDate: {
