@@ -42,7 +42,7 @@ const WifiDeviceSchema = new Schema({
   // Track WiFi connection status
   lastWifiConnected: {
     type: Boolean,
-    default: null,
+    default: true,
   },
   // Offline tracking
   isOffline: {

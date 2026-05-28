@@ -68,6 +68,24 @@ class CallAutomationService {
       throw new ValidationError('One or more target SIMs not found or not active');
     }
 
+    // Check for overlap between caller and target SIMs
+    const overlapIds = callerSimIds.filter(id =>
+      targetSimIds.some(targetId => targetId.toString() === id.toString())
+    );
+
+    if (overlapIds.length > 0) {
+      const allSimDocs = [...callerSimDocs, ...targetSimDocs];
+      const overlappingNumbers = [...new Set(overlapIds.map(id => id.toString()))]
+        .map(idStr => {
+          const sim = allSimDocs.find(s => s._id.toString() === idStr);
+          return sim ? sim.mobileNumber : idStr;
+        })
+        .join(', ');
+      throw new ValidationError(
+        `A SIM cannot be both Caller and Target. Remove from one list: ${overlappingNumbers}`
+      );
+    }
+
     // Check for existing config
     let config = await CallAutomationConfig.findOne({ companyId });
 
@@ -273,7 +291,14 @@ class CallAutomationService {
     const isTarget = config.targetSimIds.some(id => id.toString() === simIdStr);
 
     let role = 'NONE';
-    if (isCaller) {
+    if (isCaller && isTarget) {
+      logger.warn('[CALL AUTOMATION] SIM is in both caller and target lists (data integrity issue):', {
+        simNumber,
+        simId: simIdStr,
+        companyId: config.companyId?.toString(),
+      });
+      role = 'CALLER'; // Caller takes precedence
+    } else if (isCaller) {
       role = 'CALLER';
     } else if (isTarget) {
       role = 'RECEIVER';
@@ -408,7 +433,7 @@ class CallAutomationService {
     const sims = await Sim.find({
       companyId,
       status: 'active'
-    }).select('mobileNumber operator status assignedTo')
+    }).select('mobileNumber operator status assignedTo isAdminCaller')
       .populate('assignedTo', 'name email')
       .sort({ mobileNumber: 1 });
 

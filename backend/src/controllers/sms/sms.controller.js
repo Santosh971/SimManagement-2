@@ -146,11 +146,11 @@ class SmsController {
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-      // Audit log: REPORT_EXPORT
+      // Audit log: SMS_EXPORT
       try {
         await auditLogService.logAction({
-          action: 'REPORT_EXPORT',
-          module: 'REPORT',
+          action: 'SMS_EXPORT',
+          module: 'SMS',
           description: `Exported ${smsLogs.length} SMS logs to Excel`,
           performedBy: req.user._id,
           role: req.user.role,

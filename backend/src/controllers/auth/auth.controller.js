@@ -186,7 +186,7 @@ class AuthController {
     try {
       const { currentPassword, newPassword } = req.body;
       const result = await authService.changePassword(req.user.id, currentPassword, newPassword);
-      return successResponse(res, result, 'Password changed successfully');
+      return successResponse(res, result, 'Password changed successfully.');
     } catch (error) {
       next(error);
     }
@@ -204,7 +204,7 @@ class AuthController {
   async updateProfile(req, res, next) {
     try {
       const user = await authService.updateProfile(req.user.id, req.body);
-      return successResponse(res, user, 'Profile updated successfully');
+      return successResponse(res, user, 'Profile updated successfully.');
     } catch (error) {
       next(error);
     }
@@ -302,6 +302,15 @@ class AuthController {
     try {
       const result = await authService.cancelEmailChange(req.user.id);
       return successResponse(res, result, 'Email change cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendEmailChangeOTP(req, res, next) {
+    try {
+      const result = await authService.resendEmailChangeOTP(req.user.id);
+      return successResponse(res, result, 'Verification code resent');
     } catch (error) {
       next(error);
     }

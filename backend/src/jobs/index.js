@@ -264,10 +264,10 @@ class CronService {
     });
   }
 
-  // WiFi alert check - runs every 5 minutes
+  // WiFi alert check - runs every 20 minutes
   // Checks WiFi speeds against thresholds and creates/resolves alerts
   scheduleWifiAlertCheck() {
-    this.schedule('wifi-alert-check', '*/5 * * * *', async () => {
+    this.schedule('wifi-alert-check', '*/20 * * * *', async () => {
       try {
         logger.info('Starting WiFi alert check job');
 

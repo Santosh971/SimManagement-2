@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Sim = require('../../models/sim/sim.model');
 const WifiNetwork = require('../../models/wifi/wifiNetwork.model');
 const WifiMetric = require('../../models/wifi/wifiMetric.model');
+const WifiAlert = require('../../models/wifi/wifiAlert.model');
 const { NotFoundError, ForbiddenError, ValidationError, UnauthorizedError } = require('../../utils/errors');
 const { buildPhoneQuery, normalizePhoneNumber } = require('../../utils/response');
 const logger = require('../../utils/logger');
@@ -13,7 +14,7 @@ class DeviceService {
    * POST /api/device/auto-auth
    *
    * Flow:
-   * 1. Find SIM by mobile number
+   * 1. Find SIM by Contact Number
    * 2. Check if SIM is active
    * 3. Bind device to SIM (update deviceId)
    * 4. Generate device token
@@ -29,10 +30,10 @@ class DeviceService {
     // [PHONE NORMALIZATION] - Handle different phone formats
     const phoneQuery = buildPhoneQuery(simNumber);
     if (!phoneQuery) {
-      throw new ValidationError('Invalid mobile number format');
+      throw new ValidationError('Invalid Contact Number format');
     }
 
-    // Find SIM by mobile number
+    // Find SIM by Contact Number
     const sim = await Sim.findOne(phoneQuery);
 
     if (!sim) {
@@ -79,6 +80,57 @@ class DeviceService {
       expectedSpeed: wifi.expectedSpeed,
       alertThreshold: wifi.alertThreshold
     }));
+
+    // [WIFI DEVICE TRACKING] - Create or update WifiDevice record for alert monitoring
+    // Without this, cron jobs for device_offline, wifi_off, and wifi_disconnected never find devices
+    try {
+      const WifiDevice = mongoose.models.WifiDevice || mongoose.model('WifiDevice');
+      let wifiDevice = await WifiDevice.findOne({ deviceId });
+
+      if (wifiDevice) {
+        // Update existing device - reset offline flags on re-auth
+        wifiDevice.lastSeen = new Date();
+        wifiDevice.lastMetricAt = wifiDevice.lastMetricAt || new Date();
+        wifiDevice.lastWifiConnected = true;
+        if (wifiDevice.isOffline) {
+          wifiDevice.isOffline = false;
+          wifiDevice.offlineSince = null;
+          wifiDevice.offlineAlertSent = false;
+        }
+        // Update wifiId if SIM now accesses a different WiFi
+        if (wifiNetworks.length > 0 && wifiDevice.wifiId?.toString() !== wifiNetworks[0]._id.toString()) {
+          wifiDevice.wifiId = wifiNetworks[0]._id;
+        }
+        await wifiDevice.save();
+      } else if (wifiNetworks.length > 0) {
+        // Create new WifiDevice record - auto-approved in SIM-based flow
+        wifiDevice = new WifiDevice({
+          deviceId,
+          deviceName: sim.mobileNumber || deviceId,
+          companyId: sim.companyId,
+          wifiId: wifiNetworks[0]._id,
+          isActive: true,
+          lastSeen: new Date(),
+          lastMetricAt: new Date(),
+          lastWifiConnected: true,
+          isOffline: false,
+          offlineAlertSent: false,
+        });
+        await wifiDevice.save();
+      }
+
+      logger.info('[DEVICE AUTH] WifiDevice tracking updated', {
+        deviceId,
+        wifiDeviceId: wifiDevice?._id,
+        wifiId: wifiDevice?.wifiId,
+        isNew: !wifiDevice?.__v && wifiDevice?.__v !== 0,
+      });
+    } catch (deviceError) {
+      logger.warn('[DEVICE AUTH] Could not update WifiDevice tracking', {
+        deviceId,
+        error: deviceError.message
+      });
+    }
 
     logger.info('[DEVICE AUTH] Device authenticated successfully', {
       simId: sim._id,
@@ -135,10 +187,10 @@ class DeviceService {
       throw new ValidationError('Download and upload speeds are required');
     }
 
-    // 2. Find SIM by mobile number
+    // 2. Find SIM by Contact Number
     const phoneQuery = buildPhoneQuery(simNumber);
     if (!phoneQuery) {
-      throw new ValidationError('Invalid mobile number format');
+      throw new ValidationError('Invalid Contact Number format');
     }
 
     const sim = await Sim.findOne(phoneQuery);
@@ -262,9 +314,10 @@ class DeviceService {
     await sim.save();
 
     // 10. Update WifiDevice tracking if available
+    let wifiDevice = null;
     try {
       const WifiDevice = mongoose.model('WifiDevice');
-      const wifiDevice = await WifiDevice.findOne({ deviceId });
+      wifiDevice = await WifiDevice.findOne({ deviceId });
       if (wifiDevice) {
         wifiDevice.lastMetricAt = new Date();
         wifiDevice.lastSeen = new Date();
@@ -276,6 +329,43 @@ class DeviceService {
           wifiDevice.offlineAlertSent = false;
         }
         await wifiDevice.save();
+
+        // Resolve active alerts since device is back online
+        try {
+          const deviceAlertsResolved = await WifiAlert.updateMany(
+            {
+              wifiId: wifiDevice.wifiId,
+              deviceId: wifiDevice._id,
+              status: 'active',
+              alertType: { $in: ['device_offline', 'wifi_disconnected'] }
+            },
+            { status: 'resolved', resolvedAt: new Date() }
+          );
+          if (deviceAlertsResolved.modifiedCount > 0) {
+            logger.info('[WIFI METRICS] Device back online, alerts resolved immediately', {
+              deviceId,
+              wifiId: wifiDevice.wifiId,
+              count: deviceAlertsResolved.modifiedCount
+            });
+          }
+
+          // Also resolve wifi_off alerts since this device is sending metrics
+          const wifiOffResolved = await WifiAlert.updateMany(
+            { wifiId: wifiDevice.wifiId, status: 'active', alertType: 'wifi_off' },
+            { status: 'resolved', resolvedAt: new Date() }
+          );
+          if (wifiOffResolved.modifiedCount > 0) {
+            logger.info('[WIFI METRICS] WiFi back online, wifi_off alert resolved immediately', {
+              wifiId: wifiDevice.wifiId,
+              count: wifiOffResolved.modifiedCount
+            });
+          }
+        } catch (alertError) {
+          logger.warn('[WIFI METRICS] Could not resolve alerts on device return', {
+            deviceId,
+            error: alertError.message
+          });
+        }
       }
     } catch (deviceError) {
       logger.warn('[WIFI METRICS] Could not update WifiDevice tracking', {
@@ -289,7 +379,7 @@ class DeviceService {
       wifiId: wifi._id,
       companyId: sim.companyId,
       deviceId,
-      deviceObjectId: sim._id, // Use SIM as device reference
+      deviceObjectId: wifiDevice ? wifiDevice._id : sim._id,
       simId: sim._id, // Track which SIM submitted the metrics
       downloadSpeed,
       uploadSpeed,
@@ -343,7 +433,7 @@ class DeviceService {
 
     const phoneQuery = buildPhoneQuery(simNumber);
     if (!phoneQuery) {
-      throw new ValidationError('Invalid mobile number format');
+      throw new ValidationError('Invalid Contact Number format');
     }
 
     const sim = await Sim.findOne(phoneQuery);
@@ -385,7 +475,7 @@ class DeviceService {
 
     const phoneQuery = buildPhoneQuery(simNumber);
     if (!phoneQuery) {
-      throw new ValidationError('Invalid mobile number format');
+      throw new ValidationError('Invalid Contact Number format');
     }
 
     const sim = await Sim.findOne(phoneQuery);

@@ -25,7 +25,7 @@ const CompanySchema = new Schema({
         // Accepts: +9713211236540 (with country code) or 9876543210 (10 digits)
         return !v || /^\+?\d{10,15}$/.test(v);
       },
-      message: 'Invalid phone number (10-15 digits, optional + prefix)',
+      message: 'Invalid phone number (Must be 10-15 digits)',
     },
   },
   address: {

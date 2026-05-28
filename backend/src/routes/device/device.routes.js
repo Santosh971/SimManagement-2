@@ -12,7 +12,7 @@ const autoAuthValidation = [
   body('simNumber')
     .notEmpty().withMessage('SIM number is required')
     .trim()
-    .isLength({ min: 10, max: 15 }).withMessage('SIM number must be 10-15 digits'),
+    .isLength({ min: 10, max: 15 }).withMessage('SIM number must be Must be 10-15 digits'),
   body('deviceId')
     .notEmpty().withMessage('Device ID is required')
     .trim()

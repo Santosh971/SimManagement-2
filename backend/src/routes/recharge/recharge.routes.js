@@ -13,12 +13,12 @@ const { validate } = require('../../middleware/validate');
 // If auth token is provided, it will be used for audit logging
 const autoCreateRechargeValidation = [
   body('mobileNumber')
-    .notEmpty().withMessage('Mobile number is required')
+    .notEmpty().withMessage('Contact Number is required')
     .custom((value) => {
       // Accept 10 digits, or with country code (+91XXXXXXXXXX, 91XXXXXXXXXX)
       const cleaned = value.replace(/[\s\-\(\)]/g, '');
       if (/^\+?\d{10,15}$/.test(cleaned)) return true;
-      throw new Error('Invalid mobile number format. Must be 10-15 digits with optional + prefix');
+      throw new Error('Invalid Contact Number format. Must be Must be 10-15 digits');
     }),
   body('amount')
     .notEmpty().withMessage('Amount is required')

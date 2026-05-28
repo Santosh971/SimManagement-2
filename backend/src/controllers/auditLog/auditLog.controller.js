@@ -128,17 +128,14 @@ class AuditLogController {
 
       // Prepare data for export
       const data = result.data.map((log) => ({
-        'Date/Time': log.createdAt ? new Date(log.createdAt).toLocaleString('en-IN') : '',
+        'Date & Time': log.createdAt ? new Date(log.createdAt).toLocaleString('en-IN') : '',
         'Action': log.action,
         'Module': log.module,
         'User': log.performedBy?.name || log.metadata?.mobileNumber || 'System',
-        'Email': log.performedBy?.email || (log.metadata?.mobileNumber ? 'Mobile User' : ''),
+        'Description': log.description,
         'Role': log.role,
         'Company': log.companyId?.name || 'N/A',
-        'Description': log.description,
-        'Entity Type': log.entityType || '',
-        'Entity ID': log.entityId || '',
-        'IP Address': log.ipAddress || '',
+        'Email': log.performedBy?.email || (log.metadata?.mobileNumber ? 'Mobile User' : ''),
       }));
 
       // Create workbook
@@ -151,13 +148,10 @@ class AuditLogController {
         { wch: 20 }, // Action
         { wch: 12 }, // Module
         { wch: 20 }, // User
-        { wch: 25 }, // Email
+        { wch: 50 }, // Description
         { wch: 12 }, // Role
         { wch: 20 }, // Company
-        { wch: 50 }, // Description
-        { wch: 12 }, // Entity Type
-        { wch: 25 }, // Entity ID
-        { wch: 15 }, // IP Address
+        { wch: 25 }, // Email
       ];
 
       xlsx.utils.book_append_sheet(workbook, sheet, 'Audit Logs');

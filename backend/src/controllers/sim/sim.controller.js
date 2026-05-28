@@ -230,7 +230,7 @@ class SimController {
       // Create Excel file
       const workbook = xlsx.utils.book_new();
       const data = sims.map((sim) => ({
-        'Mobile Number': sim.mobileNumber,
+        'Contact Number': sim.mobileNumber,
         'Operator': sim.operator,
         'Circle': sim.circle || '',
         'Status': sim.status,
@@ -323,7 +323,7 @@ class SimController {
   }
 
   /**
-   * Detect operator from mobile number
+   * Detect operator from Contact Number
    * [INTERNATIONAL OPERATORS] - Supports multiple countries
    * POST /api/sims/detect-operator
    * Body: { mobileNumber: string (with country code, e.g., +919876543210) }
@@ -335,7 +335,7 @@ class SimController {
       if (!mobileNumber) {
         return res.status(400).json({
           success: false,
-          message: 'Mobile number is required',
+          message: 'Contact Number is required',
         });
       }
 

@@ -295,7 +295,14 @@ export default function WifiDevices() {
 
   const formatDate = (date) => {
     if (!date) return 'Never'
-    return new Date(date).toLocaleString()
+    return new Date(date).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())
   }
 
   // Check if user is admin
@@ -412,6 +419,7 @@ export default function WifiDevices() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb' }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: '#6b7280', fontSize: '13px', width: '50px' }}>S.No.</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Device Name</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Device ID</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Assigned WiFi</th>
@@ -421,10 +429,11 @@ export default function WifiDevices() {
                   </tr>
                 </thead>
                 <tbody>
-                  {devices.map((device) => {
+                  {devices.map((device, index) => {
                     const status = getStatusBadge(device)
                     return (
                       <tr key={device._id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <FiSmartphone style={{ width: '16px', height: '16px', color: '#6b7280' }} />
@@ -511,6 +520,7 @@ export default function WifiDevices() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

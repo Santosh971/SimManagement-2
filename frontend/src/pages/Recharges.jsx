@@ -9,6 +9,7 @@ import {
   FiAlertCircle,
   FiClock,
   FiCheckCircle,
+  FiSearch,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -28,6 +29,17 @@ import {
 // Recharge Modal Component
 function RechargeModal({ isOpen, onClose, onSave, sims }) {
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
+  const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     simId: '',
     amount: '',
@@ -38,7 +50,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
       calls: '',
       sms: '',
     },
-    validity: '28',
+    validity: '',
     paymentMethod: 'cash',
     notes: '',
   })
@@ -51,6 +63,32 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     { value: 'wallet', label: 'Wallet' },
     { value: 'other', label: 'Other' },
   ]
+
+  const requiredAsterisk = <span style={{ color: '#dc2626', marginLeft: '2px' }}>*</span>
+
+  const validate = () => {
+    const newErrors = {}
+    if (!formData.simId) newErrors.simId = 'Please select a SIM card'
+    if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Please enter a valid amount'
+    if (!formData.validity || parseInt(formData.validity) <= 0) newErrors.validity = 'Please enter validity in days'
+    if (!formData.plan.name.trim()) newErrors.planName = 'Please enter a plan name'
+    if (!formData.plan.data.trim()) newErrors.planData = 'Please enter data info'
+    if (!formData.plan.calls.trim()) newErrors.planCalls = 'Please enter calls info'
+    if (!formData.plan.sms.trim()) newErrors.planSms = 'Please enter SMS info'
+    if (!formData.paymentMethod) newErrors.paymentMethod = 'Please select a payment method'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const clearFieldError = (field) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+  }
 
   useEffect(() => {
     if (sims && sims.length > 0 && !formData.simId) {
@@ -66,23 +104,23 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
         ...prev,
         plan: { ...prev.plan, [planField]: value },
       }))
+      if (planField === 'name') clearFieldError('planName')
+      if (planField === 'data') clearFieldError('planData')
+      if (planField === 'calls') clearFieldError('planCalls')
+      if (planField === 'sms') clearFieldError('planSms')
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }))
+      if (name === 'simId') clearFieldError('simId')
+      if (name === 'amount') clearFieldError('amount')
+      if (name === 'validity') clearFieldError('validity')
+      if (name === 'paymentMethod') clearFieldError('paymentMethod')
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.simId) {
-      toast.error('Please select a SIM')
-      return
-    }
-
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
+    if (!validate()) return
 
     setLoading(true)
 
@@ -90,7 +128,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
       const payload = {
         simId: formData.simId,
         amount: parseFloat(formData.amount),
-        validity: parseInt(formData.validity) || 28,
+        validity: parseInt(formData.validity),
         paymentMethod: formData.paymentMethod,
         notes: formData.notes,
       }
@@ -98,7 +136,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
       if (formData.plan.name) {
         payload.plan = {
           name: formData.plan.name,
-          validity: parseInt(formData.plan.validity) || parseInt(formData.validity) || 28,
+          validity: parseInt(formData.plan.validity) || parseInt(formData.validity),
           data: formData.plan.data || '',
           calls: formData.plan.calls || '',
           sms: formData.plan.sms || '',
@@ -112,10 +150,11 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
         simId: sims && sims.length > 0 ? sims[0]._id : '',
         amount: '',
         plan: { name: '', validity: '', data: '', calls: '', sms: '' },
-        validity: '28',
+        validity: '',
         paymentMethod: 'cash',
         notes: '',
       })
+      setErrors({})
     } catch (error) {
       toast.error(error.response?.data?.message || 'Operation failed')
     } finally {
@@ -158,9 +197,10 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+          {/* SIM Card */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              SIM Card *
+              SIM Card {requiredAsterisk}
             </label>
             <select
               name="simId"
@@ -169,14 +209,13 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
               style={{
                 width: '100%',
                 padding: '10px 14px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${errors.simId ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 backgroundColor: '#ffffff',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
-              required
             >
               <option value="">Select SIM</option>
               {(sims || []).map((sim) => (
@@ -185,59 +224,63 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 </option>
               ))}
             </select>
+            {errors.simId && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.simId}</p>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          {/* Amount & Validity */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Amount (₹) *
+                Amount (₹) {requiredAsterisk}
               </label>
               <input
                 type="number"
                 name="amount"
                 value={formData.amount}
                 onChange={handleChange}
-                placeholder="Enter amount"
+                placeholder="299"
                 min="1"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.amount ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
-                required
               />
+              {errors.amount && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.amount}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Validity (days)
+                Validity (days) {requiredAsterisk}
               </label>
               <input
                 type="number"
                 name="validity"
                 value={formData.validity}
                 onChange={handleChange}
-                placeholder="e.g., 28"
+                placeholder="e.g., 28, 56, 84"
                 min="1"
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.validity ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
+              {errors.validity && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.validity}</p>}
             </div>
           </div>
 
+          {/* Plan Name */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Plan Name
+              Plan Name {requiredAsterisk}
             </label>
             <input
               type="text"
@@ -248,19 +291,21 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
               style={{
                 width: '100%',
                 padding: '10px 14px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${errors.planName ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
+            {errors.planName && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planName}</p>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+          {/* Plan Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Data
+                Data {requiredAsterisk}
               </label>
               <input
                 type="text"
@@ -271,17 +316,18 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.planData ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
+              {errors.planData && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planData}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Calls
+                Calls {requiredAsterisk}
               </label>
               <input
                 type="text"
@@ -292,17 +338,18 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.planCalls ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
+              {errors.planCalls && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planCalls}</p>}
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                SMS
+                SMS {requiredAsterisk}
               </label>
               <input
                 type="text"
@@ -313,19 +360,21 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: '1px solid #d1d5db',
+                  border: `1px solid ${errors.planSms ? '#dc2626' : '#d1d5db'}`,
                   borderRadius: '8px',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
+              {errors.planSms && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.planSms}</p>}
             </div>
           </div>
 
+          {/* Payment Method */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Payment Method
+              Payment Method {requiredAsterisk}
             </label>
             <select
               name="paymentMethod"
@@ -334,7 +383,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
               style={{
                 width: '100%',
                 padding: '10px 14px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${errors.paymentMethod ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 backgroundColor: '#ffffff',
@@ -348,8 +397,10 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
                 </option>
               ))}
             </select>
+            {errors.paymentMethod && <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{errors.paymentMethod}</p>}
           </div>
 
+          {/* Notes — optional, no asterisk */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               Notes
@@ -358,7 +409,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Additional notes..."
+              placeholder="Additional notes (optional)"
               rows="2"
               style={{
                 width: '100%',
@@ -388,7 +439,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
 }
 
 // Mobile Card View for each recharge record
-function RechargeCard({ row, getRechargeStatusBadge, getNextRechargeStatus, formatDate }) {
+function RechargeCard({ row, getRechargeStatusBadge, getDisplayStatus, getNextRechargeStatus, formatDate }) {
   const nextRecharge = getNextRechargeStatus(row.nextRechargeDate)
 
   return (
@@ -399,7 +450,7 @@ function RechargeCard({ row, getRechargeStatusBadge, getNextRechargeStatus, form
           <p className="text-sm font-semibold text-gray-800">{row.simId?.mobileNumber || 'N/A'}</p>
           <p className="text-xs text-gray-500">{row.simId?.operator || ''}</p>
         </div>
-        <Badge variant={getRechargeStatusBadge(row.status)}>{row.status}</Badge>
+        <Badge variant={getRechargeStatusBadge(getDisplayStatus(row))}>{getDisplayStatus(row)}</Badge>
       </div>
 
       {/* Amount + Plan */}
@@ -413,7 +464,7 @@ function RechargeCard({ row, getRechargeStatusBadge, getNextRechargeStatus, form
           <p className="text-sm text-gray-700">{row.plan?.name || 'N/A'}</p>
           {(row.plan?.data || row.validity) && (
             <p className="text-xs text-gray-400">
-              {row.plan?.data && `${row.plan.data} • `}{row.validity ? `${row.validity} days` : ''}
+              {row.plan?.data && `${row.plan.data} • `}{row.validity ? `${row.validity} day${row.validity !== 1 ? 's' : ''}` : ''}
             </p>
           )}
         </div>
@@ -455,6 +506,7 @@ export default function Recharges() {
   const [stats, setStats] = useState(null)
   const [upcomingRecharges, setUpcomingRecharges] = useState([])
   const [overdueRecharges, setOverdueRecharges] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchRecharges()
@@ -537,8 +589,16 @@ export default function Recharges() {
 
   const handleAddRecharge = async (formData) => {
     await api.post('/recharges', formData)
-    fetchRecharges()
-    fetchStats()
+    if (pagination.page !== 1) {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+    } else {
+      await Promise.all([
+        fetchRecharges(),
+        fetchStats(),
+        fetchOverdue(),
+        fetchUpcoming(),
+      ])
+    }
   }
 
   const getRechargeStatusBadge = (status) => {
@@ -547,8 +607,16 @@ export default function Recharges() {
       pending: 'warning',
       failed: 'danger',
       refunded: 'default',
+      overdue: 'danger',
     }
     return badges[status] || 'default'
+  }
+
+  const getDisplayStatus = (row) => {
+    if (row.status === 'completed' && row.nextRechargeDate && new Date(row.nextRechargeDate) < new Date()) {
+      return 'overdue'
+    }
+    return row.status
   }
 
   const getNextRechargeStatus = (nextRechargeDate) => {
@@ -559,13 +627,13 @@ export default function Recharges() {
     const diffDays = Math.ceil((nextDate - now) / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) {
-      return { status: 'overdue', label: `${Math.abs(diffDays)} days overdue`, color: '#dc2626' }
+      return { status: 'overdue', label: `${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} overdue`, color: '#dc2626' }
     } else if (diffDays === 0) {
       return { status: 'due_today', label: 'Due today', color: '#d97706' }
     } else if (diffDays <= 3) {
-      return { status: 'due_soon', label: `${diffDays} days left`, color: '#f59e0b' }
+      return { status: 'due_soon', label: `${diffDays} day${diffDays !== 1 ? 's' : ''} left`, color: '#f59e0b' }
     } else {
-      return { status: 'active', label: `${diffDays} days left`, color: '#16a34a' }
+      return { status: 'active', label: `${diffDays} day${diffDays !== 1 ? 's' : ''} left`, color: '#16a34a' }
     }
   }
 
@@ -577,6 +645,22 @@ export default function Recharges() {
       year: 'numeric',
     })
   }
+
+  const filteredRecharges = searchQuery.trim()
+    ? recharges.filter((r) => {
+        const q = searchQuery.toLowerCase().trim()
+        const displayStatus = getDisplayStatus(r)
+        return (
+          (r.simId?.mobileNumber || '').toLowerCase().includes(q) ||
+          (r.simId?.operator || '').toLowerCase().includes(q) ||
+          (r.simId?.circle || '').toLowerCase().includes(q) ||
+          (r.plan?.name || '').toLowerCase().includes(q) ||
+          displayStatus.includes(q) ||
+          (r.amount != null && String(r.amount).includes(q)) ||
+          (r.paymentMethod || '').toLowerCase().includes(q)
+        )
+      })
+    : recharges
 
   const columns = [
     {
@@ -602,7 +686,7 @@ export default function Recharges() {
           <div style={{ fontSize: '14px' }}>{row.plan?.name || 'N/A'}</div>
           <div style={{ fontSize: '12px', color: '#6b7280' }}>
             {row.plan?.data && `${row.plan.data} • `}
-            {row.validity ? `${row.validity} days` : ''}
+            {row.validity ? `${row.validity} day${row.validity !== 1 ? 's' : ''}` : ''}
           </div>
         </div>
       )
@@ -633,7 +717,10 @@ export default function Recharges() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge variant={getRechargeStatusBadge(row.status)}>{row.status}</Badge>
+      render: (row) => {
+        const displayStatus = getDisplayStatus(row)
+        return <Badge variant={getRechargeStatusBadge(displayStatus)}>{displayStatus}</Badge>
+      }
     },
   ]
 
@@ -695,7 +782,7 @@ const today = new Date().toISOString().split('T')[0];
 
       {/* Alert Sections */}
       {(overdueRecharges.length > 0 || upcomingRecharges.length > 0) && (
-        <Grid cols={2} gap={16} style={{ marginBottom: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {overdueRecharges.length > 0 && (
             <Card style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
               <CardBody>
@@ -705,13 +792,36 @@ const today = new Date().toISOString().split('T')[0];
                     Overdue Recharges ({overdueRecharges.length})
                   </h3>
                 </div>
-                <div style={{ maxHeight: '120px', overflow: 'auto' }}>
-                  {overdueRecharges.slice(0, 5).map((r) => (
-                    <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #fee2e2' }}>
-                      <span style={{ fontSize: '14px' }}>{r.simId?.mobileNumber}</span>
-                      <span style={{ fontSize: '12px', color: '#dc2626' }}>{formatDate(r.nextRechargeDate)}</span>
-                    </div>
-                  ))}
+                <div style={{ maxHeight: '180px', overflow: 'auto' }}>
+                  {overdueRecharges.slice(0, 5).map((r) => {
+                    const daysOverdue = Math.ceil((new Date() - new Date(r.nextRechargeDate)) / (1000 * 60 * 60 * 24))
+                    return (
+                      <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid #fee2e2' }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{r.simId?.mobileNumber}</span>
+                            {r.simId?.operator && (
+                              <span style={{ fontSize: '11px', backgroundColor: '#fee2e2', color: '#991b1b', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.operator}</span>
+                            )}
+                            {r.simId?.circle && (
+                              <span style={{ fontSize: '11px', backgroundColor: '#fee2e2', color: '#991b1b', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.circle}</span>
+                            )}
+                            {r.simId?.status && (
+                              <span style={{ fontSize: '11px', backgroundColor: r.simId.status === 'active' ? '#dcfce7' : '#f3f4f6', color: r.simId.status === 'active' ? '#166534' : '#6b7280', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.status}</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#7f1d1d', marginTop: '2px' }}>
+                            {r.amount && `₹${r.amount.toLocaleString()}`}
+                            {r.plan?.name && ` • ${r.plan.name}`}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                          <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: '500' }}>{daysOverdue}d overdue</div>
+                          <div style={{ fontSize: '11px', color: '#f87171' }}>{formatDate(r.nextRechargeDate)}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </CardBody>
             </Card>
@@ -725,34 +835,65 @@ const today = new Date().toISOString().split('T')[0];
                     Due This Week ({upcomingRecharges.length})
                   </h3>
                 </div>
-                <div style={{ maxHeight: '120px', overflow: 'auto' }}>
-                  {upcomingRecharges.slice(0, 5).map((r) => (
-                    <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #fde68a' }}>
-                      <span style={{ fontSize: '14px' }}>{r.simId?.mobileNumber}</span>
-                      <span style={{ fontSize: '12px', color: '#d97706' }}>{formatDate(r.nextRechargeDate)}</span>
-                    </div>
-                  ))}
+                <div style={{ maxHeight: '180px', overflow: 'auto' }}>
+                  {upcomingRecharges.slice(0, 5).map((r) => {
+                    const nextRecharge = getNextRechargeStatus(r.nextRechargeDate)
+                    return (
+                      <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid #fde68a' }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{r.simId?.mobileNumber}</span>
+                            {r.simId?.operator && (
+                              <span style={{ fontSize: '11px', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.operator}</span>
+                            )}
+                            {r.simId?.circle && (
+                              <span style={{ fontSize: '11px', backgroundColor: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.circle}</span>
+                            )}
+                            {r.simId?.status && (
+                              <span style={{ fontSize: '11px', backgroundColor: r.simId.status === 'active' ? '#dcfce7' : '#f3f4f6', color: r.simId.status === 'active' ? '#166534' : '#6b7280', padding: '1px 6px', borderRadius: '4px' }}>{r.simId.status}</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#78350f', marginTop: '2px' }}>
+                            {r.amount && `₹${r.amount.toLocaleString()}`}
+                            {r.plan?.name && ` • ${r.plan.name}`}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                          <div style={{ fontSize: '12px', color: nextRecharge.color, fontWeight: '500' }}>{nextRecharge.label}</div>
+                          <div style={{ fontSize: '11px', color: '#92400e' }}>{formatDate(r.nextRechargeDate)}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </CardBody>
             </Card>
           )}
-        </Grid>
+        </div>
       )}
 
       {/* Filters */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 sm:gap-3 items-center">
-           <input
-  type="date"
-  value={dateRange.start}
-  max={today} // ✅ restrict future dates
-  onChange={(e) =>
-    setDateRange((prev) => ({ ...prev, start: e.target.value }))
-  }
-  onKeyDown={(e) => e.preventDefault()} // optional (prevents manual typing)
-  className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
-/>
+            <div className="relative flex-1 min-w-[200px]">
+              <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#9ca3af' }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by number, operator, plan..."
+                className="w-full text-sm pl-9 pr-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <input
+              type="date"
+              value={dateRange.start}
+              max={today}
+              onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+              onKeyDown={(e) => e.preventDefault()}
+              className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
+            />
             <input
               type="date"
               value={dateRange.end}
@@ -780,11 +921,13 @@ const today = new Date().toISOString().split('T')[0];
           <CardBody style={{ padding: 0 }}>
             <Table
               columns={columns}
-              data={recharges}
+              data={filteredRecharges}
               emptyMessage="No Recharges Found"
               emptyAction={
                 <Button onClick={() => setShowModal(true)}>Add Recharge</Button>
               }
+              showSerial
+              serialOffset={(pagination.page - 1) * pagination.limit}
             />
           </CardBody>
         </Card>
@@ -792,17 +935,18 @@ const today = new Date().toISOString().split('T')[0];
 
       {/* Mobile Card List — Mobile only */}
       <div className="block md:hidden">
-        {recharges.length === 0 ? (
+        {filteredRecharges.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <p className="text-sm mb-3">No Recharges Found</p>
             <Button onClick={() => setShowModal(true)}>Add Recharge</Button>
           </div>
         ) : (
-          recharges.map((row) => (
+          filteredRecharges.map((row) => (
             <RechargeCard
               key={row._id}
               row={row}
               getRechargeStatusBadge={getRechargeStatusBadge}
+              getDisplayStatus={getDisplayStatus}
               getNextRechargeStatus={getNextRechargeStatus}
               formatDate={formatDate}
             />
@@ -816,6 +960,7 @@ const today = new Date().toISOString().split('T')[0];
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

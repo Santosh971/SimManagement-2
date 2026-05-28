@@ -96,7 +96,7 @@ class CallLogController {
 
   /**
    * Sync call logs from mobile device without JWT authentication
-   * Public endpoint - uses mobile number from header/body for identification
+   * Public endpoint - uses Contact Number from header/body for identification
    */
   async deviceSync(req, res, next) {
     try {

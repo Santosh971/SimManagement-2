@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiX, FiSend, FiSmartphone, FiUser, FiAlertCircle, FiPhone } from 'react-icons/fi'
+import { FiX, FiSend, FiSmartphone, FiUser, FiAlertCircle, FiPhone, FiChevronDown, FiChevronUp } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
@@ -11,11 +11,19 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
   const [updateSimStatus, setUpdateSimStatus] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
 
   // Fetch eligible recipients
   useEffect(() => {
     if (isOpen) {
       fetchRecipients()
+    } else {
+      setSelectedIds([])
+      setMessage('')
+      setSearch('')
+      setUpdateSimStatus(false)
+      setShowSetup(false)
+      setLoading(false)
     }
   }, [isOpen])
 
@@ -71,8 +79,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Filter recipients based on search
   const filteredRecipients = recipients.filter((recipient) => {
-    if (!search) return true
-    const searchLower = search.toLowerCase()
+    if (!search.trim()) return true
+    const searchLower = search.trim().toLowerCase()
     return (
       recipient.phoneNumber.toLowerCase().includes(searchLower) ||
       recipient.name.toLowerCase().includes(searchLower) ||
@@ -128,8 +136,13 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
       return
     }
 
-    if (message.length > 1000) {
-      toast.error('Message cannot exceed 1000 characters')
+    if (message.trim().length < 10) {
+      toast.error('Message must be at least 10 characters')
+      return
+    }
+
+    if (message.length > 4096) {
+      toast.error('Message cannot exceed 4096 characters')
       return
     }
 
@@ -229,24 +242,176 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
         {/* Body */}
         <div style={{ padding: '24px' }}>
-          {/* Alert */}
+          {/* Setup Guide */}
           <div
             style={{
-              backgroundColor: '#fef3c7',
-              border: '1px solid #f59e0b',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
               borderRadius: '8px',
-              padding: '12px 16px',
               marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px',
+              overflow: 'hidden',
             }}
           >
-            <FiAlertCircle style={{ color: '#d97706', marginTop: '2px', flexShrink: 0 }} />
-            <div style={{ fontSize: '14px', color: '#92400e' }}>
-              <strong>Twilio Sandbox Note:</strong> Recipients must join the WhatsApp sandbox first.
-              Messages are simulated if Twilio is not configured.
-            </div>
+            <button
+              onClick={() => setShowSetup(!showSetup)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#166534',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FiAlertCircle style={{ width: '18px', height: '18px', color: '#16a34a', flexShrink: 0 }} />
+                <span>Initial WhatsApp Setup (Testing / Trial Environment)</span>
+              </div>
+              {showSetup ? <FiChevronUp style={{ width: '18px', height: '18px', flexShrink: 0 }} /> : <FiChevronDown style={{ width: '18px', height: '18px', flexShrink: 0 }} />}
+            </button>
+
+            {showSetup && (
+              <div style={{ padding: '0 16px 16px', fontSize: '13px', color: '#1f2937' }}>
+                <p style={{ margin: '0 0 12px 0', color: '#374151' }}>
+                  Before receiving WhatsApp messages from the platform during the testing phase, recipients need to complete a <strong>one-time WhatsApp verification</strong>.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+                  {/* Step 1 */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      minWidth: '28px', height: '28px', borderRadius: '50%',
+                      backgroundColor: '#166534', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '13px', fontWeight: '600', flexShrink: 0, marginTop: '1px',
+                    }}>
+                      1
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        Save the Twilio WhatsApp Number
+                      </div>
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                        backgroundColor: '#fff', padding: '8px 14px', borderRadius: '8px',
+                        border: '1px solid #d1d5db', fontFamily: 'monospace', fontSize: '15px', fontWeight: '600',
+                      }}>
+                        <FiPhone style={{ width: '14px', height: '14px', color: '#16a34a' }} />
+                        +1 (415) 523-8886
+                      </div>
+                      <div style={{ color: '#6b7280', marginTop: '4px', fontSize: '12px' }}>
+                        Add this number to your mobile contacts
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      minWidth: '28px', height: '28px', borderRadius: '50%',
+                      backgroundColor: '#166534', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '13px', fontWeight: '600', flexShrink: 0, marginTop: '1px',
+                    }}>
+                      2
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        Send the Verification Message
+                      </div>
+                      <div style={{ color: '#374151', marginBottom: '4px' }}>
+                        Open WhatsApp and send this exact message to the saved number:
+                      </div>
+                      <div style={{
+                        display: 'inline-block',
+                        backgroundColor: '#fff', padding: '8px 14px', borderRadius: '8px',
+                        border: '1px solid #d1d5db', fontFamily: 'monospace', fontSize: '15px', fontWeight: '600',
+                        letterSpacing: '0.5px',
+                      }}>
+                        join chair-tropical
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      minWidth: '28px', height: '28px', borderRadius: '50%',
+                      backgroundColor: '#166534', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '13px', fontWeight: '600', flexShrink: 0, marginTop: '1px',
+                    }}>
+                      3
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        Verification Complete
+                      </div>
+                      <div style={{ color: '#374151' }}>
+                        Once verification is successful, the recipient is connected to the platform's WhatsApp testing environment and can receive messages.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      minWidth: '28px', height: '28px', borderRadius: '50%',
+                      backgroundColor: '#166534', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '13px', fontWeight: '600', flexShrink: 0, marginTop: '1px',
+                    }}>
+                      4
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                        Receive Activity Check Messages
+                      </div>
+                      <div style={{ color: '#374151' }}>
+                        After verification, whenever the admin sends a WhatsApp activity check, the user will receive messages directly on WhatsApp.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Workflow */}
+                <div style={{
+                  backgroundColor: '#fff', borderRadius: '8px',
+                  border: '1px solid #d1d5db', padding: '14px 16px',
+                }}>
+                  <div style={{ fontWeight: '600', color: '#111827', marginBottom: '10px', fontSize: '13px' }}>
+                    Message Workflow
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#374151' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ backgroundColor: '#dbeafe', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>1</span>
+                      <span>Admin Sends WhatsApp Message</span>
+                    </div>
+                    <div style={{ paddingLeft: '12px', color: '#9ca3af' }}>&#x2193;</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ backgroundColor: '#fef3c7', color: '#d97706', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>2</span>
+                      <span>Employee Receives Message on WhatsApp</span>
+                    </div>
+                    <div style={{ paddingLeft: '12px', color: '#9ca3af' }}>&#x2193;</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>3</span>
+                      <span>Employee Replies &rarr; <strong style={{ color: '#16a34a' }}>SIM Marked Active</strong></span>
+                    </div>
+                    <div style={{ paddingLeft: '12px', color: '#9ca3af' }}>&#x2193;</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>4</span>
+                      <span>No Reply within 1 hour &rarr; <strong style={{ color: '#dc2626' }}>SIM Marked Inactive</strong></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Recipients Selection */}
@@ -280,7 +445,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
             {/* Search */}
             <input
               type="text"
-              placeholder="Search by name, phone, or operator..."
+              placeholder="Search by name, Contact Number, or operator..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -464,35 +629,45 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                 fontSize: '14px',
               }}
             >
-              Message
+              Message <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Enter your message here..."
+              placeholder="Enter your message here (minimum 10 characters)..."
               rows={5}
-              maxLength={1000}
+              maxLength={4096}
               style={{
                 width: '100%',
+                height: '120px',
                 padding: '12px 14px',
-                border: '1px solid #d1d5db',
+                border: `1px solid ${message.length > 0 && message.trim().length < 10 ? '#dc2626' : '#d1d5db'}`,
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
                 boxSizing: 'border-box',
-                resize: 'vertical',
+                resize: 'none',
+                overflow: 'auto',
               }}
             />
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
                 marginTop: '4px',
                 fontSize: '12px',
-                color: message.length > 900 ? '#dc2626' : '#6b7280',
               }}
             >
-              {message.length}/1000 characters
+              {message.length > 0 && message.trim().length < 10 ? (
+                <span style={{ color: '#dc2626' }}>
+                  Minimum 10 characters required ({10 - message.trim().length} more needed)
+                </span>
+              ) : (
+                <span />
+              )}
+              <span style={{ color: message.length > 3800 ? '#dc2626' : '#6b7280' }}>
+                {message.length}/4096
+              </span>
             </div>
           </div>
 
@@ -560,13 +735,13 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           </button>
           <button
             onClick={handleSend}
-            disabled={loading || selectedIds.length === 0}
+            disabled={loading || selectedIds.length === 0 || message.trim().length < 10}
             style={{
               padding: '10px 20px',
               fontSize: '14px',
               border: 'none',
               borderRadius: '8px',
-              background: loading || selectedIds.length === 0 ? '#9ca3af' : '#25d366',
+              background: loading || selectedIds.length === 0 || message.trim().length < 10 ? '#9ca3af' : '#25d366',
               color: '#fff',
               cursor: loading || selectedIds.length === 0 ? 'not-allowed' : 'pointer',
               display: 'flex',

@@ -17,7 +17,15 @@
       "Bash(netstat -ano)",
       "Bash(findstr :5000)",
       "Bash(taskkill *)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(pip install *)",
+      "Read(//c/Users/SANTOSH/AppData/Local/Programs/**)",
+      "Bash(ls /c/Python*/Scripts/pip*)",
+      "Read(//c/Users/SANTOSH/AppData/Roaming/**)",
+      "Bash(python -m pip --version)",
+      "Bash(Get-ChildItem -Path \"D:\\\\OfficeProjects\\\\SimManagement\\\\SimManagement-Web\\\\backend\\\\src\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)"
     ]
   }
 }

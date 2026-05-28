@@ -61,13 +61,41 @@ function baseLayout({ headerBg, headerIcon, headerTitle, headerSubtitle, bodyCon
     a { color: ${COLORS.brand}; text-decoration: none; }
     @media only screen and (max-width: 600px) {
       .email-wrapper { padding: 12px !important; }
-      .email-card { border-radius: 16px !important; }
-      .email-header { padding: 28px 24px !important; border-radius: 16px 16px 0 0 !important; }
-      .email-body { padding: 28px 24px !important; }
-      .email-footer { padding: 20px 24px !important; }
-      .btn { display: block !important; text-align: center !important; }
+      .email-card { border-radius: 12px !important; }
+      .email-header { padding: 24px 20px !important; border-radius: 12px 12px 0 0 !important; }
+      .email-header h1 { font-size: 18px !important; line-height: 24px !important; }
+      .email-header p { font-size: 13px !important; }
+      .email-body { padding: 24px 20px !important; }
+      .email-footer { padding: 20px 20px !important; }
+      .info-card { padding: 14px 16px !important; border-radius: 10px !important; }
       .info-grid { display: block !important; }
-      .info-grid td { display: block !important; padding: 4px 0 !important; }
+      .info-grid td { display: block !important; padding: 6px 0 !important; width: 100% !important; }
+      .colon-cell { display: none !important; width: 0 !important; padding: 0 !important; font-size: 0 !important; line-height: 0 !important; }
+      .colon-m { display: inline !important; }
+      .alert-box { padding: 12px 16px !important; border-radius: 8px !important; }
+      .otp-box { padding: 20px 16px !important; border-radius: 10px !important; }
+      .otp-code { font-size: 28px !important; letter-spacing: 6px !important; }
+      .password-box { padding: 16px !important; border-radius: 10px !important; }
+      .password-code { font-size: 18px !important; letter-spacing: 2px !important; padding: 8px 12px !important; }
+      .btn-wrap { width: 100% !important; }
+      .btn-wrap td { width: 100% !important; border-radius: 8px !important; }
+      .btn { display: block !important; width: 100% !important; text-align: center !important; padding: 14px 20px !important; }
+      .countdown-box { padding: 20px 16px !important; }
+      .countdown-number { font-size: 36px !important; }
+      .countdown-days { font-size: 14px !important; }
+      .countdown-date { font-size: 13px !important; }
+      .sim-list { padding: 0 !important; }
+      .sim-row td { padding: 10px 0 !important; }
+      .sim-row:last-child td { border-bottom: none !important; }
+      .sim-connect { display: block !important; margin-top: 8px !important; text-align: center !important; }
+    }
+    @media only screen and (max-width: 380px) {
+      .email-wrapper { padding: 8px !important; }
+      .email-body { padding: 20px 16px !important; }
+      .email-header { padding: 20px 16px !important; }
+      .email-header h1 { font-size: 16px !important; }
+      .otp-code { font-size: 24px !important; letter-spacing: 4px !important; }
+      .password-code { font-size: 16px !important; letter-spacing: 1px !important; }
     }
   </style>
 </head>
@@ -80,32 +108,61 @@ function baseLayout({ headerBg, headerIcon, headerTitle, headerSubtitle, bodyCon
                style="max-width:600px; width:100%;" class="email-card">
 
           <!-- ── HEADER ── -->
-          <tr>
-            <td style="
-              background: ${headerBg};
-              padding: 40px 40px 36px;
-              border-radius: 20px 20px 0 0;
-              text-align: center;
-            " class="email-header">
-              <div style="
-                width: 52px; height: 52px;
-                background: rgba(255,255,255,0.2);
-                border-radius: 14px;
-                margin: 0 auto 16px;
-                display: flex; align-items: center; justify-content: center;
-                font-size: 24px; line-height: 52px;
-              ">${headerIcon}</div>
-              <h1 style="
-                color: #FFFFFF;
-                font-size: 22px;
-                font-weight: 600;
-                letter-spacing: -0.3px;
-                margin: 0 0 6px;
-              ">${headerTitle}</h1>
-              ${headerSubtitle ? `<p style="color: rgba(255,255,255,0.82); font-size: 14px; margin: 0;">${headerSubtitle}</p>` : ''}
-            </td>
-          </tr>
+      <tr>
+  <td style="
+    background: ${headerBg};
+    padding: 40px 24px 36px;
+    border-radius: 20px 20px 0 0;
+    text-align: center;
+  " class="email-header">
 
+    <!-- Icon Container -->
+
+<div style="
+  margin: 0 auto 16px auto;
+  text-align: center;
+">
+  <img
+    src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg"
+    alt="Telegram"
+    width="50"
+    height="50"
+    style="
+      display: block;
+      margin: 0 auto;
+      border: 0;
+      outline: none;
+      text-decoration: none;
+    "
+  />
+</div>
+
+    <!-- Title -->
+    <h1 style="
+      color: #FFFFFF;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      margin: 0 0 6px;
+      line-height: 30px;
+    ">
+      ${headerTitle}
+    </h1>
+
+    <!-- Subtitle -->
+    ${headerSubtitle ? `
+      <p style="
+        color: rgba(255,255,255,0.82);
+        font-size: 14px;
+        margin: 0;
+        line-height: 22px;
+      ">
+        ${headerSubtitle}
+      </p>
+    ` : ''}
+
+  </td>
+</tr>
           <!-- ── BODY ── -->
           <tr>
             <td style="
@@ -149,7 +206,7 @@ function baseLayout({ headerBg, headerIcon, headerTitle, headerSubtitle, bodyCon
 // ─── Reusable Snippets ────────────────────────────────────────────────────────
 
 function greeting(name) {
-  return `<p style="font-size: 16px; color: ${COLORS.textPrimary}; margin: 0 0 20px; font-weight: 500;">Hello${name ? `, ${name}` : ''},</p>`;
+  return `<p style="font-size: 16px; color: ${COLORS.textPrimary}; margin: 0 0 20px; font-weight: 500;">Hello${name ? ` ${name}` : ''},</p>`;
 }
 
 function paragraph(text) {
@@ -163,14 +220,19 @@ function divider() {
 function infoCard(rows, { bg = COLORS.surfaceAlt, border = COLORS.border } = {}) {
   const rowsHtml = rows
     .filter(Boolean)
-    .map(([label, value]) => `
-      <tr>
-        <td style="padding: 9px 0; font-size: 13px; color: ${COLORS.textMuted}; width: 42%; vertical-align: top;">${label}</td>
+    .map(([label, value]) => {
+      const isSpacer = !label && !value;
+      return isSpacer
+        ? `<tr><td colspan="3" style="padding: 6px 0;"><hr style="border: none; border-top: 1px solid ${COLORS.border}; margin: 0;" /></td></tr>`
+        : `<tr>
+        <td style="padding: 9px 0; font-size: 13px; color: ${COLORS.textMuted}; width: 40%; vertical-align: top;">${label}${label ? '<span class="colon-m" style="display:none;"> :</span>' : ''}</td>
+        <td class="colon-cell" style="padding: 9px 2px; font-size: 13px; color: ${COLORS.textMuted}; width: 4%; vertical-align: top; text-align: center;">:</td>
         <td style="padding: 9px 0; font-size: 14px; color: ${COLORS.textPrimary}; font-weight: 500; vertical-align: top;">${value}</td>
-      </tr>`)
+      </tr>`;
+    })
     .join('');
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="info-card" style="
       background: ${bg};
       border: 1px solid ${border};
       border-radius: 12px;
@@ -187,7 +249,7 @@ function infoCard(rows, { bg = COLORS.surfaceAlt, border = COLORS.border } = {})
 
 function alertBox(text, { bg, border, textColor, label = '' } = {}) {
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="alert-box" style="
       background: ${bg};
       border: 1px solid ${border};
       border-radius: 10px;
@@ -202,7 +264,7 @@ function alertBox(text, { bg, border, textColor, label = '' } = {}) {
 
 function otpBox(otp) {
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="otp-box" style="
       background: ${COLORS.infoBg};
       border: 2px solid ${COLORS.brand};
       border-radius: 14px;
@@ -212,7 +274,7 @@ function otpBox(otp) {
     ">
       <tr><td>
         <p style="font-size: 12px; color: ${COLORS.brand}; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin: 0 0 12px;">Your Verification Code</p>
-        <p style="
+        <p class="otp-code" style="
           font-size: 40px;
           font-weight: 600;
           letter-spacing: 12px;
@@ -227,7 +289,7 @@ function otpBox(otp) {
 
 function ctaButton(label, href, color = COLORS.brand) {
   return `
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" class="btn-wrap" style="margin: 24px 0;">
       <tr>
         <td style="border-radius: 10px; background: ${color};">
           <a href="${href}" class="btn" style="
@@ -247,7 +309,7 @@ function ctaButton(label, href, color = COLORS.brand) {
 
 function passwordBox(password) {
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="password-box" style="
       background: ${COLORS.successBg};
       border: 1.5px solid ${COLORS.successBdr};
       border-radius: 12px;
@@ -257,7 +319,7 @@ function passwordBox(password) {
     ">
       <tr><td>
         <p style="font-size: 12px; color: ${COLORS.success}; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 10px;">Temporary Password</p>
-        <p style="
+        <p class="password-code" style="
           font-size: 22px;
           font-family: 'Courier New', Courier, monospace;
           font-weight: 600;
@@ -539,8 +601,8 @@ class EmailService {
       return { success: false, error: 'Email service not configured' };
     }
     if (!to || !to.includes('@')) {
-      logger.error('Invalid email address', { to });
-      return { success: false, error: 'Invalid email address' };
+      logger.error('Invalid Email ID', { to });
+      return { success: false, error: 'Invalid Email ID' };
     }
     try {
       const mailOptions = {
@@ -570,13 +632,12 @@ class EmailService {
       ${greeting(user.name)}
       ${paragraph(`Your account has been successfully created for <strong>${company.name}</strong>. You're all set to start managing your SIM cards and services.`)}
       ${infoCard([
-      ['Email Address', user.email],
+      ['Email ID', user.email],
       ['Role', user.role || 'User'],
       ['Company', company.name],
     ])}
-  
-
-    
+      ${tempPassword ? passwordBox(tempPassword) : ''}
+      ${tempPassword ? ctaButton('Log In Now', loginUrl, '#1A56DB') : ctaButton('Go to Login', loginUrl, '#1A56DB')}
       ${divider()}
       ${paragraph(`If you have any questions or need help getting set up, feel free to reach out to your administrator.`)}
     `;
@@ -640,7 +701,7 @@ class EmailService {
       ${greeting(user.name)}
       ${paragraph(`A SIM card has been assigned to you by <strong>${assignedBy.name}</strong>. Please find the details below.`)}
       ${infoCard([
-      ['Mobile Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
+      ['Contact Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
       ['Operator', sim.operator],
       ['Status', sim.status],
       sim.circle ? ['Circle', sim.circle] : null,
@@ -673,7 +734,7 @@ class EmailService {
       ${greeting(user.name)}
       ${paragraph('Your SIM card is due for recharge soon. Please recharge before the due date to avoid any service interruption.')}
       ${infoCard([
-      ['Mobile Number', sim.mobileNumber],
+      ['Contact Number', sim.mobileNumber],
       ['Operator', sim.operator],
       ['Next Recharge Date', `<strong style="color:#B45309;">${nextDate}</strong>`],
       ['Last Recharge Amount', `&#8377;${recharge.amount}`],
@@ -752,7 +813,7 @@ class EmailService {
       headerTitle: 'Password Reset Code',
       headerSubtitle: 'SIM Management Verification',
       bodyContent: body,
-      footerNote: 'This code is valid for 10 minutes. Do not share it with anyone.',
+      footerNote: 'Code expires in 10 minutes. Do not share it with anyone.',
     });
 
     return this.sendEmail({ to: email, subject, html });
@@ -770,7 +831,7 @@ class EmailService {
     const body = `
       ${greeting(company.name)}
       ${paragraph('Your SIM Management subscription is expiring soon. Renew now to avoid interruption to your services.')}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="countdown-box" style="
         background: ${isUrgent ? COLORS.dangerBg : COLORS.warningBg};
         border: 1.5px solid ${isUrgent ? COLORS.dangerBdr : COLORS.warningBdr};
         border-radius: 14px;
@@ -780,9 +841,9 @@ class EmailService {
       ">
         <tr><td>
           <p style="font-size: 13px; color: ${COLORS.textMuted}; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Time Remaining</p>
-          <p style="font-size: 44px; font-weight: 600; color: ${isUrgent ? '#9B1C1C' : '#92400E'}; margin: 0; line-height: 1;">${daysRemaining}</p>
-          <p style="font-size: 16px; color: ${isUrgent ? '#9B1C1C' : '#92400E'}; margin: 4px 0 12px;">day${daysRemaining !== 1 ? 's' : ''} remaining</p>
-          <p style="font-size: 14px; color: ${COLORS.textMuted}; margin: 0;">Expiry Date: <strong>${expiryDate}</strong></p>
+          <p class="countdown-number" style="font-size: 44px; font-weight: 600; color: ${isUrgent ? '#9B1C1C' : '#92400E'}; margin: 0; line-height: 1;">${daysRemaining}</p>
+          <p class="countdown-days" style="font-size: 16px; color: ${isUrgent ? '#9B1C1C' : '#92400E'}; margin: 4px 0 12px;">day${daysRemaining !== 1 ? 's' : ''} remaining</p>
+          <p style="font-size: 14px; color: ${COLORS.textMuted}; margin: 0;">Expiry Date : <strong>${expiryDate}</strong></p>
         </td></tr>
       </table>
       ${isUrgent
@@ -813,13 +874,13 @@ class EmailService {
     const subject = 'Your Login OTP — SIM Management';
 
     const body = `
-      ${paragraph('You requested to log in to SIM Management using your mobile number. Use the one-time password below to complete your login.')}
-      ${infoCard([['Mobile Number', `+91 ${mobileNumber}`]])}
+      ${paragraph('You requested to log in to SIM Management using your Contact Number. Use the one-time password below to complete your login.')}
+      ${infoCard([['Contact Number', `+91 ${mobileNumber}`]])}
       ${otpBox(otp)}
       ${alertBox(`
         <ul style="margin: 6px 0 0; padding-left: 20px; line-height: 1.8;">
-          <li>This OTP is valid for <strong>5 minutes</strong></li>
-          <li>Do not share this OTP with anyone</li>
+          <li>This code expires in <strong>5 minutes</strong></li>
+          <li>Do not share this code with anyone</li>
           <li>If you didn't request this, please ignore this email</li>
         </ul>
       `, { bg: COLORS.warningBg, border: COLORS.warningBdr, textColor: '#92400E', label: '&#9888; Security Notice' })}
@@ -832,7 +893,7 @@ class EmailService {
       headerTitle: 'One-Time Password',
       headerSubtitle: 'Login verification for SIM Management',
       bodyContent: body,
-      footerNote: 'This OTP is valid for 5 minutes. Never share it with anyone.',
+      footerNote: 'This code expires in 5 minutes. Do not share it with anyone.',
     });
 
     console.log('OTP:', otp);
@@ -848,7 +909,7 @@ class EmailService {
       ${greeting(user.name)}
       ${paragraph(`The SIM card <strong>${sim.mobileNumber}</strong> has been unassigned from you by <strong>${unassignedBy.name}</strong>.`)}
       ${infoCard([
-      ['Mobile Number', sim.mobileNumber],
+      ['Contact Number', sim.mobileNumber],
       ['Operator', sim.operator],
       ['Status', 'Unassigned'],
       sim.circle ? ['Circle', sim.circle] : null,
@@ -966,7 +1027,7 @@ class EmailService {
 
   async sendAdminPasswordResetEmail(user, newPassword, resetBy) {
     const subject = 'Your Password Has Been Reset — SIM Management';
-    const loginUrl = `${config.app.frontendUrl || 'http://localhost:3000'}/login`;
+    const loginUrl = `${config.app.frontendUrl || 'https://simtrackr.b100x.in'}/login`;
 
     const body = `
       ${greeting(user.name)}
@@ -1025,7 +1086,7 @@ class EmailService {
 
   async sendUserActivationEmail(user, company, activatedBy) {
     const subject = 'Account Reactivated — SIM Management';
-    const loginUrl = `${config.app.frontendUrl || 'http://localhost:3000'}/login`;
+    const loginUrl = `${config.app.frontendUrl || 'https://simtrackr.b100x.in'}/login`;
 
     const body = `
       ${greeting(user.name)}
@@ -1099,51 +1160,6 @@ class EmailService {
 
   // ─── Telegram Link Email ────────────────────────────────────────────────────
 
-  // async sendTelegramLinkEmail(user, sim, telegramLink, sentBy) {
-  //   const subject = `Connect Your SIM to Telegram — ${sim.mobileNumber}`;
-
-  //   const body = `
-  //     ${greeting(user.name)}
-  //     ${paragraph(`Your administrator <strong>${sentBy.name}</strong> has requested you to link your SIM to Telegram for activity tracking.`)}
-  //     ${infoCard([
-  //     ['Mobile Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
-  //     ['Operator', sim.operator],
-  //     ['Status', sim.status],
-  //     sim.circle ? ['Circle', sim.circle] : null,
-  //     ['Requested By', sentBy.name],
-  //   ])}
-  //     ${alertBox('Linking your SIM to Telegram allows us to track your SIM activity. You will receive periodic check messages and need to reply to keep your SIM marked as active.', {
-  //     bg: COLORS.infoBg, border: COLORS.infoBdr, textColor: COLORS.info, label: '&#128241; Why Link?'
-  //   })}
-  //     ${paragraph('Click the button below to open Telegram and connect your SIM:')}
-  //     ${ctaButton('Connect via Telegram', telegramLink, '#0088cc')}
-  //     ${divider()}
-  //     ${paragraph(`<strong>How to connect:</strong>`)}
-  //     <ol style="margin: 12px 0; padding-left: 20px; line-height: 1.8; color: #374151;">
-  //       <li>Click the button above or copy the link</li>
-  //       <li>Open Telegram (app or web)</li>
-  //       <li>Start a chat with the bot</li>
-  //       <li>Tap the <strong>"Start"</strong> button</li>
-  //       <li>Done! Your SIM is now linked</li>
-  //     </ol>
-  //     ${paragraph(`If the button doesn't work, copy this link:<br />
-  //       <span style="font-size:12px; color:${COLORS.textMuted}; word-break:break-all;">${telegramLink}</span>`)}
-  //   `;
-
-  //   const html = baseLayout({
-  //     headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
-  //     headerIcon: '&#9995;',
-  //     headerTitle: 'Connect SIM to Telegram',
-  //     headerSubtitle: sim.mobileNumber,
-  //     bodyContent: body,
-  //   });
-
-  //   return this.sendEmail({ to: user.email, subject, html });
-  // }
-
-
-  // ─── Telegram Link Email ────────────────────────────────────────────────────
-
   async sendTelegramLinkEmail(user, sim, telegramLink, sentBy) {
     const subject = `Connect Your SIM to Telegram — ${sim.mobileNumber}`;
 
@@ -1151,7 +1167,7 @@ class EmailService {
       ${greeting(user.name)}
       ${paragraph(`Your administrator <strong>${sentBy.name}</strong> has requested you to link your SIM to Telegram for activity tracking.`)}
       ${infoCard([
-      ['Mobile Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
+      ['Contact Number', `<strong style="font-size:16px;">${sim.mobileNumber}</strong>`],
       ['Operator', sim.operator],
       ['Status', sim.status],
       sim.circle ? ['Circle', sim.circle] : null,
@@ -1249,65 +1265,13 @@ class EmailService {
 
     return this.sendEmail({ to: superadmin.email, subject, html });
   }
-
-  // ─── Bulk Telegram Link Email ────────────────────────────────────────────────────
-
-  // async sendBulkTelegramLinkEmail(user, simLinks, sentBy) {
-  //   const subject = `Connect Your SIMs to Telegram — ${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''}`;
-
-  //   const simRows = simLinks.map(({ sim, link }) => `
-  //     <tr>
-  //       <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.border};">
-  //         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-  //           <tr>
-  //             <td style="vertical-align: top;">
-  //               <p style="font-size: 15px; font-weight: 600; color: ${COLORS.textPrimary}; margin: 0;">${sim.mobileNumber}</p>
-  //               <p style="font-size: 13px; color: ${COLORS.textMuted}; margin: 4px 0 0;">${sim.operator}</p>
-  //             </td>
-  //             <td style="text-align: right; vertical-align: middle;">
-  //               <a href="${link}" style="display: inline-block; padding: 8px 16px; background: #0088cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Connect</a>
-  //             </td>
-  //           </tr>
-  //         </table>
-  //       </td>
-  //     </tr>
-  //   `).join('');
-
-  //   const body = `
-  //     ${greeting(user.name)}
-  //     ${paragraph(`Your administrator <strong>${sentBy.name}</strong> has requested you to link ${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''} to Telegram for activity tracking.`)}
-  //     ${alertBox('Please connect each SIM to Telegram. You will receive check messages and need to reply to keep your SIMs marked as active.', {
-  //     bg: COLORS.infoBg, border: COLORS.infoBdr, textColor: COLORS.info, label: '&#128241; Important'
-  //   })}
-  //     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
-  //       ${simRows}
-  //     </table>
-  //     ${paragraph('<strong>How to connect:</strong>')}
-  //     <ol style="margin: 12px 0; padding-left: 20px; line-height: 1.8; color: #374151;">
-  //       <li>Click "Connect" next to each SIM</li>
-  //       <li>Open Telegram and tap "Start"</li>
-  //       <li>Your SIM will be automatically linked</li>
-  //     </ol>
-  //   `;
-
-  //   const html = baseLayout({
-  //     headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
-  //     headerIcon: '&#9995;',
-  //     headerTitle: 'Connect SIMs to Telegram',
-  //     headerSubtitle: `${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''} to link`,
-  //     bodyContent: body,
-  //   });
-
-  //   return this.sendEmail({ to: user.email, subject, html });
-  // }
-
   // ─── Bulk Telegram Link Email ────────────────────────────────────────────────────
 
   async sendBulkTelegramLinkEmail(user, simLinks, sentBy) {
     const subject = `Connect Your SIMs to Telegram — ${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''}`;
 
     const simRows = simLinks.map(({ sim, link }) => `
-      <tr>
+      <tr class="sim-row">
         <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.border};">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             <tr>
@@ -1315,7 +1279,7 @@ class EmailService {
                 <p style="font-size: 15px; font-weight: 600; color: ${COLORS.textPrimary}; margin: 0;">${sim.mobileNumber}</p>
                 <p style="font-size: 13px; color: ${COLORS.textMuted}; margin: 4px 0 0;">${sim.operator}</p>
               </td>
-              <td style="text-align: right; vertical-align: middle;">
+              <td class="sim-connect" style="text-align: right; vertical-align: middle;">
                 <a href="${link}" style="display: inline-block; padding: 8px 16px; background: #0088cc; color: #fff; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Connect</a>
               </td>
             </tr>
@@ -1342,7 +1306,7 @@ class EmailService {
           <li>Select <strong>Everybody</strong></li>
         </ol>
       `, { bg: '#FFF7ED', border: '#FED7AA', textColor: '#92400E', label: '' })}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="sim-list" style="margin: 20px 0;">
         ${simRows}
       </table>
       ${paragraph('<strong>How to connect:</strong>')}
@@ -1375,13 +1339,13 @@ class EmailService {
     const subject = 'Verify Email Change Request';
     const body = `
       ${paragraph(`Hi ${userName || 'there'},`)}
-      ${paragraph('We received a request to change your email address.')}
+      ${paragraph('We received a request to change your Email ID.')}
       ${alertBox(`
         <strong>Verification Code</strong><br />
         <span style="font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #1A56DB;">${otp}</span>
       `, { bg: '#EBF5FF', border: '#93C5FD', textColor: '#1E429F', label: 'Your Code' })}
-      ${paragraph(`<strong>New Email:</strong> ${newEmail}`)}
-      ${paragraph('<strong>This code expires in 10 minutes.</strong>', { color: '#DC2626' })}
+      ${paragraph(`<strong>New Email :</strong> ${newEmail}`)}
+      ${paragraph('<strong>Code expires in 10 minutes.</strong>', { color: '#DC2626' })}
       ${paragraph('If you did not request this change, please ignore this email or contact support immediately.')}
     `;
 
@@ -1400,16 +1364,16 @@ class EmailService {
    * Send OTP to NEW email for email change verification
    */
   async sendEmailChangeOTPNew(toEmail, otp, userName, oldEmail) {
-    const subject = 'Verify Your New Email Address';
+    const subject = 'Verify Your New Email ID';
     const body = `
       ${paragraph(`Hi ${userName || 'there'},`)}
-      ${paragraph('Please verify that this is your new email address.')}
+      ${paragraph('Please verify that this is your new Email ID.')}
       ${alertBox(`
         <strong>Verification Code</strong><br />
         <span style="font-size: 28px; font-weight: 700; letter-spacing: 4px; color: #057A55;">${otp}</span>
       `, { bg: '#F3FAF7', border: '#BCF0DA', textColor: '#057A55', label: 'Your Code' })}
-      ${paragraph(`<strong>Previous Email:</strong> ${oldEmail}`)}
-      ${paragraph('<strong>This code expires in 10 minutes.</strong>', { color: '#DC2626' })}
+      ${paragraph(`<strong>Previous Email :</strong> ${oldEmail}`)}
+      ${paragraph('<strong>Code expires in 10 minutes.</strong>', { color: '#DC2626' })}
       ${paragraph('If you did not request this change, please ignore this email.')}
     `;
 
@@ -1417,7 +1381,7 @@ class EmailService {
       headerBg: `linear-gradient(135deg, #057A55 0%, #047857 100%)`,
       headerIcon: '&#9989;',
       headerTitle: 'Verify New Email',
-      headerSubtitle: 'Confirm your new email address',
+      headerSubtitle: 'Confirm your new Email ID',
       bodyContent: body,
     });
 
@@ -1433,8 +1397,8 @@ class EmailService {
       ${paragraph(`Hi ${userName || 'there'},`)}
       ${paragraph('Your account email has been successfully changed.')}
       ${alertBox(`
-        <strong>Previous Email:</strong> ${toEmail}<br />
-        <strong>New Email:</strong> ${newEmail}
+        <strong>Previous Email :</strong> ${toEmail}<br />
+        <strong>New Email :</strong> ${newEmail}
       `, { bg: '#FDF2F2', border: '#F8B4B8', textColor: '#9B1C1C', label: 'Email Changed' })}
       ${paragraph('You will no longer receive emails at this address. All future communications will be sent to your new email.')}
       ${paragraph('<strong>If you did not make this change, please contact support immediately.</strong>', { color: '#DC2626' })}
@@ -1460,11 +1424,11 @@ class EmailService {
       ${paragraph(`Hi ${userName || 'there'},`)}
       ${paragraph('Your email has been successfully updated.')}
       ${alertBox(`
-        <strong>New Email:</strong> ${toEmail}<br />
-        <strong>Previous Email:</strong> ${oldEmail}
+        <strong>New Email :</strong> ${toEmail}<br />
+        <strong>Previous Email :</strong> ${oldEmail}
       `, { bg: '#F3FAF7', border: '#BCF0DA', textColor: '#057A55', label: 'Confirmed' })}
-      ${paragraph('You can now log in using your new email address.')}
-      ${paragraph('All future communications will be sent to this email address.')}
+      ${paragraph('You can now log in using your new Email ID.')}
+      ${paragraph('All future communications will be sent to this Email ID.')}
     `;
 
     const html = baseLayout({

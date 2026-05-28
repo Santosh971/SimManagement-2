@@ -30,12 +30,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't redirect on login/register routes - let them handle their own errors
+    // Don't redirect on routes where 401 means "wrong credentials", not "session expired"
     const isAuthRoute = error.config?.url?.includes('/auth/login') ||
                         error.config?.url?.includes('/auth/register') ||
                         error.config?.url?.includes('/auth/forgot-password') ||
                         error.config?.url?.includes('/auth/reset-password') ||
-                        error.config?.url?.includes('/auth/email-change')
+                        error.config?.url?.includes('/auth/email-change') ||
+                        error.config?.url?.includes('/auth/change-password') ||
+                        error.config?.url?.includes('/companies/my/email-change')
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !isAuthRoute) {
@@ -99,6 +101,26 @@ api.interceptors.response.use(
 )
 
 /**
+ * Extract a user-friendly error message from an API error response.
+ * Handles validation errors with field-specific messages (errors array),
+ * regular error messages, and fallback messages.
+ * @param {Error} error - The error object from a catch block
+ * @param {string} fallbackMessage - Fallback message if error has no message
+ * @returns {string} A readable error message
+ */
+const extractErrorMessage = (error, fallbackMessage = 'Operation failed') => {
+  const data = error.response?.data
+  if (!data) return fallbackMessage
+
+  // If backend returned specific field-level validation errors, join them
+  if (Array.isArray(data.errors) && data.errors.length > 0) {
+    return data.errors.map((e) => e.message).join('. ')
+  }
+
+  return data.message || fallbackMessage
+}
+
+/**
  * Helper function to show error toast (skips FEATURE_NOT_AVAILABLE errors)
  * Use this in catch blocks instead of: toast.error(error.response?.data?.message || 'Error')
  * @param {Error} error - The error object
@@ -110,8 +132,7 @@ const showErrorToast = (error, fallbackMessage = 'Operation failed') => {
   // Skip if it's a FEATURE_NOT_AVAILABLE error
   if (error.response?.data?.code === 'FEATURE_NOT_AVAILABLE') return
 
-  const message = error.response?.data?.message || fallbackMessage
-  toast.error(message)
+  toast.error(extractErrorMessage(error, fallbackMessage))
 }
 
 export const AuthProvider = ({ children }) => {
@@ -193,11 +214,10 @@ export const AuthProvider = ({ children }) => {
       const { data } = response.data
       setUser(data)
       localStorage.setItem('user', JSON.stringify(data))
-      toast.success('Profile updated successfully')
+      toast.success('Profile updated successfully.')
       return data
     } catch (error) {
-      const message = error.response?.data?.message || 'Update failed'
-      toast.error(message)
+      toast.error(extractErrorMessage(error, 'Update failed'))
       throw error
     }
   }
@@ -205,10 +225,14 @@ export const AuthProvider = ({ children }) => {
   const changePassword = async (currentPassword, newPassword) => {
     try {
       await api.post('/auth/change-password', { currentPassword, newPassword })
-      toast.success('Password changed successfully')
+      toast.success('Password changed successfully. Please log in again.', { duration: 4000 })
+      // Log out the user after password change so they re-authenticate with the new password
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      setUser(null)
+      setTimeout(() => { window.location.href = '/login' }, 1500)
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to change password'
-      toast.error(message)
+      toast.error(extractErrorMessage(error, 'Failed to change password'))
       throw error
     }
   }
@@ -237,4 +261,4 @@ export const useAuth = () => {
   return context
 }
 
-export { api, showErrorToast }
+export { api, showErrorToast, extractErrorMessage }

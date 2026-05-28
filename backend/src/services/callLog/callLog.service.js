@@ -135,7 +135,7 @@ class CallLogService {
 
   /**
    * Sync call logs from mobile device without JWT authentication
-   * Uses mobile number to identify the SIM
+   * Uses Contact Number to identify the SIM
    * [PHONE NORMALIZATION FIX] - Handle both phone formats for backward compatibility
    * [SECURITY UPDATE] - This endpoint is now deprecated, use authenticated sync
    */
@@ -143,7 +143,7 @@ class CallLogService {
     const { mobileNumber, callLogs } = data;
 
     if (!mobileNumber) {
-      throw new Error('Mobile number is required');
+      throw new Error('Contact Number is required');
     }
 
     if (!callLogs || !Array.isArray(callLogs) || callLogs.length === 0) {
@@ -155,7 +155,7 @@ class CallLogService {
     const phoneQuery = buildPhoneQuery(mobileNumber);
 
     if (!phoneQuery) {
-      throw new Error('Invalid mobile number format');
+      throw new Error('Invalid Contact Number format');
     }
 
     // [PHONE NORMALIZATION FIX] - Log normalization
@@ -165,7 +165,7 @@ class CallLogService {
       query: JSON.stringify(phoneQuery)
     });
 
-    // [PHONE NORMALIZATION FIX] - Find SIM by mobile number (matches both formats)
+    // [PHONE NORMALIZATION FIX] - Find SIM by Contact Number (matches both formats)
     const sim = await Sim.findOne(phoneQuery);
 
     if (!sim) {
@@ -174,7 +174,7 @@ class CallLogService {
         originalMobileNumber: original,
         normalizedMobileNumber: normalized
       });
-      throw new NotFoundError('SIM not found with this mobile number. Please register the SIM first.');
+      throw new NotFoundError('SIM not found with this Contact Number. Please register the SIM first.');
     }
 
     logger.info('SIM found for deviceSync', {
@@ -205,9 +205,12 @@ class CallLogService {
       phoneNumber,
       startDate,
       endDate,
+      uniqueOnly,
       sortBy = 'timestamp',
       sortOrder = 'desc',
     } = query;
+
+    const showUniqueOnly = uniqueOnly === 'true' || uniqueOnly === true;
 
     const filter = {};
 
@@ -230,11 +233,38 @@ class CallLogService {
     if (startDate || endDate) {
       filter.timestamp = {};
       if (startDate) filter.timestamp.$gte = new Date(startDate);
-      if (endDate) filter.timestamp.$lte = new Date(endDate);
+      if (endDate) filter.timestamp.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+    }
+
+    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+
+    // Unique numbers mode: return one record per phone number (most recent call)
+    if (showUniqueOnly) {
+      const allCallLogs = await CallLog.find(filter)
+        .populate('simId', 'mobileNumber operator')
+        .sort(sort)
+        .limit(10000)
+        .lean();
+
+      const uniqueMap = new Map();
+      allCallLogs.forEach(c => {
+        const key = c.phoneNumber;
+        if (!uniqueMap.has(key) || new Date(c.timestamp) > new Date(uniqueMap.get(key).timestamp)) {
+          uniqueMap.set(key, c);
+        }
+      });
+
+      const uniqueResults = Array.from(uniqueMap.values())
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      const totalUnique = uniqueResults.length;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const paginatedResults = uniqueResults.slice(skip, skip + parseInt(limit));
+
+      return { data: paginatedResults, total: totalUnique, page: parseInt(page), limit: parseInt(limit) };
     }
 
     const skip = (page - 1) * limit;
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
     const callLogs = await CallLog.find(filter)
       .populate('simId', 'mobileNumber operator')
@@ -323,7 +353,7 @@ class CallLogService {
     if (startDate || endDate) {
       filter.timestamp = {};
       if (startDate) filter.timestamp.$gte = new Date(startDate);
-      if (endDate) filter.timestamp.$lte = new Date(endDate);
+      if (endDate) filter.timestamp.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
 
     const callLogs = await CallLog.find(filter)

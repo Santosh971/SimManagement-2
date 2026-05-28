@@ -67,7 +67,7 @@ class PageContentService {
 <p>We may collect, use, store and transfer different kinds of personal data about you, which we have grouped together as follows:</p>
 <ul>
 <li><strong>Identity Data:</strong> includes first name, last name, username or similar identifier.</li>
-<li><strong>Contact Data:</strong> includes email address, telephone numbers.</li>
+<li><strong>Contact Data:</strong> includes Email ID, telephone numbers.</li>
 <li><strong>Technical Data:</strong> includes internet protocol (IP) address, browser type and version, time zone setting and location.</li>
 <li><strong>Usage Data:</strong> includes information about how you use our website and services.</li>
 </ul>

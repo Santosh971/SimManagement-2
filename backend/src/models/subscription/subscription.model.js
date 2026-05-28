@@ -267,7 +267,7 @@ const defaultPlans = [
   },
   {
     name: 'Enterprise',
-    description: 'For large organizations with advanced needs',
+    description: 'For large Organisations with advanced needs',
     price: { monthly: 4999, yearly: 49990 },
     features: {
       callLogSync: true,

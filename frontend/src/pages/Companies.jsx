@@ -240,7 +240,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave }) {
       {/* Company Name + Email */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px' }}>
         <div>
-          <label style={labelStyle}>Company Name *</label>
+          <label style={labelStyle}>Company Name*</label>
           <input
             type="text"
             name="name"
@@ -943,14 +943,14 @@ export default function Companies() {
   }
 
   const handleDeleteAdmin = async (adminId) => {
-    if (!window.confirm('Are you sure you want to deactivate this admin?')) return
+    if (!window.confirm('Are you sure you want to permanently delete this admin? This action cannot be undone.')) return
 
     try {
       await api.delete(`/companies/admins/${adminId}`)
-      toast.success('Admin Remove successfully')
+      toast.success('Admin deleted successfully')
       fetchCompanyAdmins(selectedCompany._id)
     } catch (error) {
-      toast.error('Failed to deactivate admin')
+      toast.error('Failed to delete admin')
     }
   }
 
@@ -1116,6 +1116,7 @@ export default function Companies() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb' }}>
+                    <th style={{ width: '50px', padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>S.No.</th>
                     <th style={{ width: '40px', padding: '12px 16px' }}></th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Company Name</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>Email</th>
@@ -1126,9 +1127,10 @@ export default function Companies() {
                   </tr>
                 </thead>
                 <tbody>
-                  {companies.map((company) => (
+                  {companies.map((company, index) => (
                     <Fragment key={company._id}>
                       <tr style={{ borderTop: '1px solid #e5e7eb', cursor: 'pointer' }}>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <button
                             onClick={() => toggleCompanyExpand(company._id)}
@@ -1234,7 +1236,7 @@ export default function Companies() {
                                         <button
                                           onClick={() => handleDeleteAdmin(admin._id)}
                                           style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                                          title="Deactivate"
+                                          title="Delete"
                                         >
                                           <FiTrash2 style={{ width: '16px', height: '16px', color: '#dc2626' }} />
                                         </button>
@@ -1274,6 +1276,7 @@ export default function Companies() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

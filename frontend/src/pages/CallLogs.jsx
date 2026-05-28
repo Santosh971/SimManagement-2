@@ -92,18 +92,31 @@ export default function CallLogs() {
   const [loading, setLoading] = useState(true)
   const [callType, setCallType] = useState('')
   const [simId, setSimId] = useState('')
+  const [uniqueOnly, setUniqueOnly] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneSearch, setPhoneSearch] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
   const [stats, setStats] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const [initialLoad, setInitialLoad] = useState(true)
 
   useEffect(() => { fetchCallLogs(); fetchStats(); fetchSims() }, [pagination.page])
 
   useEffect(() => {
     if (pagination.page === 1) fetchCallLogs()
     else setPagination(p => ({ ...p, page: 1 }))
-  }, [callType, simId, phoneNumber, dateRange.start, dateRange.end])
+  }, [callType, simId, phoneNumber, dateRange.start, dateRange.end, uniqueOnly])
+
+  // Debounce phone search: update local state immediately, apply to filter after delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (phoneNumber !== phoneSearch) {
+        setPhoneNumber(phoneSearch)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [phoneSearch])
 
   // Auto-refresh polling (every 20 seconds)
   useEffect(() => {
@@ -116,7 +129,7 @@ export default function CallLogs() {
     }, 20000) // 20 seconds
 
     return () => clearInterval(interval)
-  }, [autoRefresh, pagination.page, callType, simId, phoneNumber, dateRange.start, dateRange.end])
+  }, [autoRefresh, pagination.page, callType, simId, phoneNumber, dateRange.start, dateRange.end, uniqueOnly])
 
   const fetchSims = async () => {
     try {
@@ -137,10 +150,12 @@ export default function CallLogs() {
         ...(phoneNumber && { phoneNumber }),
         ...(dateRange.start && { startDate: dateRange.start }),
         ...(dateRange.end && { endDate: dateRange.end }),
+        ...(uniqueOnly && { uniqueOnly: 'true' }),
       })
       const r = await api.get(`/call-logs?${params}`)
       setCallLogs(r.data.data || [])
       setPagination(p => ({ ...p, total: r.data.pagination?.total || 0 }))
+      setInitialLoad(false)
     } catch {
       // Only show toast error for manual refresh, not polling
       if (!silent) {
@@ -159,6 +174,7 @@ export default function CallLogs() {
     try { const r = await api.get('/call-logs/stats'); setStats(r.data.data) } catch { }
   }
 
+  
   const handleSearch = (e) => { e.preventDefault(); fetchCallLogs() }
 
   const handleExport = async () => {
@@ -234,7 +250,7 @@ export default function CallLogs() {
     opacity: disabled ? 0.45 : 1,
   })
 
-  if (loading && callLogs.length === 0) {
+  if (loading && initialLoad) {
     return <PageContainer><Spinner size="lg" /></PageContainer>
   }
   const today = new Date().toISOString().split('T')[0];
@@ -247,7 +263,25 @@ export default function CallLogs() {
       <PageHeader
         title="Call Logs"
         description="View and analyze call history from mobile devices"
-        action={<Button variant="secondary" icon={FiDownload} onClick={handleExport}>Export</Button>}
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {uniqueOnly && (
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: '99px',
+                fontSize: '11px',
+                fontWeight: '600',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                whiteSpace: 'nowrap',
+              }}>
+                Unique Numbers Only
+              </span>
+            )}
+            <Button variant="secondary" icon={FiDownload} onClick={handleExport}>Export</Button>
+          </div>
+        }
       />
 
       {/* ── Stats ── */}
@@ -270,8 +304,8 @@ export default function CallLogs() {
                 <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', width: '14px', height: '14px' }} />
                 <input
                   type="text"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/[\t\n\r]+/g, '').trim())}
+                  value={phoneSearch}
+                  onChange={(e) => setPhoneSearch(e.target.value.replace(/[\t\n\r]+/g, '').trim())}
                   placeholder="Search phone number..."
                   style={{ ...inputBase, paddingLeft: '32px' }}
                 />
@@ -289,6 +323,27 @@ export default function CallLogs() {
                 {sims.map(s => <option key={s._id} value={s._id}>{s.mobileNumber} ({s.operator})</option>)}
               </select>
 
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                color: '#374151',
+                whiteSpace: 'nowrap',
+                minWidth: '0',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={uniqueOnly}
+                  onChange={(e) => setUniqueOnly(e.target.checked)}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
+                />
+                Unique Numbers
+              </label>
+{/* 
+         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' , marginLeft :'-15px'}}>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>From:</span>
               <input
                 type="date"
                 value={dateRange.start}
@@ -297,14 +352,42 @@ export default function CallLogs() {
                 onChange={(e) =>
                   setDateRange(p => ({ ...p, start: e.target.value }))
                 }
-                style={{ ...inputBase, cursor: 'pointer' }}
+                style={{ ...inputBase, cursor: 'pointer'}}
               />
+              </div> */}
+<div
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginLeft: window.innerWidth <= 867 ? '0' : '-20px',
+  }}
+>
+  <span style={{ fontSize: '14px', color: '#6b7280' }}>
+    From:
+  </span>
+
+  <input
+    type="date"
+    value={dateRange.start}
+    max={today}
+    onKeyDown={(e) => e.preventDefault()}
+    onChange={(e) =>
+      setDateRange((p) => ({ ...p, start: e.target.value }))
+    }
+    style={{ ...inputBase, cursor: 'pointer' }}
+  />
+</div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>To:</span>
               <input
                 type="date" value={dateRange.end}
                 onKeyDown={(e) => e.preventDefault()}
                 onChange={(e) => setDateRange(p => ({ ...p, end: e.target.value }))}
                 style={{ ...inputBase, cursor: 'pointer' }}
               />
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
@@ -363,22 +446,27 @@ export default function CallLogs() {
                 <table className="cl-table">
                   <thead>
                     <tr>
+                      <th style={{ width: '50px', textAlign: 'center' }}>S.No.</th>
                       <th style={{ width: '110px' }}>Type</th>
                       <th style={{ minWidth: '130px' }}>Phone</th>
                       <th className="cl-col-contact" style={{ minWidth: '110px' }}>Contact</th>
                       <th className="cl-col-sim" style={{ minWidth: '130px' }}>SIM</th>
-                      <th style={{ width: '80px' }}>Duration</th>
+                      {callType !== 'missed' && <th style={{ width: '80px' }}>Duration</th>}
                       <th style={{ minWidth: '150px' }}>Date & Time</th>
                       <th style={{ width: '90px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {callLogs.map((log) => {
+                    {callLogs.map((log, index) => {
                       const Icon = getIcon(log.callType)
                       const color = getColor(log.callType)
                       const dt = formatDT(log.timestamp)
                       return (
                         <tr key={log._id}>
+                          {/* S.No. */}
+                          <td style={{ textAlign: 'center', color: '#9ca3af' }}>
+                            {(pagination.page - 1) * pagination.limit + index + 1}
+                          </td>
                           {/* Type */}
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -409,10 +497,11 @@ export default function CallLogs() {
                             {log.simId?.operator && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{log.simId.operator}</div>}
                           </td>
 
-                          {/* Duration */}
-                          <td style={{ fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
-                            {formatDuration(log.duration)}
-                          </td>
+                          {callType !== 'missed' && (
+                            <td style={{ fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                              {formatDuration(log.duration)}
+                            </td>
+                          )}
 
                           {/* Date & Time */}
                           <td>
@@ -505,7 +594,7 @@ export default function CallLogs() {
                       {/* ── Row 2: Phone + Duration side by side ── */}
                       <div style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr auto',
+                        gridTemplateColumns: callType === 'missed' ? '1fr' : '1fr auto',
                         gap: '12px',
                         alignItems: 'start',
                         backgroundColor: '#f9fafb',
@@ -524,12 +613,14 @@ export default function CallLogs() {
                             </p>
                           )}
                         </div>
+                        {callType !== 'missed' && (
                         <div style={{ textAlign: 'right' }}>
                           <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500', margin: '0 0 3px 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duration</p>
                           <p style={{ fontSize: '13px', fontWeight: '600', color: '#111827', margin: 0, whiteSpace: 'nowrap' }}>
                             {formatDuration(log.duration)}
                           </p>
                         </div>
+                        )}
                       </div>
 
                       {/* ── Row 3: SIM info + Action button ── */}
@@ -701,3 +792,4 @@ export default function CallLogs() {
     </PageContainer>
   )
 }
+

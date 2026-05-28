@@ -10,7 +10,7 @@ const createCompanyValidation = [
   body('name').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
   body('email').isEmail().withMessage('Valid email is required').trim(),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
   body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('address.street').optional().isString(),
@@ -24,7 +24,7 @@ const updateCompanyValidation = [
   param('id').isMongoId().withMessage('Invalid company ID'),
   body('name').optional().trim().isLength({ max: 100 }),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('logo').optional().isString(),
   body('settings.currency').optional().isString(),
   body('settings.timezone').optional().isString(),
@@ -38,12 +38,16 @@ const updateCompanyValidation = [
 const updateMyCompanyValidation = [
   body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Company name must be between 1 and 100 characters'),
   body('email').optional().isEmail().withMessage('Valid email is required').trim(),
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('website').optional().isURL().withMessage('Valid website URL is required'),
-  body('address.street').optional().isString(),
-  body('address.city').optional().isString(),
-  body('address.state').optional().isString(),
-  body('address.country').optional().isString(),
+  body('address.street').optional().trim().isLength({ max: 200 }).withMessage('Street address cannot exceed 200 characters')
+    .matches(/^[a-zA-Z0-9\s,.\-/'()#&]*$/).withMessage('Street can only contain letters, numbers, spaces, comma, period, hyphen, slash, apostrophe, parentheses, hash, and ampersand'),
+  body('address.city').optional().trim().isLength({ max: 50 }).withMessage('City cannot exceed 50 characters')
+    .matches(/^[\p{L}\s\-'.]*$/u).withMessage('City can only contain letters, spaces, hyphens, apostrophes, and periods'),
+  body('address.state').optional().trim().isLength({ max: 50 }).withMessage('State cannot exceed 50 characters')
+    .matches(/^[\p{L}\s\-'.]*$/u).withMessage('State can only contain letters, spaces, hyphens, apostrophes, and periods'),
+  body('address.country').optional().trim().isLength({ max: 50 }).withMessage('Country cannot exceed 50 characters')
+    .matches(/^[\p{L}\s\-'.]*$/u).withMessage('Country can only contain letters, spaces, hyphens, apostrophes, and periods'),
   body('address.zipCode').optional().isString(),
 ];
 
@@ -65,14 +69,14 @@ const createAdminValidation = [
   body('email').isEmail().withMessage('Valid email is required').trim(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
 ];
 
 const updateAdminValidation = [
   param('adminId').isMongoId().withMessage('Invalid admin ID'),
   body('name').optional().trim().isLength({ max: 50 }),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('isActive').optional().isBoolean(),
 ];
 
@@ -112,6 +116,7 @@ router.post('/my/email-change/request', authorize('admin'), companyController.re
 router.post('/my/email-change/verify-old', authorize('admin'), companyController.verifyCompanyEmailOld);
 router.post('/my/email-change/verify-new', authorize('admin'), companyController.verifyCompanyEmailNew);
 router.post('/my/email-change/cancel', authorize('admin'), companyController.cancelCompanyEmailChange);
+router.post('/my/email-change/resend', authorize('admin'), companyController.resendCompanyEmailChangeOTP);
 
 // [NEW] Get company details by ID - super_admin can access any, admin only their own
 router.get('/details/:companyId', authorize('admin', 'super_admin'), companyController.getCompanyDetailsById);

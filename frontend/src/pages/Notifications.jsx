@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { formatDateTimeFull } from '../utils/dateFormat'
 import {
   FiBell,
   FiCheck,
@@ -139,10 +140,7 @@ function highlightMessage(message, metadata = {}) {
 }
 
 function formatFullDate(dateString) {
-  return new Date(dateString).toLocaleString('en-IN', {
-    day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  })
+  return formatDateTimeFull(dateString)
 }
 
 export default function Notifications() {
@@ -150,6 +148,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 })
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -164,9 +163,9 @@ export default function Notifications() {
     } else {
       setPagination((prev) => ({ ...prev, page: 1 }))
     }
-  }, [filter])
+  }, [filter, priorityFilter])
 
-  useEffect(() => { setSelectedIds([]) }, [filter, pagination.page])
+  useEffect(() => { setSelectedIds([]) }, [filter, priorityFilter, pagination.page])
 
   const fetchNotifications = async () => {
     try {
@@ -176,6 +175,7 @@ export default function Notifications() {
         limit: pagination.limit,
         ...(filter === 'unread' && { isRead: 'false' }),
         ...(filter === 'read' && { isRead: 'true' }),
+        ...(priorityFilter !== 'all' && { priority: priorityFilter }),
       })
       const response = await api.get(`/notifications?${params}`)
       setNotifications(response.data.data || [])
@@ -208,13 +208,32 @@ export default function Notifications() {
     } catch { toast.error('Failed to mark all as read') }
   }
 
+  const markSelectedAsRead = async () => {
+    try {
+      const unreadSelectedIds = selectedIds.filter(id => {
+        const n = notifications.find(n => n._id === id)
+        return n && !n.isRead
+      })
+
+      if (unreadSelectedIds.length === 0) {
+        toast.info('Selected notifications are already read')
+        return
+      }
+
+      await Promise.all(unreadSelectedIds.map(id => api.patch(`/notifications/${id}/read`)))
+      setNotifications(prev => prev.map(n =>
+        unreadSelectedIds.includes(n._id) ? { ...n, isRead: true } : n
+      ))
+      toast.success(`${unreadSelectedIds.length} notification${unreadSelectedIds.length > 1 ? 's' : ''} marked as read`)
+    } catch { toast.error('Failed to mark selected as read') }
+  }
+
   const deleteNotification = async (id) => {
     try {
       await api.delete(`/notifications/${id}`)
-      setNotifications((prev) => prev.filter((n) => n._id !== id))
-      setPagination((prev) => ({ ...prev, total: prev.total - 1 }))
-      setSelectedIds((prev) => prev.filter((i) => i !== id))
       if (viewingNotification?._id === id) setViewingNotification(null)
+      setSelectedIds((prev) => prev.filter((i) => i !== id))
+      await fetchNotifications()
       toast.success('Notification deleted')
     } catch { toast.error('Failed to delete notification') }
   }
@@ -230,17 +249,21 @@ export default function Notifications() {
 
   const isAllSelected = notifications.length > 0 && selectedIds.length === notifications.length
   const isIndeterminate = selectedIds.length > 0 && selectedIds.length < notifications.length
+  const hasUnreadNotifications = notifications.some(n => !n.isRead)
+  const hasUnreadSelected = selectedIds.some(id => {
+    const n = notifications.find(n => n._id === id)
+    return n && !n.isRead
+  })
 
   const deleteSelectedNotifications = async () => {
     try {
       setDeleting(true)
-      await api.post('/notifications/delete-selected', { notificationIds: selectedIds })
-      setNotifications((prev) => prev.filter((n) => !selectedIds.includes(n._id)))
-      setPagination((prev) => ({ ...prev, total: prev.total - selectedIds.length }))
       const count = selectedIds.length
+      await api.post('/notifications/delete-selected', { notificationIds: selectedIds })
       setSelectedIds([])
-      toast.success(`${count} notification${count > 1 ? 's' : ''} deleted`)
       setShowDeleteModal(false)
+      await fetchNotifications()
+      toast.success(`${count} notification${count > 1 ? 's' : ''} deleted`)
     } catch { toast.error('Failed to delete notifications') }
     finally { setDeleting(false) }
   }
@@ -295,7 +318,7 @@ export default function Notifications() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <FiBell className="text-blue-600 shrink-0" />
+              
               Notifications
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">View and manage your notifications</p>
@@ -306,11 +329,20 @@ export default function Notifications() {
             <Button
               variant="secondary"
               icon={FiCheck}
-              onClick={markAllAsRead}
+              onClick={markSelectedAsRead}
+              disabled={!hasUnreadSelected}
               className="text-sm"
             >
-              <span className="hidden xs:inline">Mark All as Read</span>
-              <span className="xs:hidden">Mark Read</span>
+              Mark Read
+            </Button>
+            <Button
+              variant="secondary"
+              icon={FiCheck}
+              onClick={markAllAsRead}
+              disabled={!hasUnreadNotifications}
+              className="text-sm"
+            >
+              Mark All Read
             </Button>
             <Button
               variant="danger"
@@ -332,40 +364,82 @@ export default function Notifications() {
 
       {/* ── Filter Bar ── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {/* Filter tabs */}
-          <div className="flex gap-2">
-            {['all', 'unread', 'read'].map((f) => (
+        <div className="flex flex-col gap-3">
+          {/* Row 1: Read status filter + Select all */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Filter tabs */}
+            <div className="flex gap-2">
+              {['all', 'unread', 'read'].map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                    filter === f
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            {/* Select all */}
+            {notifications.length > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(el) => { if (el) el.indeterminate = isIndeterminate }}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 sm:w-[18px] sm:h-[18px] cursor-pointer accent-blue-600 rounded"
+                />
+                <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
+                  {selectedIds.length > 0
+                    // ? `Selected ${selectedIds.length} of ${pagination.total}`
+                    // : `Select All ${pagination.total > pagination.limit ? `(${notifications.length} of ${pagination.total})` : `(${notifications.length})`}`}
+                ? `Selected ${selectedIds.length} of ${pagination.total}`
+                    : `Select All ${selectedIds.length} of ${pagination.total}`}
+                    </span>
+              </label>
+            )}
+          </div>
+
+          {/* Row 2: Priority filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-400 font-medium shrink-0">Priority:</span>
+            {['all', 'low', 'medium', 'high', 'critical'].map((p) => (
               <button
-                key={f}
+                key={p}
                 type="button"
-                onClick={() => setFilter(f)}
-                className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                  filter === f
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                onClick={() => setPriorityFilter(p)}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium capitalize transition-colors ${
+                  priorityFilter === p
+                    ? p === 'critical'
+                      ? 'bg-red-600 text-white'
+                      : p === 'high'
+                        ? 'bg-amber-500 text-white'
+                        : p === 'medium'
+                          ? 'bg-blue-600 text-white'
+                          : p === 'low'
+                            ? 'bg-slate-500 text-white'
+                            : 'bg-gray-800 text-white'
+                    : p === 'critical'
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                      : p === 'high'
+                        ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                        : p === 'medium'
+                          ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                          : p === 'low'
+                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
               >
-                {f}
+                {p === 'all' ? 'All' : p}
               </button>
             ))}
           </div>
-
-          {/* Select all */}
-          {notifications.length > 0 && (
-            <label className="flex items-center gap-2 cursor-pointer self-start sm:self-auto">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                ref={(el) => { if (el) el.indeterminate = isIndeterminate }}
-                onChange={handleSelectAll}
-                className="w-4 h-4 sm:w-[18px] sm:h-[18px] cursor-pointer accent-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-500 font-medium whitespace-nowrap">
-                Select All ({notifications.length})
-              </span>
-            </label>
-          )}
         </div>
       </div>
 
@@ -389,9 +463,15 @@ export default function Notifications() {
                   ${!notification.isRead && !isSelected ? 'bg-blue-50/40' : ''}
                 `}
               >
-                <div className="p-3 sm:p-4">
-                  {/* Top row: checkbox + badges + time + delete */}
-                  <div className="flex items-start gap-2 sm:gap-3">
+                <div className="p-3 sm:p-4 relative">
+                  {/* Timestamp — top-right corner on desktop */}
+                  <span className="hidden sm:flex items-center gap-1 text-xs text-gray-400 absolute top-3 right-28 sm:top-4 sm:right-4" title={formatDate(notification.createdAt)}>
+                    <FiClock className="w-3 h-3" />
+                    {formatFullDate(notification.createdAt)}
+                  </span>
+
+                  {/* Main row: checkbox + icon + content + delete */}
+                  <div className="flex items-start gap-2 sm:gap-3 sm:pr-44">
 
                     {/* Checkbox */}
                     <div
@@ -432,12 +512,6 @@ export default function Notifications() {
                         {!notification.isRead && (
                           <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0" />
                         )}
-
-                        {/* Timestamp pushed to the right on larger screens */}
-                        <span className="hidden sm:flex items-center gap-1 ml-auto text-xs text-gray-400">
-                          <FiClock className="w-3 h-3" />
-                          {formatDate(notification.createdAt)}
-                        </span>
                       </div>
 
                       {/* Title */}
@@ -452,9 +526,9 @@ export default function Notifications() {
 
                       {/* Mobile timestamp row */}
                       <div className="flex items-center justify-between mt-2 sm:hidden">
-                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                        <span className="flex items-center gap-1 text-xs text-gray-400" title={formatDate(notification.createdAt)}>
                           <FiClock className="w-3 h-3" />
-                          {formatDate(notification.createdAt)}
+                          {formatFullDate(notification.createdAt)}
                         </span>
                       </div>
                     </div>
@@ -508,6 +582,7 @@ export default function Notifications() {
             currentPage={pagination.page}
             totalPages={Math.ceil(pagination.total / pagination.limit)}
             total={pagination.total}
+            limit={pagination.limit}
             onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
           />
         </div>
@@ -622,3 +697,4 @@ export default function Notifications() {
     </PageContainer>
   )
 }
+

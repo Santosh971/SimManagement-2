@@ -258,7 +258,7 @@ class NotificationHelper {
                 <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">${daysLeft} days remaining</p>
               </div>
               <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
-                <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                <p style="margin: 0;"><strong>Contact Number:</strong> ${sim.mobileNumber}</p>
                 <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
                 <p style="margin: 10px 0 0 0;"><strong>Next Recharge Date:</strong> ${new Date(recharge.nextRechargeDate).toDateString()}</p>
               </div>
@@ -321,7 +321,7 @@ class NotificationHelper {
                 <p style="margin: 0; font-size: 18px; font-weight: bold; color: #991b1b;">Inactive for ${inactiveDays} days</p>
               </div>
               <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
-                <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                <p style="margin: 0;"><strong>Contact Number:</strong> ${sim.mobileNumber}</p>
                 <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
                 <p style="margin: 10px 0 0 0;"><strong>Last Active:</strong> ${sim.lastActiveDate ? new Date(sim.lastActiveDate).toDateString() : 'Unknown'}</p>
               </div>
@@ -614,7 +614,6 @@ class NotificationHelper {
       wifi_off: `WiFi Offline Alert - ${wifiNetwork.wifiName}`,
       wifi_disconnected: `WiFi Disconnected Alert - ${device?.deviceName || 'Device'}`,
       device_offline: `Device Offline Alert - ${device?.deviceName || 'Device'}`,
-      high_latency: `High Latency Alert - ${wifiNetwork.wifiName}`,
     };
     return subjects[alertType] || `WiFi Alert - ${wifiNetwork.wifiName}`;
   }
@@ -628,7 +627,6 @@ class NotificationHelper {
       wifi_off: `WiFi Offline - ${wifiNetwork.wifiName}`,
       wifi_disconnected: `WiFi Disconnected - ${device?.deviceName || 'Device'}`,
       device_offline: `Device Offline - ${device?.deviceName || 'Device'}`,
-      high_latency: `High Latency - ${wifiNetwork.wifiName}`,
     };
     return titles[alertType] || `WiFi Alert - ${wifiNetwork.wifiName}`;
   }

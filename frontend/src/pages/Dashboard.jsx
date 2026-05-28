@@ -140,7 +140,7 @@ export default function Dashboard() {
   ]
 
   const simColumns = [
-    { key: 'mobileNumber', header: 'Mobile Number', render: (row) => <span style={{ fontWeight: '500' }}>{row.mobileNumber}</span> },
+    { key: 'mobileNumber', header: 'Contact Number', render: (row) => <span style={{ fontWeight: '500' }}>{row.mobileNumber}</span> },
     { key: 'operator', header: 'Operator', render: (row) => <Badge variant="default">{row.operator}</Badge> },
     { key: 'status', header: 'Status', render: (row) => <Badge variant={row.status === 'active' ? 'success' : row.status === 'inactive' ? 'danger' : 'warning'}>{row.status}</Badge> },
     { key: 'createdAt', header: 'Added On', render: (row) => formatDate(row.createdAt) },
@@ -368,6 +368,7 @@ export default function Dashboard() {
               columns={simColumns}
               data={simStats.recent}
               emptyMessage="No recent SIMs"
+              showSerial
             />
           </CardBody>
         </Card>

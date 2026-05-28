@@ -37,6 +37,7 @@ export default function Reports() {
     status: '',
     operator: '',
     callType: '',
+    uniqueOnly: false,
   })
   const [showFilters, setShowFilters] = useState(false)
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
@@ -53,7 +54,11 @@ export default function Reports() {
 
   const statusOptions = ['active', 'inactive', 'suspended', 'lost']
   const operatorOptions = ['Jio', 'Airtel', 'Vi', 'BSNL', 'MTNL', 'Other']
-  const callTypeOptions = ['incoming', 'outgoing', 'missed']
+  const callTypeOptions = [
+    { value: 'incoming', label: 'Incoming' },
+    { value: 'outgoing', label: 'Outgoing' },
+    { value: 'missed', label: 'Missed' },
+  ]
 
   // Use a ref to store filters for the fetch function
   const filtersRef = useRef(filters)
@@ -75,6 +80,7 @@ export default function Reports() {
       if (currentFilters.status && activeReport === 'sims') params.append('status', currentFilters.status)
       if (currentFilters.operator && activeReport === 'sims') params.append('operator', currentFilters.operator)
       if (currentFilters.callType && activeReport === 'callLogs') params.append('callType', currentFilters.callType)
+      if (currentFilters.uniqueOnly && activeReport === 'callLogs') params.append('uniqueOnly', 'true')
 
       const response = await api.get(`/reports/${activeReport}?${params}`)
       setReportData(response.data)
@@ -114,7 +120,7 @@ export default function Reports() {
   // Reset to page 1 when filters change (but don't fetch until apply is clicked)
   useEffect(() => {
     setPagination((prev) => ({ ...prev, page: 1 }))
-  }, [filters.startDate, filters.endDate, filters.status, filters.operator, filters.callType])
+  }, [filters.startDate, filters.endDate, filters.status, filters.operator, filters.callType, filters.uniqueOnly])
 
   const handleExport = async (format) => {
     try {
@@ -126,6 +132,7 @@ export default function Reports() {
       if (filters.status && activeReport === 'sims') params.append('status', filters.status)
       if (filters.operator && activeReport === 'sims') params.append('operator', filters.operator)
       if (filters.callType && activeReport === 'callLogs') params.append('callType', filters.callType)
+      if (filters.uniqueOnly && activeReport === 'callLogs') params.append('uniqueOnly', 'true')
 
       params.append('format', format)
       params.append('download', 'true')
@@ -170,6 +177,7 @@ export default function Reports() {
       status: '',
       operator: '',
       callType: '',
+      uniqueOnly: false,
     }
     setFilters(clearedFilters)
     setPagination((prev) => ({ ...prev, page: 1 }))
@@ -184,10 +192,13 @@ export default function Reports() {
 
     return (
       <Grid cols={4} gap={16} style={{ marginBottom: '24px' }}>
-        <StatCard
-          title="Total Records"
-          value={summary.total || 0}
-        />
+
+        {activeReport === 'sims' && (
+          <StatCard
+            title="Total Records"
+            value={summary.total || 0}
+          />
+        )}
 
         {activeReport === 'sims' && (
           <>
@@ -233,14 +244,18 @@ export default function Reports() {
         {activeReport === 'recharges' && (
           <>
             <StatCard
+              title="Total Records"
+              value={summary.total || 0}
+            />
+            <StatCard
               title="Total Amount"
               value={`₹${(summary.totalAmount || 0).toLocaleString()}`}
             />
             <StatCard
-              title="Average"
+              title="Average Amount"
               value={`₹${Math.round(summary.avgAmount || 0)}`}
             />
-            <StatCard
+            {/* <StatCard
               title="Payment Methods"
               value={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
@@ -262,20 +277,62 @@ export default function Reports() {
                   }
                 </div>
               }
-            />
+            /> */}
+
+  <StatCard
+  title="Payment Methods"
+  value={
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '2px' }}>
+      {Object.entries(summary.byPaymentMethod || {}).length > 0
+        ? Object.entries(summary.byPaymentMethod).map(([method, count]) => (
+          <div
+            key={method}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              padding: '6px 8px',
+              gap: '2px',
+            }}
+          >
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>
+              {count}
+            </span>
+            <span style={{ fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+              {method.toUpperCase()}
+            </span>
+          </div>
+        ))
+        : <span style={{ fontSize: '13px', color: '#9ca3af', gridColumn: 'span 2' }}>N/A</span>
+      }
+    </div>
+  }
+/>
+
           </>
         )}
 
         {activeReport === 'callLogs' && (
           <>
             <StatCard
-              title="Total Duration"
-              value={`${Math.round((summary.totalDuration || 0) / 60)}m`}
+              title={filters.callType === 'missed' ? 'Missed Calls' : 'Total Records'}
+              value={summary.total || 0}
             />
-            <StatCard
-              title="Avg Duration"
-              value={`${Math.round(summary.avgDuration || 0)}s`}
-            />
+            {filters.callType !== 'missed' && (
+              <>
+                <StatCard
+                  title="Total Duration"
+                  value={`${Math.round((summary.totalDuration || 0) / 60)}m`}
+                />
+                <StatCard
+                  title="Avg Duration"
+                  value={`${Math.round(summary.avgDuration || 0)}s`}
+                />
+              </>
+            )}
             <StatCard
               title="Unique Numbers"
               value={summary.uniqueNumbers || 0}
@@ -285,6 +342,10 @@ export default function Reports() {
 
         {activeReport === 'companies' && (
           <>
+            <StatCard
+              title="Total Records"
+              value={summary.total || 0}
+            />
             <StatCard
               title="Active Companies"
               value={summary.active || 0}
@@ -318,11 +379,13 @@ export default function Reports() {
     // Data is already paginated from server
     const data = reportData.data
 
-    const renderRow = (item) => {
+    const renderRow = (item, index) => {
+      const sno = (pagination.page - 1) * pagination.limit + index + 1
       switch (activeReport) {
         case 'sims':
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{sno}</td>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.mobileNumber}</td>
 
               <td style={{ padding: '12px 16px' }}>{item.operator}</td>
@@ -334,11 +397,13 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.whatsappEnabled ? '✓' : '-'}</td>
               <td style={{ padding: '12px 16px' }}>{item.telegramEnabled ? '✓' : '-'}</td>
               <td style={{ padding: '12px 16px' }}>{item.assignedTo?.name || 'Unassigned'}</td>
+              <td style={{ padding: '12px 16px' }}>{new Date(item.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
             </tr>
           )
         case 'recharges':
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{sno}</td>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.simId?.mobileNumber || 'N/A'}</td>
               <td style={{ padding: '12px 16px' }}>{item.simId?.operator || 'N/A'}</td>
               <td style={{ padding: '12px 16px', fontWeight: '600' }}>₹{item.amount}</td>
@@ -346,26 +411,29 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.plan?.name || 'N/A'}</td>
               <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{item.paymentMethod}</td>
               <td style={{ padding: '12px 16px' }}>{new Date(item.rechargeDate).toLocaleDateString()}</td>
+              <td style={{ padding: '12px 16px' }}>{item.nextRechargeDate ? new Date(item.nextRechargeDate).toLocaleDateString() : '-'}</td>
             </tr>
           )
         case 'callLogs':
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{sno}</td>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.phoneNumber}</td>
               <td style={{ padding: '12px 16px' }}>
                 <Badge variant={item.callType === 'incoming' ? 'success' : item.callType === 'outgoing' ? 'primary' : 'danger'}>
-                  {item.callType}
+                  {item.callType === 'incoming' ? 'Incoming' : item.callType === 'outgoing' ? 'Outgoing' : 'Missed'}
                 </Badge>
               </td>
-              <td style={{ padding: '12px 16px' }}>{item.duration}s</td>
+              {filters.callType !== 'missed' && <td style={{ padding: '12px 16px' }}>{item.callType === 'missed' ? '0s' : `${item.duration}s`}</td>}
               <td style={{ padding: '12px 16px' }}>{item.simId?.mobileNumber || 'N/A'}</td>
               <td style={{ padding: '12px 16px' }}>{item.contactName || '-'}</td>
-              <td style={{ padding: '12px 16px' }}>{new Date(item.timestamp).toLocaleString()}</td>
+              <td style={{ padding: '12px 16px' }}>{new Date(item.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
             </tr>
           )
         case 'companies':
           return (
             <tr key={item._id} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{sno}</td>
               <td style={{ padding: '12px 16px', fontWeight: '500' }}>{item.name}</td>
               <td style={{ padding: '12px 16px' }}>{item.email}</td>
               <td style={{ padding: '12px 16px' }}>
@@ -376,6 +444,7 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.subscriptionId?.name || 'N/A'}</td>
               <td style={{ padding: '12px 16px' }}>{item.stats?.totalSims || 0}</td>
               <td style={{ padding: '12px 16px' }}>₹{(item.stats?.totalRechargeAmount || 0).toLocaleString()}</td>
+              <td style={{ padding: '12px 16px' }}>{new Date(item.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
             </tr>
           )
         default:
@@ -386,13 +455,15 @@ export default function Reports() {
     const getHeaders = () => {
       switch (activeReport) {
         case 'sims':
-          return ['Mobile', 'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To']
+          return ['S.No.', 'Contact Number', 'Operator', 'Status', 'WhatsApp', 'Telegram', 'Assigned To', 'Date & Time']
         case 'recharges':
-          return ['Mobile', 'Operator', 'Amount', 'Validity', 'Plan', 'Method', 'Date']
+          return ['S.No.', 'Contact Number', 'Operator', 'Amount', 'Validity', 'Plan Name', 'Payment Methods', 'Recharge Date', 'Next Recharge']
         case 'callLogs':
-          return ['Phone', 'Type', 'Duration', 'SIM', 'Contact', 'Date']
+          return filters.callType === 'missed'
+            ? ['S.No.', 'Contact Number', 'Call Type', 'SIM', 'Contact', 'Date']
+            : ['S.No.', 'Contact Number', 'Call Type', 'Duration', 'SIM', 'Contact', 'Date']
         case 'companies':
-          return ['Company', 'Email', 'Status', 'Subscription', 'SIMs', 'Revenue']
+          return ['S.No.', 'Company', 'Email', 'Status', 'Subscription', 'SIMs', 'Revenue', 'Created']
         default:
           return []
       }
@@ -405,14 +476,14 @@ export default function Reports() {
             <thead>
               <tr style={{ backgroundColor: '#f9fafb' }}>
                 {getHeaders().map((header, index) => (
-                  <th key={index} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px' }}>
+                  <th key={index} style={{ padding: '12px 16px', textAlign: header === 'S.No.' ? 'center' : 'left', fontWeight: '600', color: '#6b7280', fontSize: '13px', width: header === 'S.No.' ? '50px' : undefined }}>
                     {header}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {data.map(item => renderRow(item))}
+              {data.map((item, index) => renderRow(item, index))}
             </tbody>
           </table>
         </div>
@@ -422,6 +493,7 @@ export default function Reports() {
               currentPage={pagination.page}
               totalPages={Math.ceil(pagination.total / pagination.limit)}
               total={pagination.total}
+              limit={pagination.limit}
               onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
             />
           </div>
@@ -441,7 +513,7 @@ export default function Reports() {
               CSV
             </Button>    */}
             <Button icon={FiDownload} onClick={() => handleExport('excel')} loading={loading}>
-              Excel
+              Export
             </Button>
           </div>
         }
@@ -568,9 +640,15 @@ export default function Reports() {
               )}
 
               {activeReport === 'callLogs' && (
+                <>
                 <select
                   value={filters.callType}
-                  onChange={(e) => handleFilterChange('callType', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFilters((prev) => ({ ...prev, callType: value }))
+                    setPagination((prev) => ({ ...prev, page: 1 }))
+                    fetchReport(1, { ...filtersRef.current, callType: value })
+                  }}
                   style={{
                     padding: '8px 12px',
                     border: '1px solid #d1d5db',
@@ -582,9 +660,34 @@ export default function Reports() {
                 >
                   <option value="">All Types</option>
                   {callTypeOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type.value} value={type.value}>{type.label}</option>
                   ))}
                 </select>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: '#374151',
+                  whiteSpace: 'nowrap',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={filters.uniqueOnly}
+                    onChange={(e) => {
+                      setFilters((prev) => ({ ...prev, uniqueOnly: e.target.checked }))
+                      // Auto-apply filter when toggled
+                      setTimeout(() => {
+                        setPagination((prev) => ({ ...prev, page: 1 }))
+                        fetchReport(1, { ...filtersRef.current, uniqueOnly: e.target.checked })
+                      }, 0)
+                    }}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  Unique Numbers Only
+                </label>
+                </>
               )}
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -607,10 +710,24 @@ export default function Reports() {
           {/* Data Table */}
           <Card>
             <CardBody style={{ padding: 0 }}>
-              <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
                   {reportTypes.find(r => r.id === activeReport)?.name} Data
                 </h3>
+                {activeReport === 'callLogs' && filters.uniqueOnly && (
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: '99px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    Unique Numbers Only
+                  </span>
+                )}
               </div>
               {reportData && renderTable()}
             </CardBody>

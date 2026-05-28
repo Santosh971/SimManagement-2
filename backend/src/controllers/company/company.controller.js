@@ -355,7 +355,7 @@ class CompanyController {
         req,
       });
 
-      return successResponse(res, company, 'Company profile updated successfully');
+      return successResponse(res, company, 'Company profile updated successfully.');
     } catch (error) {
       next(error);
     }
@@ -479,6 +479,16 @@ class CompanyController {
       });
 
       return successResponse(res, null, 'Email change request cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendCompanyEmailChangeOTP(req, res, next) {
+    try {
+      await companyService.resendCompanyEmailChangeOTP(req.user.companyId);
+
+      return successResponse(res, null, 'Verification code resent');
     } catch (error) {
       next(error);
     }

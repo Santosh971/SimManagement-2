@@ -41,10 +41,10 @@ const UserSchema = new Schema({
         // Accepts: +9713211236540 (with country code) or 9876543210 (10 digits)
         return !v || /^\+?\d{10,15}$/.test(v);
       },
-      message: 'Invalid phone number (10-15 digits, optional + prefix)',
+      message: 'Invalid phone number (Must be 10-15 digits)',
     },
   },
-  // [PHONE NORMALIZATION FIX] - Mobile number for OTP authentication (unique identifier)
+  // [PHONE NORMALIZATION FIX] - Contact Number for OTP authentication (unique identifier)
   // Accepts both: 10-digit format (9876543210) or with country code (+91XXXXXXXXXX)
   mobileNumber: {
     type: String,
@@ -57,11 +57,11 @@ const UserSchema = new Schema({
         if (!v) return true; // Allow empty
         // 10 digits only
         if (/^\d{10}$/.test(v)) return true;
-        // International format: + followed by 10-15 digits
+        // International format: + followed by Must be 10-15 digits
         if (/^\+\d{10,15}$/.test(v)) return true;
         return false;
       },
-      message: 'Mobile number must be 10 digits or in international format (e.g., +91XXXXXXXXXX)',
+      message: 'Contact Number must be 10 digits or in international format (e.g., +91XXXXXXXXXX)',
     },
   },
   // OTP authentication fields

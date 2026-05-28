@@ -27,7 +27,9 @@ import {
   Spinner,
   Pagination,
   Grid,
+  CountryCodeSelect,
 } from '../components/ui'
+import { countryCodes, getFlagUrl, getFlagFromPhone } from '../data/countries'
 
 // Toggle Switch Component
 // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Made read-only, status derived from message logs
@@ -67,6 +69,16 @@ function ToggleSwitch({ enabled, loading, readOnly }) {
 function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   const { api } = useAuth()
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const [detectingOperator, setDetectingOperator] = useState(false)
   const [formData, setFormData] = useState({
     countryCode: '+91',
@@ -76,6 +88,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     status: 'active',
     notes: '',
     assignedTo: '',
+    isAdminCaller: false,
   })
 
   const statuses = ['active', 'inactive', 'suspended', 'lost']
@@ -375,253 +388,6 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   const showCircleInput = circleOptions === 'optional'
   const hideCircleField = circleOptions === null
 
-  const countryCodes = [
-    // India (Default)
-    { code: '+91', country: 'India' },
-    { code: '+971', country: 'United Arab Emirates' },
-    // Asia
-    { code: '+93', country: 'Afghanistan' },
-    { code: '+355', country: 'Albania' },
-    { code: '+213', country: 'Algeria' },
-    { code: '+684', country: 'American Samoa' },
-    { code: '+376', country: 'Andorra' },
-    { code: '+244', country: 'Angola' },
-    { code: '+1', country: 'Anguilla/Antigua/Barbuda' },
-    { code: '+54', country: 'Argentina' },
-    { code: '+374', country: 'Armenia' },
-    { code: '+297', country: 'Aruba' },
-    { code: '+61', country: 'Australia' },
-    { code: '+43', country: 'Austria' },
-    { code: '+994', country: 'Azerbaijan' },
-    { code: '+1', country: 'Bahamas' },
-    { code: '+973', country: 'Bahrain' },
-    { code: '+880', country: 'Bangladesh' },
-    { code: '+1', country: 'Barbados' },
-    { code: '+375', country: 'Belarus' },
-    { code: '+32', country: 'Belgium' },
-    { code: '+501', country: 'Belize' },
-    { code: '+229', country: 'Benin' },
-    { code: '+1', country: 'Bermuda' },
-    { code: '+975', country: 'Bhutan' },
-    { code: '+591', country: 'Bolivia' },
-    { code: '+387', country: 'Bosnia/Herzegovina' },
-    { code: '+267', country: 'Botswana' },
-    { code: '+55', country: 'Brazil' },
-    { code: '+246', country: 'British Indian Ocean' },
-    { code: '+1', country: 'British Virgin Islands' },
-    { code: '+673', country: 'Brunei' },
-    { code: '+359', country: 'Bulgaria' },
-    { code: '+226', country: 'Burkina Faso' },
-    { code: '+257', country: 'Burundi' },
-    { code: '+855', country: 'Cambodia' },
-    { code: '+237', country: 'Cameroon' },
-    { code: '+1', country: 'Canada' },
-    { code: '+238', country: 'Cape Verde' },
-    { code: '+1', country: 'Cayman Islands' },
-    { code: '+236', country: 'Central African Republic' },
-    { code: '+235', country: 'Chad' },
-    { code: '+56', country: 'Chile' },
-    { code: '+86', country: 'China' },
-    { code: '+61', country: 'Christmas Island' },
-    { code: '+61', country: 'Cocos Islands' },
-    { code: '+57', country: 'Colombia' },
-    { code: '+269', country: 'Comoros' },
-    { code: '+242', country: 'Congo' },
-    { code: '+682', country: 'Cook Islands' },
-    { code: '+506', country: 'Costa Rica' },
-    { code: '+385', country: 'Croatia' },
-    { code: '+53', country: 'Cuba' },
-    { code: '+599', country: 'Curacao' },
-    { code: '+357', country: 'Cyprus' },
-    { code: '+420', country: 'Czech Republic' },
-    { code: '+243', country: 'DR Congo' },
-    { code: '+45', country: 'Denmark' },
-    { code: '+253', country: 'Djibouti' },
-    { code: '+1', country: 'Dominica' },
-    { code: '+1', country: 'Dominican Republic' },
-    { code: '+670', country: 'East Timor' },
-    { code: '+593', country: 'Ecuador' },
-    { code: '+20', country: 'Egypt' },
-    { code: '+503', country: 'El Salvador' },
-    { code: '+240', country: 'Equatorial Guinea' },
-    { code: '+291', country: 'Eritrea' },
-    { code: '+372', country: 'Estonia' },
-    { code: '+268', country: 'Eswatini' },
-    { code: '+251', country: 'Ethiopia' },
-    { code: '+500', country: 'Falkland Islands' },
-    { code: '+298', country: 'Faroe Islands' },
-    { code: '+679', country: 'Fiji' },
-    { code: '+358', country: 'Finland' },
-    { code: '+33', country: 'France' },
-    { code: '+594', country: 'French Guiana' },
-    { code: '+689', country: 'French Polynesia' },
-    { code: '+241', country: 'Gabon' },
-    { code: '+220', country: 'Gambia' },
-    { code: '+995', country: 'Georgia' },
-    { code: '+49', country: 'Germany' },
-    { code: '+233', country: 'Ghana' },
-    { code: '+350', country: 'Gibraltar' },
-    { code: '+30', country: 'Greece' },
-    { code: '+299', country: 'Greenland' },
-    { code: '+1', country: 'Grenada' },
-    { code: '+590', country: 'Guadeloupe' },
-    { code: '+1', country: 'Guam' },
-    { code: '+502', country: 'Guatemala' },
-    { code: '+44', country: 'Guernsey' },
-    { code: '+224', country: 'Guinea' },
-    { code: '+245', country: 'Guinea-Bissau' },
-    { code: '+592', country: 'Guyana' },
-    { code: '+509', country: 'Haiti' },
-    { code: '+504', country: 'Honduras' },
-    { code: '+852', country: 'Hong Kong' },
-    { code: '+36', country: 'Hungary' },
-    { code: '+354', country: 'Iceland' },
-    { code: '+62', country: 'Indonesia' },
-    { code: '+98', country: 'Iran' },
-    { code: '+964', country: 'Iraq' },
-    { code: '+353', country: 'Ireland' },
-    { code: '+44', country: 'Isle of Man' },
-    { code: '+972', country: 'Israel' },
-    { code: '+39', country: 'Italy' },
-    { code: '+225', country: 'Ivory Coast' },
-    { code: '+1', country: 'Jamaica' },
-    { code: '+81', country: 'Japan' },
-    { code: '+44', country: 'Jersey' },
-    { code: '+962', country: 'Jordan' },
-    { code: '+7', country: 'Kazakhstan' },
-    { code: '+254', country: 'Kenya' },
-    { code: '+686', country: 'Kiribati' },
-    { code: '+383', country: 'Kosovo' },
-    { code: '+965', country: 'Kuwait' },
-    { code: '+996', country: 'Kyrgyzstan' },
-    { code: '+856', country: 'Laos' },
-    { code: '+371', country: 'Latvia' },
-    { code: '+961', country: 'Lebanon' },
-    { code: '+266', country: 'Lesotho' },
-    { code: '+231', country: 'Liberia' },
-    { code: '+218', country: 'Libya' },
-    { code: '+423', country: 'Liechtenstein' },
-    { code: '+370', country: 'Lithuania' },
-    { code: '+352', country: 'Luxembourg' },
-    { code: '+853', country: 'Macau' },
-    { code: '+389', country: 'Macedonia' },
-    { code: '+261', country: 'Madagascar' },
-    { code: '+265', country: 'Malawi' },
-    { code: '+60', country: 'Malaysia' },
-    { code: '+960', country: 'Maldives' },
-    { code: '+223', country: 'Mali' },
-    { code: '+356', country: 'Malta' },
-    { code: '+692', country: 'Marshall Islands' },
-    { code: '+596', country: 'Martinique' },
-    { code: '+222', country: 'Mauritania' },
-    { code: '+230', country: 'Mauritius' },
-    { code: '+262', country: 'Mayotte' },
-    { code: '+52', country: 'Mexico' },
-    { code: '+691', country: 'Micronesia' },
-    { code: '+377', country: 'Monaco' },
-    { code: '+976', country: 'Mongolia' },
-    { code: '+382', country: 'Montenegro' },
-    { code: '+1', country: 'Montserrat' },
-    { code: '+212', country: 'Morocco' },
-    { code: '+258', country: 'Mozambique' },
-    { code: '+95', country: 'Myanmar' },
-    { code: '+264', country: 'Namibia' },
-    { code: '+674', country: 'Nauru' },
-    { code: '+977', country: 'Nepal' },
-    { code: '+31', country: 'Netherlands' },
-    { code: '+687', country: 'New Caledonia' },
-    { code: '+64', country: 'New Zealand' },
-    { code: '+505', country: 'Nicaragua' },
-    { code: '+227', country: 'Niger' },
-    { code: '+234', country: 'Nigeria' },
-    { code: '+683', country: 'Niue' },
-    { code: '+672', country: 'Norfolk Island' },
-    { code: '+1', country: 'Northern Mariana Islands' },
-    { code: '+47', country: 'Norway' },
-    { code: '+968', country: 'Oman' },
-    { code: '+92', country: 'Pakistan' },
-    { code: '+680', country: 'Palau' },
-    { code: '+970', country: 'Palestine' },
-    { code: '+507', country: 'Panama' },
-    { code: '+675', country: 'Papua New Guinea' },
-    { code: '+595', country: 'Paraguay' },
-    { code: '+51', country: 'Peru' },
-    { code: '+63', country: 'Philippines' },
-    { code: '+64', country: 'Pitcairn Islands' },
-    { code: '+48', country: 'Poland' },
-    { code: '+351', country: 'Portugal' },
-    { code: '+1', country: 'Puerto Rico' },
-    { code: '+974', country: 'Qatar' },
-    { code: '+262', country: 'Reunion' },
-    { code: '+40', country: 'Romania' },
-    { code: '+7', country: 'Russia' },
-    { code: '+250', country: 'Rwanda' },
-    { code: '+590', country: 'Saint Barthelemy' },
-    { code: '+290', country: 'Saint Helena' },
-    { code: '+1', country: 'Saint Kitts and Nevis' },
-    { code: '+1', country: 'Saint Lucia' },
-    { code: '+590', country: 'Saint Martin' },
-    { code: '+508', country: 'Saint Pierre and Miquelon' },
-    { code: '+1', country: 'Saint Vincent/Grenadines' },
-    { code: '+685', country: 'Samoa' },
-    { code: '+378', country: 'San Marino' },
-    { code: '+239', country: 'Sao Tome and Principe' },
-    { code: '+966', country: 'Saudi Arabia' },
-    { code: '+221', country: 'Senegal' },
-    { code: '+381', country: 'Serbia' },
-    { code: '+248', country: 'Seychelles' },
-    { code: '+232', country: 'Sierra Leone' },
-    { code: '+65', country: 'Singapore' },
-    { code: '+1', country: 'Sint Maarten' },
-    { code: '+421', country: 'Slovakia' },
-    { code: '+386', country: 'Slovenia' },
-    { code: '+677', country: 'Solomon Islands' },
-    { code: '+252', country: 'Somalia' },
-    { code: '+27', country: 'South Africa' },
-    { code: '+82', country: 'South Korea' },
-    { code: '+211', country: 'South Sudan' },
-    { code: '+34', country: 'Spain' },
-    { code: '+94', country: 'Sri Lanka' },
-    { code: '+249', country: 'Sudan' },
-    { code: '+597', country: 'Suriname' },
-    { code: '+47', country: 'Svalbard/Jan Mayen' },
-    { code: '+268', country: 'Swaziland' },
-    { code: '+46', country: 'Sweden' },
-    { code: '+41', country: 'Switzerland' },
-    { code: '+963', country: 'Syria' },
-    { code: '+886', country: 'Taiwan' },
-    { code: '+992', country: 'Tajikistan' },
-    { code: '+255', country: 'Tanzania' },
-    { code: '+66', country: 'Thailand' },
-    { code: '+670', country: 'Timor-Leste' },
-    { code: '+228', country: 'Togo' },
-    { code: '+690', country: 'Tokelau' },
-    { code: '+676', country: 'Tonga' },
-    { code: '+1', country: 'Trinidad and Tobago' },
-    { code: '+216', country: 'Tunisia' },
-    { code: '+90', country: 'Turkey' },
-    { code: '+993', country: 'Turkmenistan' },
-    { code: '+1', country: 'Turks and Caicos' },
-    { code: '+688', country: 'Tuvalu' },
-    { code: '+256', country: 'Uganda' },
-    { code: '+380', country: 'Ukraine' },
-
-    { code: '+44', country: 'United Kingdom' },
-    { code: '+1', country: 'United States' },
-    { code: '+598', country: 'Uruguay' },
-    { code: '+1', country: 'US Virgin Islands' },
-    { code: '+998', country: 'Uzbekistan' },
-    { code: '+678', country: 'Vanuatu' },
-    { code: '+379', country: 'Vatican City' },
-    { code: '+58', country: 'Venezuela' },
-    { code: '+84', country: 'Vietnam' },
-    { code: '+681', country: 'Wallis and Futuna' },
-    { code: '+212', country: 'Western Sahara' },
-    { code: '+967', country: 'Yemen' },
-    { code: '+260', country: 'Zambia' },
-    { code: '+263', country: 'Zimbabwe' },
-  ]
-
   useEffect(() => {
     if (sim) {
       // Extract country code if present in mobileNumber
@@ -646,6 +412,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         status: sim.status || 'active',
         notes: sim.notes || '',
         assignedTo: sim.assignedTo?._id || '',
+        isAdminCaller: sim.isAdminCaller || false,
       })
     } else {
       // Default to India
@@ -658,11 +425,12 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         status: 'active',
         notes: '',
         assignedTo: '',
+        isAdminCaller: false,
       })
     }
   }, [sim])
 
-  // Auto-detect operator when mobile number changes (for Indian numbers)
+  // Auto-detect operator when Contact Number changes (for Indian numbers)
   const detectOperatorFromNumber = async (mobileNum, countryCode) => {
     // Only auto-detect for Indian numbers (+91)
     const config = getCountryConfig(countryCode)
@@ -724,7 +492,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         countryCode: value,
         operator: newOperator,
         circle: newCircle,
-        mobileNumber: '', // Clear mobile number for fresh entry
+        mobileNumber: '', // Clear Contact Number for fresh entry
       }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
@@ -735,18 +503,18 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     e.preventDefault()
 
     if (!formData.mobileNumber) {
-      toast.error('Mobile Number is required')
+      toast.error('Contact Number is required')
       return
     }
 
     if (!/^\d{10}$/.test(formData.mobileNumber)) {
-      toast.error('Mobile number must be 10 digits')
+      toast.error('Contact Number must be 10 digits')
       return
     }
 
     setLoading(true)
 
-    // Combine country code with mobile number
+    // Combine country code with Contact Number
     const dataToSave = {
       ...formData,
       mobileNumber: formData.countryCode + formData.mobileNumber,
@@ -812,37 +580,20 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-              Mobile Number *
+              Contact Number <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <select
-                name="countryCode"
+              <CountryCodeSelect
                 value={formData.countryCode}
                 onChange={handleChange}
-                style={{
-                  width: '120px',
-                  padding: '10px 8px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: '#ffffff',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  flexShrink: 0,
-                }}
-              >
-                {countryCodes.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} {c.country}
-                  </option>
-                ))}
-              </select>
+              />
               <input
                 type="text"
                 name="mobileNumber"
                 value={formData.mobileNumber}
                 onChange={handleChange}
-                placeholder={currentConfig.autoDetectOperator ? '10-digit mobile number (operator auto-detected)' : 'Mobile number'}
+                // placeholder={currentConfig.autoDetectOperator ? '10-digit Contact Number (operator auto-detected)' : 'Contact Number'}
+                placeholder='9822653371'
                 maxLength={formData.countryCode === '+91' ? '10' : '15'}
                 style={{
                   flex: 1,
@@ -862,7 +613,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Operator * {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
+                Operator <span style={{ color: '#dc2626' }}>*</span> {detectingOperator && <span style={{ color: '#6b7280', fontSize: '12px' }}>(detecting...)</span>}
               </label>
               {/* [DYNAMIC OPERATOR] - Show dropdown for supported countries, input for others */}
               {showOperatorDropdown ? (
@@ -909,7 +660,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Status * 
+                Status <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <select
                 name="status"
@@ -938,7 +689,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           {!hideCircleField && (
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                Circle * {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
+                Circle <span style={{ color: '#dc2626' }}>*</span> {showCircleInput && <span style={{ color: '#6b7280', fontSize: '12px' }}>(optional)</span>}
               </label>
               {showCircleDropdown ? (
                 <select
@@ -1001,7 +752,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               <FiUser style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
-              Assigned User *
+              Assigned User <span style={{ color: '#dc2626' }}>*</span>
             </label>
             {loadingUsers ? (
               <div style={{ padding: '10px 14px', color: '#6b7280', fontSize: '14px' }}>
@@ -1068,6 +819,29 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
             />
           </div>
 
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                name="isAdminCaller"
+                checked={formData.isAdminCaller}
+                onChange={(e) => setFormData(prev => ({ ...prev, isAdminCaller: e.target.checked }))}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  accentColor: '#2563eb',
+                }}
+              />
+              <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>
+                Admin Caller SIM
+              </span>
+            </label>
+            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: '#6b7280' }}>
+              Mark this SIM as an admin caller. Only admin caller SIMs will appear in the Caller SIMs section on Call Automation.
+            </p>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button variant="secondary" onClick={onClose}>
               Cancel
@@ -1084,14 +858,36 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
 
 // SIM List Modal Component
 function SimListModal({ isOpen, onClose, title, sims }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const columns = [
-    { key: 'mobileNumber', header: 'Mobile Number' },
+    { key: 'mobileNumber', header: 'Contact Number', render: (row) => {
+      const flagUrl = getFlagFromPhone(row.mobileNumber)
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {flagUrl && <img src={flagUrl} alt="" style={{ width: '20px', height: '14px', objectFit: 'cover', borderRadius: '2px' }} onError={(e) => { e.target.style.display = 'none' }} />}
+          <span style={{ fontWeight: '500' }}>{row.mobileNumber}</span>
+        </div>
+      )
+    }},
     {
       key: 'operator',
       header: 'Operator',
       render: (row) => <Badge variant="default">{row.operator}</Badge>
+    },
+    {
+      key: 'circle',
+      header: 'Circle',
+      render: (row) => row.circle || '-'
     },
     {
       key: 'status',
@@ -1102,7 +898,6 @@ function SimListModal({ isOpen, onClose, title, sims }) {
         </Badge>
       )
     },
-    { key: 'circle', header: 'Circle', render: (row) => row.circle || '-' },
     {
       key: 'messaging',
       header: 'Messaging',
@@ -1166,6 +961,16 @@ function SimListModal({ isOpen, onClose, title, sims }) {
 // Bulk Upload Modal Component
 function BulkUploadModal({ isOpen, onClose, onSuccess }) {
   const { api } = useAuth()
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const [file, setFile] = useState(null)
   const [parsedData, setParsedData] = useState([])
   const [errors, setErrors] = useState([])
@@ -1178,13 +983,13 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
     // [BULK UPLOAD FIX] Added Assigned User Name and Assigned User Phone columns
     // [INTERNATIONAL OPERATORS] - Updated template with example for international use
     const template = [
-      { 'Country Code': '+91', 'Mobile Number': '9876543210', 'Operator': 'Jio', 'Circle': 'Maharashtra', 'Status': 'active', 'Assigned User Email': 'user@example.com', 'Assigned User Name': 'John Doe', 'Assigned User Phone': '+919876543210', 'Notes': 'Optional notes' },
+      { 'Country Code': '+91', 'Contact Number': '9876543210', 'Operator': 'Jio', 'Circle': 'Maharashtra', 'Status': 'active', 'Assigned User Email': 'user@example.com', 'Assigned User Name': 'John Doe', 'Assigned User Phone': '+919876543210', 'Notes': 'Optional notes' },
     ]
     const ws = XLSX.utils.json_to_sheet(template)
     // [BULK UPLOAD FIX] Set column widths for readability
     ws['!cols'] = [
       { wch: 14 },  // Country Code
-      { wch: 16 },  // Mobile Number
+      { wch: 16 },  // Contact Number
       { wch: 20 },  // Operator (increased for international names)
       { wch: 16 },  // Circle
       { wch: 10 },  // Status
@@ -1217,7 +1022,7 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
         const validationErrors = []
         const validatedData = jsonData.map((row, index) => {
           const countryCode = String(row['Country Code'] || row.countryCode || row.country_code || '+91').trim()
-          const mobileNumber = String(row['Mobile Number'] || row.mobileNumber || row.mobile_number || '').trim()
+          const mobileNumber = String(row['Contact Number'] || row.mobileNumber || row.mobile_number || '').trim()
           const operator = String(row['Operator'] || row.operator || 'Other').trim()
           const circle = String(row['Circle'] || row.circle || '').trim()
           const status = String(row['Status'] || row.status || 'active').toLowerCase().trim()
@@ -1230,9 +1035,9 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
           const rowErrors = []
 
           if (!mobileNumber) {
-            rowErrors.push('Missing Mobile Number')
+            rowErrors.push('Missing Contact Number')
           } else if (!/^\d{10}$/.test(mobileNumber)) {
-            rowErrors.push('Invalid 10-digit mobile number')
+            rowErrors.push('Invalid 10-digit Contact Number')
           }
 
           // [INTERNATIONAL OPERATORS] - Removed operator validation, accept any value
@@ -1338,7 +1143,7 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
 
   const previewColumns = [
     { key: 'countryCode', header: 'Country Code' },
-    { key: 'mobileNumber', header: 'Mobile Number' },
+    { key: 'mobileNumber', header: 'Contact Number' },
     { key: 'operator', header: 'Operator' },
     { key: 'circle', header: 'Circle' },
     { key: 'status', header: 'Status' },
@@ -1436,7 +1241,7 @@ function BulkUploadModal({ isOpen, onClose, onSuccess }) {
           {parsedData.length > 0 && errors.length === 0 && (
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>Preview (first 5 rows):</h4>
-              <Table columns={previewColumns} data={parsedData.slice(0, 5)} emptyMessage="No data" />
+              <Table columns={previewColumns} data={parsedData.slice(0, 5)} emptyMessage="No data" showSerial />
             </div>
           )}
 
@@ -1640,47 +1445,74 @@ export default function SIMs() {
     }
   }
 
-  const handleStatCardClick = (type) => {
-    let filteredSims = []
-    let title = ''
+  const handleStatCardClick = async (type) => {
+    try {
+      // Fetch all SIMs (not just current page) for accurate filtering
+      const allSims = []
+      let page = 1
+      let hasMore = true
+      while (hasMore) {
+        const response = await api.get(`/sims?limit=100&page=${page}`)
+        const sims = response.data.data || []
+        allSims.push(...sims)
+        const total = response.data.pagination?.total || 0
+        hasMore = allSims.length < total
+        page++
+      }
 
-    // [WHATSAPP/TELEGRAM TOGGLE SYNC] - Use derived active status from message logs
-    switch (type) {
-      case 'whatsapp':
-        filteredSims = sims.filter(sim => sim.whatsappActiveStatus === true)
-        title = 'WhatsApp Active SIMs'
-        break
-      case 'telegram':
-        filteredSims = sims.filter(sim => sim.telegramActiveStatus === true)
-        title = 'Telegram Active SIMs'
-        break
-      case 'both':
-        filteredSims = sims.filter(sim => sim.whatsappActiveStatus === true && sim.telegramActiveStatus === true)
-        title = 'Both WhatsApp & Telegram Active SIMs'
-        break
-      case 'none':
-        filteredSims = sims.filter(sim => sim.whatsappActiveStatus !== true && sim.telegramActiveStatus !== true)
-        title = 'SIMs with No Messaging Active'
-        break
-      default:
-        return
+      let filteredSims = []
+      let title = ''
+
+      switch (type) {
+        case 'whatsapp':
+          filteredSims = allSims.filter(sim => sim.whatsappActiveStatus === true)
+          title = 'WhatsApp Active SIMs'
+          break
+        case 'telegram':
+          filteredSims = allSims.filter(sim => sim.telegramActiveStatus === true)
+          title = 'Telegram Active SIMs'
+          break
+        case 'both':
+          filteredSims = allSims.filter(sim => sim.whatsappActiveStatus === true && sim.telegramActiveStatus === true)
+          title = 'Both WhatsApp & Telegram Active SIMs'
+          break
+        case 'none':
+          filteredSims = allSims.filter(sim => sim.whatsappActiveStatus !== true && sim.telegramActiveStatus !== true)
+          title = 'SIMs with No Messaging Active'
+          break
+        default:
+          return
+      }
+
+      setSimListModal({ open: true, title, sims: filteredSims })
+    } catch (error) {
+      toast.error('Failed to load SIMs')
     }
-
-    setSimListModal({ open: true, title, sims: filteredSims })
   }
 
   const columns = [
     {
       key: 'mobileNumber',
-      header: 'Mobile Number',
-      render: (row) => (
-        <div style={{ fontWeight: '500' }}>{row.mobileNumber}</div>
-      )
+      header: 'Contact Number',
+      render: (row) => {
+        const flagUrl = getFlagFromPhone(row.mobileNumber)
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {flagUrl && <img src={flagUrl} alt="" style={{ width: '20px', height: '14px', objectFit: 'cover', borderRadius: '2px' }} onError={(e) => { e.target.style.display = 'none' }} />}
+            <span style={{ fontWeight: '500' }}>{row.mobileNumber}</span>
+          </div>
+        )
+      }
     },
     {
       key: 'operator',
       header: 'Operator',
       render: (row) => <Badge variant="default">{row.operator}</Badge>
+    },
+    {
+      key: 'circle',
+      header: 'Circle',
+      render: (row) => row.circle || '-'
     },
     {
       key: 'status',
@@ -1715,6 +1547,13 @@ export default function SIMs() {
           />
         </div>
       )
+    },
+    {
+      key: 'isAdminCaller',
+      header: 'Caller',
+      render: (row) => row.isAdminCaller
+        ? <Badge variant="success" style={{ fontSize: '11px' }}>Admin</Badge>
+        : <span style={{ color: '#9ca3af', fontSize: '12px' }}>-</span>
     },
     {
       key: 'assignedTo',
@@ -1853,7 +1692,7 @@ export default function SIMs() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value.replace(/[\t\n\r]+/g, '').trim())}
-                placeholder="Search by mobile number or user name..."
+                placeholder="Search by Contact Number or user name..."
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 40px',
@@ -1918,6 +1757,8 @@ export default function SIMs() {
             columns={columns}
             data={sims}
             emptyMessage="No SIMs Found"
+            showSerial
+            serialOffset={(pagination.page - 1) * pagination.limit}
           />
         </CardBody>
       </Card>
@@ -1928,6 +1769,7 @@ export default function SIMs() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

@@ -47,7 +47,7 @@ export default function ForgotPassword() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
     if (!email) {
-      toast.error('Please enter your email address')
+      toast.error('Please enter your Email ID')
       return
     }
 
@@ -216,7 +216,7 @@ export default function ForgotPassword() {
           {step === 1 && (
             <form onSubmit={handleEmailSubmit} className="card-body">
               <div className="form-group">
-                <label className="label">Email Address</label>
+                <label className="label">Email ID</label>
                 <div className="relative">
                   <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
                   <input
@@ -288,6 +288,9 @@ export default function ForgotPassword() {
               </button>
 
               <div className="text-center mt-4">
+                <p className="text-secondary-500 text-sm mb-2">
+                  Code expires in 10 minutes
+                </p>
                 {countdown > 0 ? (
                   <span className="text-secondary-400 text-sm">
                     Resend code in {countdown}s

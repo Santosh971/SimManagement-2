@@ -3,7 +3,14 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const dns = require('dns');
+
+
+dns.setServers(["8.8.8.8","8.8.4.4"]);
 require('dotenv').config();
+
+
+
 
 // Import database connection
 const connectDB = require('./config/database');

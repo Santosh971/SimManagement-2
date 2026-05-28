@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { FiSend, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiPause, FiPlay } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import SendMessageModal from '../components/telegram/SendMessageModal'
+import { formatDateTime } from '../utils/dateFormat'
 import {
   PageContainer,
   PageHeader,
@@ -108,16 +109,7 @@ export default function TelegramMessages() {
     return statusConfig[status] || statusConfig.sent
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatDate = formatDateTime
 
   const columns = [
     {
@@ -149,7 +141,7 @@ export default function TelegramMessages() {
       key: 'message',
       header: 'Message',
       render: (row) => (
-        <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div title={row.message} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>
           {row.message}
         </div>
       ),
@@ -332,6 +324,8 @@ export default function TelegramMessages() {
             columns={columns}
             data={messages}
             emptyMessage="No Telegram messages found"
+            showSerial
+            serialOffset={(pagination.page - 1) * pagination.limit}
           />
         </CardBody>
       </Card>
@@ -342,6 +336,7 @@ export default function TelegramMessages() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

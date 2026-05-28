@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiMessageSquare,
@@ -39,39 +39,57 @@ export default function SmsLogs() {
   const [sender, setSender] = useState('')
   const [search, setSearch] = useState('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [uniqueSenders, setUniqueSenders] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
   const [stats, setStats] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const isInitialMount = useRef(true)
 
-  // Debounced search
+  // Initial data load (SIMs, users, stats — only once)
   useEffect(() => {
+    fetchSmsLogs() // Initial load with spinner
+    fetchSims()
+    fetchStats()
+    fetchSenders()
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      fetchUsers()
+    }
+  }, [])
+
+  // Fetch SMS logs when page changes (silent — no loading spinner)
+  useEffect(() => {
+    // Skip the initial mount since fetchSmsLogs is already called in the first useEffect
+    if (isInitialMount.current) return
+    fetchSmsLogs(true)
+  }, [pagination.page])
+
+  // Fetch SMS logs when filters change — reset to page 1
+  useEffect(() => {
+    // Skip the initial mount since fetchSmsLogs is already called in the first useEffect
+    if (isInitialMount.current) return
+    if (pagination.page === 1) {
+      fetchSmsLogs(true)
+    } else {
+      setPagination((prev) => ({ ...prev, page: 1 }))
+      // Page change will trigger the above useEffect which calls fetchSmsLogs
+    }
+  }, [type, simId, userId, sender, dateRange.start, dateRange.end])
+
+  // Debounced search — skip on initial mount to avoid double-fetch
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
     const timer = setTimeout(() => {
       if (pagination.page === 1) {
-        fetchSmsLogs()
+        fetchSmsLogs(true)
       } else {
         setPagination((prev) => ({ ...prev, page: 1 }))
       }
     }, 500)
     return () => clearTimeout(timer)
   }, [search])
-
-  useEffect(() => {
-    fetchSmsLogs()
-    fetchStats()
-    fetchSims()
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
-      fetchUsers()
-    }
-  }, [pagination.page])
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    if (pagination.page === 1) {
-      fetchSmsLogs()
-    } else {
-      setPagination((prev) => ({ ...prev, page: 1 }))
-    }
-  }, [type, simId, userId, sender, dateRange.start, dateRange.end])
 
   // Auto-refresh polling (every 20 seconds)
   useEffect(() => {
@@ -81,10 +99,10 @@ export default function SmsLogs() {
       // Silent refresh - don't show loading spinner
       fetchSmsLogs(true)
       fetchStats()
-    }, 20000) // 20 seconds
+    }, 20000)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, pagination.page, type, simId, userId, sender, dateRange.start, dateRange.end])
+  }, [autoRefresh])
 
   const fetchSims = async () => {
     try {
@@ -109,21 +127,81 @@ export default function SmsLogs() {
       if (!silent) {
         setLoading(true)
       }
-      const params = new URLSearchParams({
-        page: pagination.page,
-        limit: pagination.limit,
-        ...(type && { type }),
+      // For toDate, append end-of-day so the filter includes the full selected day
+      const toDateParam = dateRange.end ? `${dateRange.end}T23:59:59` : ''
+      const isUniqueSender = type === 'unique_sender'
+
+      // Build base params (common to both modes)
+      const baseParams = {
+        // When "unique_sender" is selected, don't send type filter — we deduplicate on frontend
+        ...(type && !isUniqueSender && { type }),
         ...(simId && { simId }),
         ...(userId && { userId }),
         ...(sender && { sender }),
         ...(search && { search }),
         ...(dateRange.start && { fromDate: dateRange.start }),
-        ...(dateRange.end && { toDate: dateRange.end }),
-      })
+        ...(toDateParam && { toDate: toDateParam }),
+      }
 
-      const response = await api.get(`/sms?${params}`)
-      setSmsLogs(response.data.data || [])
-      setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
+      if (isUniqueSender) {
+        // Unique sender mode: fetch all pages (up to 1000 records) and deduplicate
+        const params = new URLSearchParams({
+          page: '1',
+          limit: '100',
+          ...baseParams,
+        })
+
+        // Fetch first page to get total count
+        const firstResponse = await api.get(`/sms?${params}`)
+        const firstPageData = firstResponse.data.data || []
+        const totalCount = firstResponse.data.pagination?.total || 0
+        const totalPages = Math.ceil(totalCount / 100)
+
+        let allLogs = [...firstPageData]
+
+        // Fetch remaining pages in parallel (cap at 10 pages = 1000 records)
+        if (totalPages > 1) {
+          const pagePromises = []
+          const maxPages = Math.min(totalPages, 10)
+          for (let p = 2; p <= maxPages; p++) {
+            const pageParams = new URLSearchParams({
+              page: String(p),
+              limit: '100',
+              ...baseParams,
+            })
+            pagePromises.push(api.get(`/sms?${pageParams}`))
+          }
+          const responses = await Promise.all(pagePromises)
+          responses.forEach((r) => {
+            allLogs = allLogs.concat(r.data.data || [])
+          })
+        }
+
+        // Deduplicate by sender (keep most recent message per sender)
+        const senderMap = new Map()
+        allLogs.forEach((log) => {
+          const key = log.sender || 'unknown'
+          if (!senderMap.has(key) || new Date(log.timestamp) > new Date(senderMap.get(key).timestamp)) {
+            senderMap.set(key, log)
+          }
+        })
+        const uniqueLogs = Array.from(senderMap.values()).sort(
+          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+        )
+        setSmsLogs(uniqueLogs)
+        setPagination((prev) => ({ ...prev, total: uniqueLogs.length, page: 1 }))
+      } else {
+        // Normal mode — single page fetch
+        const params = new URLSearchParams({
+          page: pagination.page,
+          limit: pagination.limit,
+          ...baseParams,
+        })
+
+        const response = await api.get(`/sms?${params}`)
+        setSmsLogs(response.data.data || [])
+        setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
+      }
     } catch (error) {
       // Only show toast error for manual refresh, not polling
       if (!silent) {
@@ -146,6 +224,15 @@ export default function SmsLogs() {
     }
   }
 
+  const fetchSenders = async () => {
+    try {
+      const response = await api.get('/sms/senders')
+      setUniqueSenders(response.data.data || [])
+    } catch (error) {
+      console.error('Failed to fetch senders')
+    }
+  }
+
   const handleSearch = (e) => {
     e.preventDefault()
     fetchSmsLogs()
@@ -153,14 +240,16 @@ export default function SmsLogs() {
 
   const handleExport = async () => {
     try {
+      const toDateParam = dateRange.end ? `${dateRange.end}T23:59:59` : ''
       const params = new URLSearchParams({
-        ...(type && { type }),
+        // When "unique_sender" is selected, don't send type filter for export
+        ...(type && type !== 'unique_sender' && { type }),
         ...(simId && { simId }),
         ...(userId && { userId }),
         ...(sender && { sender }),
         ...(search && { search }),
         ...(dateRange.start && { fromDate: dateRange.start }),
-        ...(dateRange.end && { toDate: dateRange.end }),
+        ...(toDateParam && { toDate: toDateParam }),
       })
       const response = await api.get(`/sms/export?${params}`, { responseType: 'blob' })
       const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -210,6 +299,13 @@ export default function SmsLogs() {
 
   const today = new Date().toISOString().split('T')[0];
 
+  const isUniqueSenderMode = type === 'unique_sender'
+
+  // Client-side pagination for unique sender mode (since we deduplicate on the frontend)
+  const paginatedLogs = isUniqueSenderMode
+    ? smsLogs.slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit)
+    : smsLogs
+
   const columns = [
     {
       key: 'type',
@@ -221,6 +317,9 @@ export default function SmsLogs() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Icon style={{ width: '16px', height: '16px' }} />
             <Badge variant={variant}>{row.type === 'sent' ? 'Sent' : 'Inbox'}</Badge>
+            {isUniqueSenderMode && (
+              <Badge variant="warning" style={{ fontSize: '11px' }}>Unique</Badge>
+            )}
           </div>
         )
       }
@@ -229,7 +328,7 @@ export default function SmsLogs() {
       key: 'sender',
       header: 'Sender',
       render: (row) => (
-        <div style={{ fontWeight: '500' }}>{row.sender}</div>
+        <div style={{ fontWeight: isUniqueSenderMode ? '600' : '500', color: isUniqueSenderMode ? '#7c3aed' : undefined }}>{row.sender}</div>
       )
     },
     {
@@ -243,7 +342,7 @@ export default function SmsLogs() {
     },
     {
       key: 'simId',
-      header: 'SIM',
+      header: 'SIM Number',
       render: (row) => (
         <div>
           <div style={{ fontWeight: '500' }}>{row.simId?.mobileNumber || row.simNumber || 'N/A'}</div>
@@ -253,7 +352,7 @@ export default function SmsLogs() {
     },
     {
       key: 'userId',
-      header: 'User',
+      header: 'User NAME',
       render: (row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
@@ -302,7 +401,7 @@ export default function SmsLogs() {
     <PageContainer>
       <PageHeader
         title="SMS Logs"
-        description="View and analyze SMS history from mobile devices"
+        description={isUniqueSenderMode ? "Showing the most recent message from each unique sender" : "View and analyze SMS history from mobile devices"}
         action={
           <Button variant="secondary" icon={FiDownload} onClick={handleExport}>
             Export
@@ -385,6 +484,7 @@ export default function SmsLogs() {
               <option value="">All Types</option>
               <option value="inbox">Inbox</option>
               <option value="sent">Sent</option>
+              <option value="unique_sender">Unique Sender</option>
             </select>
 
             {/* SIM Filter */}
@@ -473,6 +573,7 @@ export default function SmsLogs() {
               <input
                 type="date"
                 value={dateRange.end}
+                max={today}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
                 style={{
                   padding: '10px 14px',
@@ -483,8 +584,8 @@ export default function SmsLogs() {
                 }}
               />
             </div>
-            <Button onClick={() => fetchSmsLogs()}>Apply Filters</Button>
-            <Button variant="ghost" onClick={resetFilters}>Reset</Button>
+            <Button onClick={() => fetchSmsLogs(true)}>Apply Filters</Button>
+            <Button variant="secondary" onClick={resetFilters}>Reset</Button>
             {/* Auto-refresh toggle */}
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
@@ -524,19 +625,30 @@ export default function SmsLogs() {
         <CardBody style={{ padding: 0 }}>
           <Table
             columns={columns}
-            data={smsLogs}
-            emptyMessage="No SMS Logs Found"
-
+            data={isUniqueSenderMode ? paginatedLogs : smsLogs}
+            emptyMessage={isUniqueSenderMode ? "No Unique Senders Found" : "No SMS Logs Found"}
+            showSerial
+            serialOffset={(pagination.page - 1) * pagination.limit}
           />
         </CardBody>
       </Card>
 
-      {/* Pagination */}
-      {pagination.total > pagination.limit && (
+      {/* Pagination — server-side for normal mode, client-side for unique sender mode */}
+      {!isUniqueSenderMode && pagination.total > pagination.limit && (
         <Pagination
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+        />
+      )}
+      {isUniqueSenderMode && smsLogs.length > pagination.limit && (
+        <Pagination
+          currentPage={pagination.page}
+          totalPages={Math.ceil(smsLogs.length / pagination.limit)}
+          total={smsLogs.length}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const User = require('../auth/user.model');
 const { Schema } = mongoose;
 
 /**
@@ -21,7 +22,7 @@ const AuditLogSchema = new Schema({
     required: [true, 'Module is required'],
     trim: true,
     uppercase: true,
-    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM', 'WIFI', 'CALL_AUTOMATION', 'SMS'],
+    enum: ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM', 'WIFI', 'CALL_AUTOMATION', 'SMS', 'DEVICE', 'LANDING_CONTENT'],
     index: true,
   },
 
@@ -144,9 +145,8 @@ AuditLogSchema.statics.getLogsWithFilters = async function(filters = {}, options
   const query = {};
 
   // Handle $or queries (for admin to see AUTH logs from all users)
-  if (filters.$or) {
-    query.$or = filters.$or;
-  }
+  // Will be combined with search $or via $and if search is active
+  const existingOr = filters.$or || null;
 
   // Apply filters
   // [AUDIT LOG FIX] - Ensure companyId is properly converted to ObjectId for accurate comparison
@@ -191,9 +191,41 @@ AuditLogSchema.statics.getLogsWithFilters = async function(filters = {}, options
     }
   }
 
-  // Text search on description
+  // Text search on description, action, module, role, and performedBy user name
   if (filters.search) {
-    query.description = { $regex: filters.search, $options: 'i' };
+    const searchRegex = { $regex: filters.search, $options: 'i' };
+
+    // Find user IDs matching the search term
+    const matchingUsers = await User.find({
+      $or: [
+        { name: searchRegex },
+        { email: searchRegex },
+      ]
+    }).select('_id').lean();
+    const matchingUserIds = matchingUsers.map(u => u._id);
+
+    const searchOrConditions = [
+      { description: searchRegex },
+      { action: searchRegex },
+      { module: searchRegex },
+      { role: searchRegex },
+    ];
+
+    if (matchingUserIds.length > 0) {
+      searchOrConditions.push({ performedBy: { $in: matchingUserIds } });
+    }
+
+    if (existingOr) {
+      // Combine existing $or with search $or using $and
+      query.$and = [
+        { $or: existingOr },
+        { $or: searchOrConditions },
+      ];
+    } else {
+      query.$or = searchOrConditions;
+    }
+  } else if (existingOr) {
+    query.$or = existingOr;
   }
 
   const skip = (parseInt(page) - 1) * parseInt(limit);

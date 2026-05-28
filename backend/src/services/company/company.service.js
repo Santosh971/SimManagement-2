@@ -15,7 +15,7 @@ const WifiDevice = require('../../models/wifi/wifiDevice.model');
 const WifiMetric = require('../../models/wifi/wifiMetric.model');
 const WifiAlert = require('../../models/wifi/wifiAlert.model');
 const CallAutomationConfig = require('../../models/callAutomation/callAutomation.model');
-const { AppError, NotFoundError, ConflictError } = require('../../utils/errors');
+const { AppError, NotFoundError, UnauthorizedError, ConflictError } = require('../../utils/errors');
 const emailService = require('../../utils/emailService');
 const notificationHelper = require('../../utils/notificationHelper');
 const config = require('../../config');
@@ -41,7 +41,7 @@ class CompanyService {
     // Company email should not be used by any user in the system
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      throw new ConflictError('This email address is already registered as a user in the system. Each email can only be used once.');
+      throw new ConflictError('This Email ID is already registered as a user in the system. Each email can only be used once.');
     }
 
     // Validate subscription
@@ -97,7 +97,7 @@ class CompanyService {
       if (saveError.code === 11000) {
         const field = Object.keys(saveError.keyValue)[0];
         if (field === 'email') {
-          throw new ConflictError('This email address is already registered in the system. Each email can only be used once.');
+          throw new ConflictError('This Email ID is already registered in the system. Each email can only be used once.');
         } else {
           throw new ConflictError(`${field} is already in use.`);
         }
@@ -605,7 +605,7 @@ class CompanyService {
       if (saveError.code === 11000) {
         const field = Object.keys(saveError.keyValue)[0];
         if (field === 'email') {
-          throw new ConflictError('This email address is already registered in the system. Each email can only be used once.');
+          throw new ConflictError('This Email ID is already registered in the system. Each email can only be used once.');
         } else if (field === 'mobileNumber') {
           throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
         } else {
@@ -1171,6 +1171,41 @@ class CompanyService {
     await company.save();
 
     return { success: true };
+  }
+
+  async resendCompanyEmailChangeOTP(companyId) {
+    const crypto = require('crypto');
+    const emailService = require('../../utils/emailService');
+
+    const company = await Company.findById(companyId);
+    if (!company) {
+      throw new NotFoundError('Company');
+    }
+
+    if (!company.emailChangeOTP || !company.emailChangeOTPExpires || !company.pendingNewEmail) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Generate new OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    company.emailChangeOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    company.emailChangeOTPExpires = otpExpires;
+    await company.save();
+
+    // Resend to appropriate email based on verification status
+    try {
+      if (!company.emailChangeOTPVerified) {
+        await emailService.sendEmailChangeOTPOld(company.email, otp, company.name, company.pendingNewEmail);
+      } else {
+        await emailService.sendEmailChangeOTPNew(company.pendingNewEmail, otp, company.name, company.email);
+      }
+    } catch (error) {
+      throw new AppError('Failed to send verification email. Please try again.', 500);
+    }
+
+    return { success: true, message: 'Verification code resent successfully' };
   }
 
   /**

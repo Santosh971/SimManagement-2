@@ -15,7 +15,7 @@ import {
   FiSmartphone,
   FiFileText,
   FiX,
-  FiActivity,
+  FiClipboard,
   FiMessageCircle,
   FiSend,
   FiMessageSquare,
@@ -25,6 +25,7 @@ import {
   FiFile,
   FiPhoneOutgoing, // [CALL AUTOMATION]
 } from 'react-icons/fi'
+import { FaWhatsapp, FaTelegramPlane } from 'react-icons/fa'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const { user, api } = useAuth()
@@ -58,7 +59,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Payment History', href: '/app/payment-history', icon: FiDollarSign },
           { name: 'Landing Content', href: '/app/landing-content', icon: FiLayout },
           { name: 'Legal Pages', href: '/app/legal-pages', icon: FiFile },
-          { name: 'Audit Logs', href: '/app/audit-logs', icon: FiActivity },
+          { name: 'Audit Logs', href: '/app/audit-logs', icon: FiClipboard },
           { name: 'Notifications', href: '/app/notifications', icon: FiBell },
           { name: 'Settings', href: '/app/settings', icon: FiSettings },
         ]
@@ -70,15 +71,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'Recharges', href: '/app/recharges', icon: FiCreditCard },
           { name: 'Call Logs', href: '/app/call-logs', icon: FiPhone },
           { name: 'SMS Logs', href: '/app/sms', icon: FiMessageSquare, feature: 'smsLogs' },
-          { name: 'WhatsApp', href: '/app/whatsapp', icon: FiMessageCircle, feature: 'whatsappStatus' },
-          { name: 'Telegram', href: '/app/telegram', icon: FiSend, feature: 'telegramStatus' },
+          { name: 'WhatsApp', href: '/app/whatsapp', icon: FaWhatsapp, feature: 'whatsappStatus' },
+          { name: 'Telegram', href: '/app/telegram', icon: FaTelegramPlane, feature: 'telegramStatus' },
           { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi, feature: 'wifiMonitor' },
           // { name: 'WiFi Devices', href: '/app/wifi-devices', icon: FiSmartphone },
           { name: 'Call Automation', href: '/app/call-automation', icon: FiPhoneOutgoing, feature: 'callAutomation' },
           { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },
-          { name: 'Audit Logs', href: '/app/audit-logs', icon: FiActivity },
+          { name: 'Audit Logs', href: '/app/audit-logs', icon: FiClipboard },
           { name: 'Notifications', href: '/app/notifications', icon: FiBell },
           { name: 'Settings', href: '/app/settings', icon: FiSettings },
         ]

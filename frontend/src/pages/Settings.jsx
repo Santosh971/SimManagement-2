@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, extractErrorMessage } from '../context/AuthContext'
 import { FiUser, FiLock, FiMail, FiEye, FiEyeOff, FiX, FiBriefcase, FiMapPin, FiPhone, FiGlobe, FiSave, FiRefreshCw } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -22,17 +22,30 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
     password: '',
     otp: '',
   })
+  const [fieldErrors, setFieldErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [pendingNewEmail, setPendingNewEmail] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setStep(1)
       setFormData({ newEmail: '', password: '', otp: '' })
+      setFieldErrors({})
       setPendingNewEmail('')
       setShowPassword(false)
       setLoading(false)
+      setResendCooldown(0)
     }
   }, [isOpen])
 
@@ -43,18 +56,35 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
     }
     setStep(1)
     setFormData({ newEmail: '', password: '', otp: '' })
+    setFieldErrors({})
     setPendingNewEmail('')
     onClose()
   }
 
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
   const handleRequest = async (e) => {
     e.preventDefault()
-    if (!formData.newEmail || !formData.password) {
-      toast.error('Please fill all fields')
-      return
+    const errors = {}
+    if (!formData.newEmail.trim()) {
+      errors.newEmail = 'Email ID is required'
+    } else if (!emailRegex.test(formData.newEmail.trim())) {
+      errors.newEmail = 'Please enter a valid Email ID (e.g. name@example.com)'
+    } else if (formData.newEmail.toLowerCase() === currentEmail.toLowerCase()) {
+      errors.newEmail = 'New email cannot be the same as your current email'
     }
-    if (formData.newEmail.toLowerCase() === currentEmail.toLowerCase()) {
-      toast.error('New email cannot be the same as current email')
+    if (!formData.password) {
+      errors.password = 'Password is required to verify your identity'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
     setLoading(true)
@@ -63,11 +93,41 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
         newEmail: formData.newEmail,
         password: formData.password,
       })
+      setFieldErrors({})
       setPendingNewEmail(formData.newEmail)
       setStep(2)
       toast.success('Verification code sent to your current email')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to request email change')
+      const data = error.response?.data
+      // Map backend validation errors array to inline field errors
+      if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        const mapped = {}
+        data.errors.forEach((e) => {
+          if (e.field === 'newEmail') mapped.newEmail = e.message
+          else if (e.field === 'password') mapped.password = e.message
+        })
+        if (Object.keys(mapped).length > 0) {
+          setFieldErrors(mapped)
+          return
+        }
+      }
+      // Map backend service-level errors to inline field errors
+      const msg = data?.message || extractErrorMessage(error, 'Failed to request email change')
+      const fieldMap = {}
+      if (/incorrect password/i.test(msg)) {
+        fieldMap.password = 'Incorrect password. Please check and try again.'
+      } else if (/already registered/i.test(msg) || /already used/i.test(msg)) {
+        fieldMap.newEmail = 'This email is already registered. Please use a different Email ID.'
+      } else if (/invalid email/i.test(msg)) {
+        fieldMap.newEmail = 'Please enter a valid Email ID (e.g. name@example.com)'
+      } else if (/same as.*current/i.test(msg)) {
+        fieldMap.newEmail = 'New email cannot be the same as your current email'
+      }
+      if (Object.keys(fieldMap).length > 0) {
+        setFieldErrors(fieldMap)
+        return
+      }
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -75,18 +135,24 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
 
   const handleVerifyOld = async (e) => {
     e.preventDefault()
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit code')
+    if (!formData.otp || !formData.otp.trim()) {
+      setFieldErrors({ otp: 'Please enter the verification code' })
+      return
+    }
+    if (formData.otp.length !== 6) {
+      setFieldErrors({ otp: 'Verification code must be 6 digits' })
       return
     }
     setLoading(true)
     try {
       await api.post('/auth/email-change/verify-old', { otp: formData.otp })
+      setFieldErrors({})
       setFormData({ ...formData, otp: '' })
       setStep(3)
       toast.success('Verification code sent to your new email')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid verification code')
+      const msg = extractErrorMessage(error, 'Invalid verification code')
+      setFieldErrors({ otp: msg })
     } finally {
       setLoading(false)
     }
@@ -94,8 +160,12 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
 
   const handleVerifyNew = async (e) => {
     e.preventDefault()
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit code')
+    if (!formData.otp || !formData.otp.trim()) {
+      setFieldErrors({ otp: 'Please enter the verification code' })
+      return
+    }
+    if (formData.otp.length !== 6) {
+      setFieldErrors({ otp: 'Verification code must be 6 digits' })
       return
     }
     setLoading(true)
@@ -105,9 +175,23 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
       onSuccess(response.data.data.newEmail)
       handleClose()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid verification code')
+      const msg = extractErrorMessage(error, 'Invalid verification code')
+      setFieldErrors({ otp: msg })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return
+    try {
+      await api.post('/auth/email-change/resend')
+      toast.success('Verification code resent successfully')
+      setResendCooldown(30)
+      setFieldErrors({})
+    } catch (error) {
+      const msg = extractErrorMessage(error, 'Failed to resend verification code')
+      toast.error(msg)
     }
   }
 
@@ -215,13 +299,17 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  New Email Address
+                  New Email ID<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="email"
                   value={formData.newEmail}
-                  onChange={(e) => setFormData({ ...formData, newEmail: e.target.value })}
-                  placeholder="Enter new email address"
+                  onChange={(e) => { setFormData({ ...formData, newEmail: e.target.value }); clearFieldError('newEmail') }}
+                  onBlur={() => {
+                    if (!formData.newEmail.trim()) setFieldErrors((prev) => ({ ...prev, newEmail: 'Email ID is required' }))
+                    else if (!emailRegex.test(formData.newEmail.trim())) setFieldErrors((prev) => ({ ...prev, newEmail: 'Please enter a valid Email ID (e.g. name@example.com)' }))
+                  }}
+                  placeholder="admin@gmail.com"
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="off"
@@ -229,60 +317,71 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.newEmail ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
+                {fieldErrors.newEmail && (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.newEmail}</p>
+                )}
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Confirm Password
+                  Enter Password<span style={{ color: '#dc2626' }}>*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '0' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Enter your password"
+                    onChange={(e) => { setFormData({ ...formData, password: e.target.value }); clearFieldError('password') }}
+                    onBlur={() => {
+                      if (!formData.password) setFieldErrors((prev) => ({ ...prev, password: 'Password is required to verify your identity' }))
+                    }}
+                    placeholder="Admin@123"
                     autoComplete="new-password"
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck="false"
                     style={{
-                      width: '100%',
-                      padding: '10px 40px 10px 14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
+                      flex: '1',
+                      padding: '10px 14px',
+                      border: fieldErrors.password ? '1px solid #dc2626' : '1px solid #d1d5db',
+                      borderRight: 'none',
+                      borderRadius: '8px 0 0 8px',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
-                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
+                      padding: '10px 14px',
+                      border: fieldErrors.password ? '1px solid #dc2626' : '1px solid #d1d5db',
+                      borderLeft: 'none',
+                      borderRadius: '0 8px 8px 0',
+                      background: '#d1d5db',
                       cursor: 'pointer',
-                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#6b7280',
                     }}
                   >
-                    {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    {showPassword ? <FiEye size={16} /> : <FiEyeOff size={16} />}
                   </button>
                 </div>
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Password is required for security verification
-                </p>
+                {fieldErrors.password ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.password}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Enter the current admin password is required for security verification
+                  </p>
+                )}
               </div>
               <Button type="submit" loading={loading}>
                 {loading ? 'Sending...' : 'Send Verification Code'}
@@ -301,18 +400,22 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Enter Verification Code
+                  Enter Verification Code<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="text"
                   maxLength={6}
                   value={formData.otp}
-                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') })}
+                  onChange={(e) => { setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') }); clearFieldError('otp') }}
+                  onBlur={() => {
+                    if (!formData.otp || !formData.otp.trim()) setFieldErrors((prev) => ({ ...prev, otp: 'Please enter the verification code' }))
+                    else if (formData.otp.length !== 6) setFieldErrors((prev) => ({ ...prev, otp: 'Verification code must be 6 digits' }))
+                  }}
                   placeholder="000000"
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.otp ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '24px',
                     fontWeight: '600',
@@ -321,15 +424,43 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Code expires in 10 minutes
-                </p>
+                {fieldErrors.otp ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.otp}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Code expires in 10 minutes
+                  </p>
+                )}
               </div>
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} disabled={!formData.otp || formData.otp.length !== 6}>
                 {loading ? 'Verifying...' : 'Verify & Continue'}
               </Button>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resendCooldown > 0}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: 'transparent',
+                  cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  color: resendCooldown > 0 ? '#9ca3af' : '#2563eb',
+                  opacity: resendCooldown > 0 ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Verification Code'}
+              </button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -360,18 +491,22 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Enter Verification Code
+                  Enter Verification Code<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="text"
                   maxLength={6}
                   value={formData.otp}
-                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') })}
+                  onChange={(e) => { setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') }); clearFieldError('otp') }}
+                  onBlur={() => {
+                    if (!formData.otp || !formData.otp.trim()) setFieldErrors((prev) => ({ ...prev, otp: 'Please enter the verification code' }))
+                    else if (formData.otp.length !== 6) setFieldErrors((prev) => ({ ...prev, otp: 'Verification code must be 6 digits' }))
+                  }}
                   placeholder="000000"
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.otp ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '24px',
                     fontWeight: '600',
@@ -380,15 +515,43 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Code expires in 10 minutes
-                </p>
+                {fieldErrors.otp ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.otp}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Code expires in 10 minutes
+                  </p>
+                )}
               </div>
-              <Button type="submit" loading={loading}>
-                {loading ? 'Completing...' : 'Complete Email Change'}
+              <Button type="submit" loading={loading} disabled={!formData.otp || formData.otp.length !== 6}>
+                {loading ? 'Updating Email...' : 'Update Email '}
               </Button>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resendCooldown > 0}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: 'transparent',
+                  cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  color: resendCooldown > 0 ? '#9ca3af' : '#2563eb',
+                  opacity: resendCooldown > 0 ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Verification Code'}
+              </button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -423,17 +586,30 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
     password: '',
     otp: '',
   })
+  const [fieldErrors, setFieldErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [pendingNewEmail, setPendingNewEmail] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setStep(1)
       setFormData({ newEmail: '', password: '', otp: '' })
+      setFieldErrors({})
       setPendingNewEmail('')
       setShowPassword(false)
       setLoading(false)
+      setResendCooldown(0)
     }
   }, [isOpen])
 
@@ -444,18 +620,36 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
     }
     setStep(1)
     setFormData({ newEmail: '', password: '', otp: '' })
+    setFieldErrors({})
     setPendingNewEmail('')
+    setResendCooldown(0)
     onClose()
+  }
+
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
   }
 
   const handleRequest = async (e) => {
     e.preventDefault()
-    if (!formData.newEmail || !formData.password) {
-      toast.error('Please fill all fields')
-      return
+    const errors = {}
+    if (!formData.newEmail.trim()) {
+      errors.newEmail = 'Company Email ID is required'
+    } else if (!emailRegex.test(formData.newEmail.trim())) {
+      errors.newEmail = 'Please enter a valid Email ID (e.g. name@example.com)'
+    } else if (formData.newEmail.toLowerCase() === currentEmail.toLowerCase()) {
+      errors.newEmail = 'New email cannot be the same as the current company email'
     }
-    if (formData.newEmail.toLowerCase() === currentEmail.toLowerCase()) {
-      toast.error('New email cannot be the same as current company email')
+    if (!formData.password) {
+      errors.password = 'Your password is required to verify this change'
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
     setLoading(true)
@@ -464,11 +658,40 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
         newEmail: formData.newEmail,
         password: formData.password,
       })
+      setFieldErrors({})
       setPendingNewEmail(formData.newEmail)
       setStep(2)
       toast.success('Verification code sent to current company email')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to request email change')
+      const data = error.response?.data
+      if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        const mapped = {}
+        data.errors.forEach((e) => {
+          if (e.field === 'newEmail') mapped.newEmail = e.message
+          else if (e.field === 'password') mapped.password = e.message
+        })
+        if (Object.keys(mapped).length > 0) {
+          setFieldErrors(mapped)
+          return
+        }
+      }
+      // Map backend service-level errors to inline field errors
+      const msg = data?.message || extractErrorMessage(error, 'Failed to request email change')
+      const fieldMap = {}
+      if (/incorrect password/i.test(msg)) {
+        fieldMap.password = 'Incorrect password. Please check and try again.'
+      } else if (/already registered/i.test(msg) || /already used/i.test(msg)) {
+        fieldMap.newEmail = 'This email is already in use. Please use a different Email ID.'
+      } else if (/invalid email/i.test(msg)) {
+        fieldMap.newEmail = 'Please enter a valid Email ID (e.g. name@example.com)'
+      } else if (/same as.*current/i.test(msg)) {
+        fieldMap.newEmail = 'New email cannot be the same as the current company email'
+      }
+      if (Object.keys(fieldMap).length > 0) {
+        setFieldErrors(fieldMap)
+        return
+      }
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -476,18 +699,24 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
 
   const handleVerifyOld = async (e) => {
     e.preventDefault()
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit code')
+    if (!formData.otp || !formData.otp.trim()) {
+      setFieldErrors({ otp: 'Please enter the verification code' })
+      return
+    }
+    if (formData.otp.length !== 6) {
+      setFieldErrors({ otp: 'Verification code must be 6 digits' })
       return
     }
     setLoading(true)
     try {
       await api.post('/companies/my/email-change/verify-old', { otp: formData.otp })
+      setFieldErrors({})
       setFormData({ ...formData, otp: '' })
       setStep(3)
       toast.success('Verification code sent to the new email')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid verification code')
+      const msg = extractErrorMessage(error, 'Invalid verification code')
+      setFieldErrors({ otp: msg })
     } finally {
       setLoading(false)
     }
@@ -495,20 +724,38 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
 
   const handleVerifyNew = async (e) => {
     e.preventDefault()
-    if (!formData.otp || formData.otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit code')
+    if (!formData.otp || !formData.otp.trim()) {
+      setFieldErrors({ otp: 'Please enter the verification code' })
+      return
+    }
+    if (formData.otp.length !== 6) {
+      setFieldErrors({ otp: 'Verification code must be 6 digits' })
       return
     }
     setLoading(true)
     try {
       const response = await api.post('/companies/my/email-change/verify-new', { otp: formData.otp })
-      toast.success('Company email updated successfully!')
+      toast.success('Company email updated successfully.')
       onSuccess(response.data.data.email)
       handleClose()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Invalid verification code')
+      const msg = extractErrorMessage(error, 'Invalid verification code')
+      setFieldErrors({ otp: msg })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return
+    try {
+      await api.post('/companies/my/email-change/resend')
+      toast.success('Verification code resent successfully')
+      setResendCooldown(30)
+      setFieldErrors({})
+    } catch (error) {
+      const msg = extractErrorMessage(error, 'Failed to resend verification code')
+      toast.error(msg)
     }
   }
 
@@ -617,13 +864,17 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  New Company Email Address
+                  New Company Email ID<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="email"
                   value={formData.newEmail}
-                  onChange={(e) => setFormData({ ...formData, newEmail: e.target.value })}
-                  placeholder="Enter new email address"
+                  onChange={(e) => { setFormData({ ...formData, newEmail: e.target.value }); clearFieldError('newEmail') }}
+                  onBlur={() => {
+                    if (!formData.newEmail.trim()) setFieldErrors((prev) => ({ ...prev, newEmail: 'Company Email ID is required' }))
+                    else if (!emailRegex.test(formData.newEmail.trim())) setFieldErrors((prev) => ({ ...prev, newEmail: 'Please enter a valid Email ID (e.g. name@example.com)' }))
+                  }}
+                  placeholder="admin@gmail.com"
                   autoComplete="off"
                   autoCorrect="off"
                   autoCapitalize="off"
@@ -631,60 +882,71 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.newEmail ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
+                {fieldErrors.newEmail && (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.newEmail}</p>
+                )}
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Confirm Your Password
+                  Confirm Your Password<span style={{ color: '#dc2626' }}>*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '0' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Enter your password"
+                    onChange={(e) => { setFormData({ ...formData, password: e.target.value }); clearFieldError('password') }}
+                    onBlur={() => {
+                      if (!formData.password) setFieldErrors((prev) => ({ ...prev, password: 'Your password is required to verify this change' }))
+                    }}
+                    placeholder="Admin@123"
                     autoComplete="new-password"
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck="false"
                     style={{
-                      width: '100%',
-                      padding: '10px 40px 10px 14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
+                      flex: '1',
+                      padding: '10px 14px',
+                      border: fieldErrors.password ? '1px solid #dc2626' : '1px solid #d1d5db',
+                      borderRight: 'none',
+                      borderRadius: '8px 0 0 8px',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
-                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
+                      padding: '10px 14px',
+                      border: fieldErrors.password ? '1px solid #dc2626' : '1px solid #d1d5db',
+                      borderLeft: 'none',
+                      borderRadius: '0 8px 8px 0',
+                      background: '#d1d5db',
                       cursor: 'pointer',
-                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#6b7280',
                     }}
                   >
-                    {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    {showPassword ? <FiEye size={16} /> : <FiEyeOff size={16} />}
                   </button>
                 </div>
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Your password is required for security verification
-                </p>
+                {fieldErrors.password ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.password}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Current admin password is required for security verification
+                  </p>
+                )}
               </div>
               <Button type="submit" loading={loading}>
                 {loading ? 'Sending...' : 'Send Verification Code'}
@@ -703,18 +965,22 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Enter Verification Code
+                  Enter Verification Code<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="text"
                   maxLength={6}
                   value={formData.otp}
-                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') })}
+                  onChange={(e) => { setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') }); clearFieldError('otp') }}
+                  onBlur={() => {
+                    if (!formData.otp || !formData.otp.trim()) setFieldErrors((prev) => ({ ...prev, otp: 'Please enter the verification code' }))
+                    else if (formData.otp.length !== 6) setFieldErrors((prev) => ({ ...prev, otp: 'Verification code must be 6 digits' }))
+                  }}
                   placeholder="000000"
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.otp ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '24px',
                     fontWeight: '600',
@@ -723,15 +989,43 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Code expires in 10 minutes
-                </p>
+                {fieldErrors.otp ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.otp}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Code expires in 10 minutes
+                  </p>
+                )}
               </div>
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} disabled={!formData.otp || formData.otp.length !== 6}>
                 {loading ? 'Verifying...' : 'Verify & Continue'}
               </Button>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resendCooldown > 0}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: 'transparent',
+                  cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  color: resendCooldown > 0 ? '#9ca3af' : '#2563eb',
+                  opacity: resendCooldown > 0 ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Verification Code'}
+              </button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -762,18 +1056,22 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                  Enter Verification Code
+                  Enter Verification Code<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="text"
                   maxLength={6}
                   value={formData.otp}
-                  onChange={(e) => setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') })}
+                  onChange={(e) => { setFormData({ ...formData, otp: e.target.value.replace(/\D/g, '') }); clearFieldError('otp') }}
+                  onBlur={() => {
+                    if (!formData.otp || !formData.otp.trim()) setFieldErrors((prev) => ({ ...prev, otp: 'Please enter the verification code' }))
+                    else if (formData.otp.length !== 6) setFieldErrors((prev) => ({ ...prev, otp: 'Verification code must be 6 digits' }))
+                  }}
                   placeholder="000000"
                   style={{
                     width: '100%',
                     padding: '12px 14px',
-                    border: '1px solid #d1d5db',
+                    border: fieldErrors.otp ? '1px solid #dc2626' : '1px solid #d1d5db',
                     borderRadius: '8px',
                     fontSize: '24px',
                     fontWeight: '600',
@@ -782,15 +1080,43 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
-                  required
                 />
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Code expires in 10 minutes
-                </p>
+                {fieldErrors.otp ? (
+                  <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{fieldErrors.otp}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Code expires in 10 minutes
+                  </p>
+                )}
               </div>
-              <Button type="submit" loading={loading}>
-                {loading ? 'Completing...' : 'Complete Email Change'}
+              <Button type="submit" loading={loading} disabled={!formData.otp || formData.otp.length !== 6}>
+                {loading ? 'Updating Email...' : 'Update Email'}
               </Button>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resendCooldown > 0}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: 'transparent',
+                  cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  color: resendCooldown > 0 ? '#9ca3af' : '#2563eb',
+                  opacity: resendCooldown > 0 ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                {resendCooldown > 0 ? `Resend Code in ${resendCooldown}s` : 'Resend Verification Code'}
+              </button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -832,6 +1158,22 @@ export default function Settings() {
     new: false,
     confirm: false,
   })
+  const [profileFieldErrors, setProfileFieldErrors] = useState({})
+  const clearProfileFieldError = (field) => {
+    setProfileFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({})
+  const clearPasswordFieldError = (field) => {
+    setPasswordFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
   const [preferences, setPreferences] = useState({
     emailNotifications: user?.preferences?.notifications?.email ?? true,
     inAppNotifications: user?.preferences?.notifications?.inApp ?? true,
@@ -859,6 +1201,7 @@ export default function Settings() {
   })
   const [hasCompanyChanges, setHasCompanyChanges] = useState(false)
   const [originalCompanyData, setOriginalCompanyData] = useState(null)
+  const [companyFieldErrors, setCompanyFieldErrors] = useState({})
 
   // Fetch company profile on mount (for admin role)
   useEffect(() => {
@@ -902,6 +1245,12 @@ export default function Settings() {
       [name]: value,
     }))
     setHasCompanyChanges(true)
+    setCompanyFieldErrors((prev) => {
+      if (!prev[name]) return prev
+      const next = { ...prev }
+      delete next[name]
+      return next
+    })
   }
 
   const handleCompanyPhoneChange = (phone) => {
@@ -910,13 +1259,59 @@ export default function Settings() {
       phone,
     }))
     setHasCompanyChanges(true)
+    setCompanyFieldErrors((prev) => {
+      if (!prev.phone) return prev
+      const next = { ...prev }
+      delete next.phone
+      return next
+    })
+  }
+
+  const handleProfilePhoneChange = (phone) => {
+    setProfileData((prev) => ({
+      ...prev,
+      phone,
+    }))
+    clearProfileFieldError('phone')
   }
 
   const handleCompanySubmit = async (e) => {
     e.preventDefault()
 
+    const errors = {}
     if (!companyFormData.name.trim()) {
-      toast.error('Company name is required')
+      errors.name = 'Company name is required'
+    } else if (companyFormData.name.trim().length > 100) {
+      errors.name = 'Company name cannot exceed 100 characters'
+    }
+    if (companyFormData.phone && !/^\+?\d{10,15}$/.test(companyFormData.phone)) {
+      errors.phone = 'Invalid phone number (10-15 digits, optional + prefix)'
+    }
+    // Address validation
+    const streetRegex = /^[a-zA-Z0-9\s,.\-/'()#&]*$/
+    const cityStateCountryRegex = /^[\p{L}\s\-'.]*$/u
+    if (companyFormData['address.street'] && companyFormData['address.street'].length > 200) {
+      errors['address.street'] = 'Street address cannot exceed 200 characters'
+    } else if (companyFormData['address.street'] && !streetRegex.test(companyFormData['address.street'])) {
+      errors['address.street'] = 'Street can only contain letters, numbers, spaces, comma, period, hyphen, slash, apostrophe, parentheses, hash, and ampersand'
+    }
+    if (companyFormData['address.city'] && !cityStateCountryRegex.test(companyFormData['address.city'])) {
+      errors['address.city'] = 'City can only contain letters, spaces, hyphens, apostrophes, and periods'
+    } else if (companyFormData['address.city'] && companyFormData['address.city'].length > 50) {
+      errors['address.city'] = 'City cannot exceed 50 characters'
+    }
+    if (companyFormData['address.state'] && !cityStateCountryRegex.test(companyFormData['address.state'])) {
+      errors['address.state'] = 'State can only contain letters, spaces, hyphens, apostrophes, and periods'
+    } else if (companyFormData['address.state'] && companyFormData['address.state'].length > 50) {
+      errors['address.state'] = 'State cannot exceed 50 characters'
+    }
+    if (companyFormData['address.country'] && !cityStateCountryRegex.test(companyFormData['address.country'])) {
+      errors['address.country'] = 'Country can only contain letters, spaces, hyphens, apostrophes, and periods'
+    } else if (companyFormData['address.country'] && companyFormData['address.country'].length > 50) {
+      errors['address.country'] = 'Country cannot exceed 50 characters'
+    }
+    if (Object.keys(errors).length > 0) {
+      setCompanyFieldErrors(errors)
       return
     }
 
@@ -934,14 +1329,27 @@ export default function Settings() {
       }
 
       await api.put('/companies/my', data)
-      toast.success('Company profile updated successfully')
+      setCompanyFieldErrors({})
+      toast.success('Company profile updated successfully.')
       setHasCompanyChanges(false)
 
       // Refresh company data
       await fetchCompany()
     } catch (err) {
-      console.error('Failed to update company:', err)
-      toast.error(err.response?.data?.message || 'Failed to update company profile')
+      const respData = err.response?.data
+      if (Array.isArray(respData?.errors) && respData.errors.length > 0) {
+        const mapped = {}
+        respData.errors.forEach((e) => {
+          const key = e.field === 'phone' ? 'phone' :
+                      e.field === 'name' ? 'name' : e.field
+          if (key) mapped[key] = e.message
+        })
+        if (Object.keys(mapped).length > 0) {
+          setCompanyFieldErrors(mapped)
+          return
+        }
+      }
+      toast.error(extractErrorMessage(err, 'Failed to update company profile'))
     } finally {
       setCompanySaving(false)
     }
@@ -951,16 +1359,44 @@ export default function Settings() {
     if (originalCompanyData) {
       setCompanyFormData(originalCompanyData)
       setHasCompanyChanges(false)
+      setCompanyFieldErrors({})
     }
   }
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault()
+    const errors = {}
+    if (!profileData.name.trim()) {
+      errors.name = 'Full name is required'
+    } else if (profileData.name.trim().length > 50) {
+      errors.name = 'Name cannot exceed 50 characters'
+    }
+    if (profileData.phone && !/^\+?\d{10,15}$/.test(profileData.phone)) {
+      errors.phone = 'Invalid phone number (10-15 digits, optional + prefix)'
+    }
+    if (Object.keys(errors).length > 0) {
+      setProfileFieldErrors(errors)
+      return
+    }
+    setProfileFieldErrors({})
     setLoading(true)
     try {
       await updateProfile(profileData)
     } catch (error) {
-      // Error handled in AuthContext
+      const data = error.response?.data
+      if (Array.isArray(data?.errors) && data.errors.length > 0) {
+        const mapped = {}
+        data.errors.forEach((e) => {
+          if (e.field === 'name') mapped.name = e.message
+          else if (e.field === 'phone') mapped.phone = e.message
+        })
+        if (Object.keys(mapped).length > 0) {
+          setProfileFieldErrors(mapped)
+          return
+        }
+      }
+      const msg = data?.message || extractErrorMessage(error, 'Failed to update profile')
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -968,16 +1404,50 @@ export default function Settings() {
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault()
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Passwords do not match')
+    const errors = {}
+    if (!passwordData.currentPassword.trim()) {
+      errors.currentPassword = 'Current password is required.'
+    } else if (passwordData.currentPassword.length < 1) {
+      errors.currentPassword = 'Current password is required.'
+    }
+    if (!passwordData.newPassword) {
+      errors.newPassword = 'New password is required.'
+    } else if (passwordData.newPassword.length < 8) {
+      errors.newPassword = 'New password must be at least 8 characters.'
+    } else if (passwordData.newPassword.length > 15) {
+      errors.newPassword = 'New password cannot exceed 15 characters.'
+    }
+    if (!passwordData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your new password.'
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match.'
+    }
+    if (Object.keys(errors).length > 0) {
+      setPasswordFieldErrors(errors)
       return
     }
     setLoading(true)
     try {
       await changePassword(passwordData.currentPassword, passwordData.newPassword)
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setPasswordFieldErrors({})
     } catch (error) {
-      // Error handled in AuthContext
+      const data = error.response?.data
+      if (data && Array.isArray(data.errors) && data.errors.length > 0) {
+        const fieldMap = {}
+        data.errors.forEach((err) => {
+          const field = err.field || err.param
+          if (field === 'currentPassword') fieldMap.currentPassword = err.message
+          else if (field === 'newPassword') fieldMap.newPassword = err.message
+          else fieldMap.currentPassword = fieldMap.currentPassword || err.message
+        })
+        if (Object.keys(fieldMap).length > 0) setPasswordFieldErrors(fieldMap)
+      } else {
+        const msg = data?.message || ''
+        if (/incorrect password/i.test(msg)) {
+          setPasswordFieldErrors({ currentPassword: 'Incorrect password. Please check and try again.' })
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -1060,29 +1530,35 @@ export default function Settings() {
                   <div className="company-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                        Company Name *
+                        Company Name<span style={{ color: '#dc2626' }}>*</span>
                       </label>
                       <input
                         type="text"
                         name="name"
                         value={companyFormData.name}
                         onChange={handleCompanyChange}
+                        onBlur={() => {
+                          if (!companyFormData.name.trim()) setCompanyFieldErrors((prev) => ({ ...prev, name: 'Company name is required' }))
+                          else if (companyFormData.name.trim().length > 100) setCompanyFieldErrors((prev) => ({ ...prev, name: 'Company name cannot exceed 100 characters' }))
+                        }}
                         placeholder="Enter company name"
                         style={{
                           width: '100%',
                           padding: '10px 12px',
-                          border: '1px solid #d1d5db',
+                          border: companyFieldErrors.name ? '1px solid #dc2626' : '1px solid #d1d5db',
                           borderRadius: '8px',
                           fontSize: '14px',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
-                        required
                       />
+                      {companyFieldErrors.name && (
+                        <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors.name}</p>
+                      )}
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                        Company Email *
+                        Company Email<span style={{ color: '#dc2626' }}>*</span>
                       </label>
                       <div className="company-email-field-wrapper" style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: 'row' }}>
                         <style>{`
@@ -1124,6 +1600,7 @@ export default function Settings() {
                           onClick={() => setShowCompanyEmailModal(true)}
                           style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                         >
+                          <FiMail style={{ width: '16px', height: '16px', marginRight: '6px' }} />
                           Change
                         </Button>
                       </div>
@@ -1144,9 +1621,12 @@ export default function Settings() {
                     <PhoneInput
                       value={companyFormData.phone}
                       onChange={handleCompanyPhoneChange}
-                      label="Phone Number"
+                      label="Contact Number"
                       placeholder="+91 9876543210"
                     />
+                    {companyFieldErrors.phone && (
+                      <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors.phone}</p>
+                    )}
                   </div>
                 </div>
 
@@ -1166,17 +1646,21 @@ export default function Settings() {
                         name="address.street"
                         value={companyFormData['address.street']}
                         onChange={handleCompanyChange}
-                        placeholder="123 Main Street"
+                        placeholder="456 Business Park Drive, Floor 3"
+                        maxLength={200}
                         style={{
                           width: '100%',
                           padding: '10px 12px',
-                          border: '1px solid #d1d5db',
+                          border: companyFieldErrors['address.street'] ? '1px solid #dc2626' : '1px solid #d1d5db',
                           borderRadius: '8px',
                           fontSize: '14px',
                           outline: 'none',
                           boxSizing: 'border-box',
                         }}
                       />
+                      {companyFieldErrors['address.street'] && (
+                        <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors['address.street']}</p>
+                      )}
                     </div>
                     <div className="company-address-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
                       <div>
@@ -1188,17 +1672,21 @@ export default function Settings() {
                           name="address.city"
                           value={companyFormData['address.city']}
                           onChange={handleCompanyChange}
-                          placeholder="City"
+                          placeholder="Chicago"
+                          maxLength={50}
                           style={{
                             width: '100%',
                             padding: '10px 12px',
-                            border: '1px solid #d1d5db',
+                            border: companyFieldErrors['address.city'] ? '1px solid #dc2626' : '1px solid #d1d5db',
                             borderRadius: '8px',
                             fontSize: '14px',
                             outline: 'none',
                             boxSizing: 'border-box',
                           }}
                         />
+                        {companyFieldErrors['address.city'] && (
+                          <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors['address.city']}</p>
+                        )}
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
@@ -1209,17 +1697,21 @@ export default function Settings() {
                           name="address.state"
                           value={companyFormData['address.state']}
                           onChange={handleCompanyChange}
-                          placeholder="State"
+                          placeholder="Illinois"
+                          maxLength={50}
                           style={{
                             width: '100%',
                             padding: '10px 12px',
-                            border: '1px solid #d1d5db',
+                            border: companyFieldErrors['address.state'] ? '1px solid #dc2626' : '1px solid #d1d5db',
                             borderRadius: '8px',
                             fontSize: '14px',
                             outline: 'none',
                             boxSizing: 'border-box',
                           }}
                         />
+                        {companyFieldErrors['address.state'] && (
+                          <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors['address.state']}</p>
+                        )}
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
@@ -1230,17 +1722,21 @@ export default function Settings() {
                           name="address.country"
                           value={companyFormData['address.country']}
                           onChange={handleCompanyChange}
-                          placeholder="Country"
+                          placeholder="United States"
+                          maxLength={50}
                           style={{
                             width: '100%',
                             padding: '10px 12px',
-                            border: '1px solid #d1d5db',
+                            border: companyFieldErrors['address.country'] ? '1px solid #dc2626' : '1px solid #d1d5db',
                             borderRadius: '8px',
                             fontSize: '14px',
                             outline: 'none',
                             boxSizing: 'border-box',
                           }}
                         />
+                        {companyFieldErrors['address.country'] && (
+                          <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors['address.country']}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1311,28 +1807,111 @@ export default function Settings() {
             <CardBody>
               <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>Profile Information</h3>
               <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
+                {/* <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    Full Name
+                    Full Name<span style={{ color: '#dc2626' }}>*</span>
                   </label>
                   <input
                     type="text"
                     value={profileData.name}
-                    onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                    placeholder='Mohit Patil'
+                    onChange={(e) => {
+                      setProfileData({ ...profileData, name: e.target.value })
+                      clearProfileFieldError('name')
+                    }}
+                    onBlur={() => {
+                      if (!profileData.name.trim()) setProfileFieldErrors((prev) => ({ ...prev, name: 'Full name is required' }))
+                      else if (profileData.name.trim().length > 50) setProfileFieldErrors((prev) => ({ ...prev, name: 'Name cannot exceed 50 characters' }))
+                    }}
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      border: '1px solid #d1d5db',
+                      border: profileFieldErrors.name ? '1px solid #dc2626' : '1px solid #d1d5db',
                       borderRadius: '8px',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
                     }}
                   />
-                </div>
+                  {profileFieldErrors.name && (
+                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{profileFieldErrors.name}</p>
+                  )}
+                </div> */}
+                <div>
+  <label
+    style={{
+      display: 'block',
+      marginBottom: '6px',
+      fontWeight: '500',
+      fontSize: '13px',
+      color: '#374151',
+    }}
+  >
+    Full Name<span style={{ color: '#dc2626' }}>*</span>
+  </label>
+
+  <input
+    type="text"
+    value={profileData.name}
+    maxLength={50}
+    placeholder="Mohit Patil"
+    onChange={(e) => {
+      setProfileData({
+        ...profileData,
+        name: e.target.value,
+      });
+
+      clearProfileFieldError('name');
+    }}
+    onBlur={() => {
+      if (!profileData.name.trim()) {
+        setProfileFieldErrors((prev) => ({
+          ...prev,
+          name: 'Full name is required.',
+        }));
+      }
+    }}
+    style={{
+      width: '100%',
+      padding: '10px 14px',
+      border: profileFieldErrors.name
+        ? '1px solid #dc2626'
+        : '1px solid #d1d5db',
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      boxSizing: 'border-box',
+    }}
+  />
+
+  {profileFieldErrors.name && (
+    <p
+      style={{
+        fontSize: '12px',
+        color: '#dc2626',
+        marginTop: '4px',
+        marginBottom: '0',
+      }}
+    >
+      {profileFieldErrors.name}
+    </p>
+  )}
+
+  <p
+    style={{
+      fontSize: '12px',
+      color: '#6b7280',
+      textAlign: 'right',
+      marginTop: '4px',
+      marginBottom: '0',
+    }}
+  >
+    {profileData.name.length}/50
+  </p>
+</div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    Email Address
+                    Email ID
                   </label>
                   <div className="email-field-wrapper" style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: 'row' }}>
                     <style>{`
@@ -1375,28 +1954,20 @@ export default function Settings() {
                     </Button>
                   </div>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                    Click "Change" to update your email address with verification
+                    Click "Change" to update your Email ID with verification
                   </p>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
+                  <PhoneInput
                     value={profileData.phone}
-                    onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                    placeholder="+91 9876543210"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    onChange={handleProfilePhoneChange}
+                    label="Contact Number"
+                    required
+                    placeholder="9356080318"
                   />
+                  {profileFieldErrors.phone && (
+                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{profileFieldErrors.phone}</p>
+                  )}
                 </div>
                 <Button type="submit" loading={loading}>
                   {loading ? 'Saving...' : 'Save Changes'}
@@ -1413,130 +1984,167 @@ export default function Settings() {
               <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    Current Password
+                    Current Password<span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: '0' }}>
                     <input
                       type={showPassword.current ? 'text' : 'password'}
                       value={passwordData.currentPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      placeholder='Admin@1234'
+                      maxLength={15}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                        clearPasswordFieldError('currentPassword')
+                      }}
+                      onBlur={() => {
+                        if (!passwordData.currentPassword.trim()) setPasswordFieldErrors((prev) => ({ ...prev, currentPassword: 'Current password is required.' }))
+                      }}
                       style={{
-                        width: '100%',
-                        padding: '10px 40px 10px 14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
+                        flex: '1',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.currentPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderRight: 'none',
+                        borderRadius: '8px 0 0 8px',
                         fontSize: '14px',
                         outline: 'none',
                         boxSizing: 'border-box',
                       }}
-                      required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword({ ...showPassword, current: !showPassword.current })}
                       style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.currentPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderLeft: 'none',
+                        borderRadius: '0 8px 8px 0',
+                        background: '#d1d5db',
                         cursor: 'pointer',
-                        padding: '4px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#6b7280',
                       }}
                     >
-                      {showPassword.current ? <FiEyeOff style={{ width: '18px', height: '18px' }} /> : <FiEye style={{ width: '18px', height: '18px' }} />}
+                      {showPassword.current ? <FiEye style={{ width: '18px', height: '18px' }} /> : <FiEyeOff style={{ width: '18px', height: '18px' }} />}
                     </button>
                   </div>
+                  {passwordFieldErrors.currentPassword && (
+                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{passwordFieldErrors.currentPassword}</p>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    New Password
+                    New Password<span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: '0' }}>
                     <input
                       type={showPassword.new ? 'text' : 'password'}
                       value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      placeholder='John@1234'
+                      maxLength={15}
+                      autoComplete="new-password"
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, newPassword: e.target.value })
+                        clearPasswordFieldError('newPassword')
+                      }}
+                      onBlur={() => {
+                        if (!passwordData.newPassword) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password is required.' }))
+                        else if (passwordData.newPassword.length < 8) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password must be at least 8 characters.' }))
+                        else if (passwordData.newPassword.length > 15) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password cannot exceed 15 characters.' }))
+                      }}
                       style={{
-                        width: '100%',
-                        padding: '10px 40px 10px 14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
+                        flex: '1',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.newPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderRight: 'none',
+                        borderRadius: '8px 0 0 8px',
                         fontSize: '14px',
                         outline: 'none',
                         boxSizing: 'border-box',
                       }}
-                      required
-                      minLength={8}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword({ ...showPassword, new: !showPassword.new })}
                       style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.newPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderLeft: 'none',
+                        borderRadius: '0 8px 8px 0',
+                        background: '#d1d5db',
                         cursor: 'pointer',
-                        padding: '4px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#6b7280',
                       }}
                     >
-                      {showPassword.new ? <FiEyeOff style={{ width: '18px', height: '18px' }} /> : <FiEye style={{ width: '18px', height: '18px' }} />}
+                      {showPassword.new ? <FiEye style={{ width: '18px', height: '18px' }} /> : <FiEyeOff style={{ width: '18px', height: '18px' }} />}
                     </button>
                   </div>
+                  {passwordFieldErrors.newPassword ? (
+                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{passwordFieldErrors.newPassword}</p>
+                  ) : (
+                    <p style={{ fontSize: '12px', color: passwordData.newPassword.length > 0 && passwordData.newPassword.length < 8 ? '#dc2626' : '#6b7280', marginTop: '4px' }}>
+                      {passwordData.newPassword.length > 0
+                        ? `${passwordData.newPassword.length}/15 characters${passwordData.newPassword.length < 8 ? ' (minimum 8)' : ''}`
+                        : 'Minimum 8 characters, maximum 15 characters'}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                    Confirm New Password
+                    Confirm New Password<span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: '0' }}>
                     <input
                       type={showPassword.confirm ? 'text' : 'password'}
                       value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      placeholder='John@1234'
+                      maxLength={15}
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                        clearPasswordFieldError('confirmPassword')
+                      }}
+                      onBlur={() => {
+                        if (!passwordData.confirmPassword) setPasswordFieldErrors((prev) => ({ ...prev, confirmPassword: 'Please confirm your new password.' }))
+                        else if (passwordData.newPassword !== passwordData.confirmPassword) setPasswordFieldErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match.' }))
+                      }}
                       style={{
-                        width: '100%',
-                        padding: '10px 40px 10px 14px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '8px',
+                        flex: '1',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.confirmPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderRight: 'none',
+                        borderRadius: '8px 0 0 8px',
                         fontSize: '14px',
                         outline: 'none',
                         boxSizing: 'border-box',
                       }}
-                      required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword({ ...showPassword, confirm: !showPassword.confirm })}
                       style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
+                        padding: '10px 14px',
+                        border: passwordFieldErrors.confirmPassword ? '1px solid #dc2626' : '1px solid #d1d5db',
+                        borderLeft: 'none',
+                        borderRadius: '0 8px 8px 0',
+                        background: '#d1d5db',
                         cursor: 'pointer',
-                        padding: '4px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#6b7280',
                       }}
                     >
-                      {showPassword.confirm ? <FiEyeOff style={{ width: '18px', height: '18px' }} /> : <FiEye style={{ width: '18px', height: '18px' }} />}
+                      {showPassword.confirm ? <FiEye style={{ width: '18px', height: '18px' }} /> : <FiEyeOff style={{ width: '18px', height: '18px' }} />}
                     </button>
                   </div>
+                  {passwordFieldErrors.confirmPassword && (
+                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{passwordFieldErrors.confirmPassword}</p>
+                  )}
                 </div>
                 <Button type="submit" loading={loading}>
                   {loading ? 'Changing...' : 'Change Password'}

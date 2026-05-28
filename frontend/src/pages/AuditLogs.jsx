@@ -14,9 +14,8 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from 'react-icons/fi'
-import ReactDatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
-import { Pagination } from '../components/ui'
+import { Pagination, Button } from '../components/ui'
+import { formatDateTime, formatDateTimeShort } from '../utils/dateFormat'
 
 const AuditLogs = () => {
   const { api, user } = useAuth()
@@ -36,26 +35,32 @@ const AuditLogs = () => {
   const [showFilters, setShowFilters] = useState(false)
 
   // Available options
+  // Available options — synced with backend auditLog.service.js getModuleActions()
   const modules = [
     'AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY',
     'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION',
     'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM',
+    'WIFI', 'CALL_AUTOMATION', 'SMS',
   ]
   const actions = {
-    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGE', 'PASSWORD_RESET'],
-    SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT'],
-    RECHARGE: ['RECHARGE_ADD', 'RECHARGE_UPDATE', 'RECHARGE_DELETE'],
-    USER: ['USER_CREATE', 'USER_UPDATE', 'USER_DELETE', 'USER_PASSWORD_RESET'],
-    REPORT: ['REPORT_GENERATE', 'REPORT_EXPORT'],
-    COMPANY: ['COMPANY_CREATE', 'COMPANY_UPDATE', 'COMPANY_DELETE', 'COMPANY_ADMIN_CREATE', 'COMPANY_SUBSCRIPTION_RENEW'],
+    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'REGISTRATION', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED'],
+    SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT', 'SIM_MESSAGING_UPDATE'],
+    RECHARGE: ['RECHARGE_ADD', 'RECHARGE_UPDATE', 'RECHARGE_DELETE', 'RECHARGE_EXPIRE', 'RECHARGE_REMINDER_SENT'],
+    USER: ['USER_CREATE', 'USER_UPDATE', 'USER_DELETE', 'USER_PASSWORD_RESET', 'USER_STATUS_CHANGE'],
+    REPORT: ['REPORT_EXPORT', 'REPORT_IMPORT', 'REPORT_DOWNLOAD', 'REPORT_GENERATE'],
+    COMPANY: ['COMPANY_CREATE', 'COMPANY_UPDATE', 'COMPANY_DELETE', 'COMPANY_ADMIN_CREATE', 'COMPANY_ADMIN_UPDATE', 'COMPANY_ADMIN_DELETE', 'COMPANY_SUBSCRIPTION_RENEW', 'COMPANY_PROFILE_UPDATE', 'COMPANY_EMAIL_CHANGE_REQUEST', 'COMPANY_EMAIL_CHANGE_COMPLETE', 'COMPANY_EMAIL_CHANGE_CANCEL', 'COMPANY_TRIAL_EXTEND'],
     SUBSCRIPTION: ['SUBSCRIPTION_CREATE', 'SUBSCRIPTION_UPDATE', 'SUBSCRIPTION_DELETE', 'SUBSCRIPTION_TOGGLE'],
-    PAYMENT: ['PAYMENT_INITIATE', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED'],
-    CALL_LOG: ['CALL_LOG_SYNC', 'CALL_LOG_EXPORT'],
-    NOTIFICATION: ['NOTIFICATION_CREATE', 'NOTIFICATION_READ'],
+    PAYMENT: ['PAYMENT_INITIATE', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUND'],
+    CALL_LOG: ['CALL_LOG_SYNC', 'CALL_LOG_EXPORT', 'CALL_LOG_FLAG'],
+    NOTIFICATION: ['NOTIFICATION_CREATE', 'NOTIFICATION_READ', 'NOTIFICATION_DELETE', 'NOTIFICATION_BULK_READ'],
     DASHBOARD: ['DASHBOARD_VIEW'],
-    SETTINGS: ['SETTINGS_UPDATE'],
+    SETTINGS: ['SETTINGS_UPDATE', 'PREFERENCES_UPDATE', 'CONTENT_UPDATE', 'CONTENT_CREATE'],
     WHATSAPP: ['WHATSAPP_MESSAGE_SEND', 'WHATSAPP_MESSAGE_SEND_BULK', 'WHATSAPP_WEBHOOK_REPLY', 'WHATSAPP_SIM_ACTIVE', 'WHATSAPP_SIM_INACTIVE'],
-    TELEGRAM: ['TELEGRAM_MESSAGE_SEND', 'TELEGRAM_MESSAGE_SEND_BULK', 'TELEGRAM_LINK_SEND', 'TELEGRAM_LINK_SEND_BULK', 'TELEGRAM_SIM_LINK', 'TELEGRAM_SIM_UNLINK', 'TELEGRAM_WEBHOOK_REPLY', 'TELEGRAM_SIM_ACTIVE', 'TELEGRAM_SIM_INACTIVE'],
+    TELEGRAM: ['TELEGRAM_MESSAGE_SEND', 'TELEGRAM_MESSAGE_SEND_BULK', 'TELEGRAM_LINK_SEND', 'TELEGRAM_LINK_SEND_BULK', 'TELEGRAM_LINK_GENERATED', 'TELEGRAM_SIM_LINK_INITIATED', 'TELEGRAM_SIM_UNLINK', 'TELEGRAM_PHONE_VERIFICATION_FAILED', 'TELEGRAM_PHONE_VERIFIED', 'TELEGRAM_SIM_ACTIVE', 'TELEGRAM_SIM_INACTIVE'],
+    WIFI: ['WIFI_NETWORK_CREATE', 'WIFI_NETWORK_UPDATE', 'WIFI_NETWORK_DELETE', 'WIFI_DEVICE_ASSIGN', 'WIFI_DEVICE_UNASSIGN', 'WIFI_DEVICE_UPDATE', 'WIFI_DEVICE_DELETE', 'WIFI_ALERT_RESOLVE'],
+    CALL_AUTOMATION: ['CALL_AUTOMATION_CONFIG_SAVE', 'CALL_AUTOMATION_TOGGLE'],
+    SMS: ['SMS_SYNC', 'SMS_EXPORT'],
+ 
   }
 
   const availableActions = module ? actions[module] || [] : []
@@ -161,27 +166,10 @@ const AuditLogs = () => {
     }
   }
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatDate = formatDateTime
 
   // Shorter format for mobile
-  const formatDateTimeMobile = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatDateMobile = formatDateTimeShort
 
   const getActionColor = (action) => {
     if (action?.includes('CREATE') || action?.includes('ADD')) return 'bg-green-100 text-green-700'
@@ -226,7 +214,7 @@ const AuditLogs = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-secondary-900 flex items-center gap-2">
-                <FiActivity className="text-primary-600 shrink-0" />
+               
                 Audit Logs
               </h1>
               <p className="text-secondary-500 mt-0.5 text-sm sm:text-base">
@@ -236,21 +224,20 @@ const AuditLogs = () => {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
+              <Button
+                variant="secondary"
+                icon={FiRefreshCw}
                 onClick={() => fetchLogs()}
-                className="flex items-center gap-1.5 px-3 py-2 sm:px-4 bg-white border border-secondary-200 rounded-lg text-secondary-600 hover:bg-secondary-50 transition-colors text-sm"
               >
-                <FiRefreshCw className={`${loading ? 'animate-spin' : ''} shrink-0`} />
-                <span className="hidden xs:inline">Refresh</span>
-              </button>
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
               {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'company_admin') && (
-                <button
+                <Button
+                  icon={FiDownload}
                   onClick={handleExport}
-                  className="flex items-center gap-1.5 px-3 py-2 sm:px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
                 >
-                  <FiDownload className="shrink-0" />
-                  <span className="hidden xs:inline">Export</span>
-                </button>
+                  Export
+                </Button>
               )}
             </div>
           </div>
@@ -300,7 +287,7 @@ const AuditLogs = () => {
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search description..."
+                  placeholder="Search logs..."
                   value={search}
                   onChange={handleSearchChange}
                   className="w-full pl-9 pr-4 py-2 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -338,30 +325,44 @@ const AuditLogs = () => {
 
               {/* Start Date */}
               <div className="w-full">
-                <ReactDatePicker
-                  selected={startDate}
-                  onChange={handleStartDateChange}
-                  placeholderText="Start Date"
-                  className="w-full px-3 py-2 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  wrapperClassName="w-full"
-                  dateFormat="dd MMM yyyy"
-                  isClearable
-                  maxDate={new Date()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>From:</span>
+                <input
+                  type="date"
+                  value={startDate ? startDate.toISOString().split('T')[0] : ''}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                  }}
                 />
+                </div>
               </div>
 
               {/* End Date */}
               <div className="w-full">
-                <ReactDatePicker
-                  selected={endDate}
-                  onChange={handleEndDateChange}
-                  placeholderText="End Date"
-                  className="w-full px-3 py-2 text-sm border border-secondary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  wrapperClassName="w-full"
-                  dateFormat="dd MMM yyyy"
-                  isClearable
-                  minDate={startDate}
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>To:</span>
+                <input
+                  type="date"
+                  value={endDate ? endDate.toISOString().split('T')[0] : ''}
+                  min={startDate ? startDate.toISOString().split('T')[0] : ''}
+                  onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                  }}
                 />
+                </div>
               </div>
 
             </div>
@@ -426,7 +427,7 @@ const AuditLogs = () => {
                         <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1.5 text-sm text-secondary-600">
                             <FiClock className="text-secondary-400 shrink-0" />
-                            {formatDateTime(log.createdAt)}
+                            {formatDate(log.createdAt)}
                           </div>
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
@@ -467,18 +468,21 @@ const AuditLogs = () => {
                 </table>
               </div> */}
 <div className="w-full overflow-x-auto">
-  <table className="w-full min-w-[600px] lg:min-w-full">
-    
+  <table className="w-full min-w-[900px]">
+
     {/* HEADER */}
     <thead className="bg-secondary-50 border-b border-secondary-200">
       <tr>
+       <th className="px-3 sm:px-5 py-3 text-center text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase w-[50px]">
+  S.No.
+</th>
        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase min-w-[140px] sm:min-w-[180px]">
-  Date
+  Date & Time
 </th>
         <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
           Action
         </th>
-        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase hidden sm:table-cell">
+        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
           Module
         </th>
         <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
@@ -487,14 +491,28 @@ const AuditLogs = () => {
         <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
           Description
         </th>
+        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
+          Role
+        </th>
+        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
+          Company
+        </th>
+        <th className="px-3 sm:px-5 py-3 text-left text-[10px] sm:text-xs font-semibold text-secondary-600 uppercase">
+          Email
+        </th>
       </tr>
     </thead>
 
     {/* BODY */}
     <tbody className="divide-y divide-secondary-100">
-      {logs.map((log) => (
+      {logs.map((log, index) => (
         <tr key={log._id} className="hover:bg-secondary-50">
-          
+
+          {/* S.No. */}
+          <td className="px-3 sm:px-5 py-3 text-center text-xs sm:text-sm text-secondary-400">
+            {(pagination.page - 1) * pagination.limit + index + 1}
+          </td>
+
           {/* DATE */}
         <td className="px-3 sm:px-5 py-3 align-top min-w-[140px] sm:min-w-[180px]">
   <div className="flex items-center gap-1.5 text-xs sm:text-sm text-secondary-600">
@@ -528,8 +546,8 @@ const AuditLogs = () => {
             </span>
           </td>
 
-          {/* MODULE (hidden on mobile) */}
-          <td className="px-3 sm:px-5 py-3 hidden sm:table-cell align-top">
+          {/* MODULE */}
+          <td className="px-3 sm:px-5 py-3 align-top">
             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getModuleColor(log.module)}`}>
               {log.module}
             </span>
@@ -553,11 +571,6 @@ const AuditLogs = () => {
                     ? log.performedBy.email
                     : ''}
                 </p>
-
-                {/* Show module here on mobile */}
-                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium sm:hidden bg-gray-100 text-gray-600">
-                  {log.module}
-                </span>
               </div>
             </div>
           </td>
@@ -566,6 +579,29 @@ const AuditLogs = () => {
           <td className="px-3 sm:px-5 py-3 align-top">
             <p className="text-xs sm:text-sm text-secondary-600 break-words">
               {log.description}
+            </p>
+          </td>
+
+          {/* ROLE */}
+          <td className="px-3 sm:px-5 py-3 align-top">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 capitalize">
+              {log.role || '-'}
+            </span>
+          </td>
+
+          {/* COMPANY */}
+          <td className="px-3 sm:px-5 py-3 align-top">
+            <p className="text-xs sm:text-sm text-secondary-600">
+              {log.companyId?.name || '-'}
+            </p>
+          </td>
+
+          {/* EMAIL */}
+          <td className="px-3 sm:px-5 py-3 align-top">
+            <p className="text-xs sm:text-sm text-secondary-600 break-words">
+              {log.performedBy?.email && !log.performedBy.email.includes('@mobile.user')
+                ? log.performedBy.email
+                : (log.metadata?.mobileNumber ? 'Mobile User' : '-')}
             </p>
           </td>
         </tr>
@@ -586,6 +622,7 @@ const AuditLogs = () => {
                 currentPage={pagination.page}
                 totalPages={Math.ceil(pagination.total / pagination.limit)}
                 total={pagination.total}
+                limit={pagination.limit}
                 onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
               />
             </div>
@@ -599,21 +636,7 @@ const AuditLogs = () => {
     <div className="flex flex-col gap-3">
 
       {/* INFO TEXT */}
-      <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-        Showing{" "}
-        <span className="font-medium text-gray-700">
-          {(pagination.page - 1) * pagination.limit + 1}
-        </span>{" "}
-        to{" "}
-        <span className="font-medium text-gray-700">
-          {Math.min(pagination.page * pagination.limit, pagination.total)}
-        </span>{" "}
-        of{" "}
-        <span className="font-medium text-gray-700">
-          {pagination.total}
-        </span>{" "}
-        results
-      </div>
+      {/*  */}
 
       {/* PAGINATION WRAPPER (FIXED) */}
       <div className="w-full overflow-x-auto">
@@ -622,6 +645,7 @@ const AuditLogs = () => {
             currentPage={pagination.page}
             totalPages={Math.ceil(pagination.total / pagination.limit)}
             total={pagination.total}
+            limit={pagination.limit}
             onPageChange={(page) =>
               setPagination((prev) => ({ ...prev, page }))
             }

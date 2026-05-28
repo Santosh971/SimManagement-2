@@ -19,7 +19,7 @@ const registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
   body('role').optional().isIn(['admin', 'user']).withMessage('Invalid role'),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('companyId').optional().isMongoId().withMessage('Invalid company ID'),
 ];
 
@@ -33,14 +33,14 @@ const refreshTokenValidation = [
 ];
 
 const changePasswordValidation = [
-  body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  body('currentPassword').notEmpty().withMessage('Current password is required').isLength({ max: 15 }).withMessage('Current password cannot exceed 15 characters'),
+  body('newPassword').isLength({ min: 8, max: 15 }).withMessage('New password must be between 8 and 15 characters'),
 ];
 
 const updateProfileValidation = [
   body('name').optional().trim().isLength({ max: 50 }).withMessage('Name cannot exceed 50 characters'),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (10-15 digits, optional + prefix)'),
+  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('preferences.notifications.email').optional().isBoolean(),
   body('preferences.notifications.sms').optional().isBoolean(),
   body('preferences.notifications.inApp').optional().isBoolean(),
@@ -56,14 +56,14 @@ const resetPasswordValidation = [
 const sendOTPValidation = [
   body('email')
     .isEmail()
-    .withMessage('Please enter a valid email address')
+    .withMessage('Please enter a valid Email ID')
     .trim(),
 ];
 
 const verifyOTPValidation = [
   body('email')
     .isEmail()
-    .withMessage('Please enter a valid email address')
+    .withMessage('Please enter a valid Email ID')
     .trim(),
   body('otp')
     .matches(/^\d{6}$/)
@@ -81,23 +81,23 @@ router.post('/forgot-password', [body('email').isEmail()], validate, authControl
 router.post('/reset-password/:token', resetPasswordValidation, validate, authController.resetPassword);
 router.post('/init-super-admin', [
   // All fields are optional - if not provided, defaults/environment variables will be used
-  body('email').optional().isEmail().withMessage('Please provide a valid email address').trim(),
+  body('email').optional().isEmail().withMessage('Please provide a valid Email ID').trim(),
   body('password').optional().isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('name').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Name must be between 1 and 50 characters'),
 ], validate, authController.initSuperAdmin);
 
 // Forgot Password OTP routes (for admin users)
 router.post('/forgot-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').trim()
+  body('email').isEmail().withMessage('Please enter a valid Email ID').trim()
 ], validate, authController.forgotPasswordOTP);
 
 router.post('/verify-forgot-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').trim(),
+  body('email').isEmail().withMessage('Please enter a valid Email ID').trim(),
   body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits')
 ], validate, authController.verifyForgotPasswordOTP);
 
 router.post('/reset-password-otp', [
-  body('email').isEmail().withMessage('Please enter a valid email address').trim(),
+  body('email').isEmail().withMessage('Please enter a valid Email ID').trim(),
   body('otp').matches(/^\d{6}$/).withMessage('OTP must be exactly 6 digits'),
   body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], validate, authController.resetPasswordWithOTP);
@@ -117,7 +117,7 @@ router.post('/change-password', changePasswordValidation, validate, authControll
 
 // Email Change Routes (protected)
 router.post('/email-change/request', [
-  body('newEmail').isEmail().withMessage('Please enter a valid new email address').trim(),
+  body('newEmail').isEmail().withMessage('Please enter a valid new Email ID').trim(),
   body('password').notEmpty().withMessage('Password is required to change email'),
 ], validate, authController.requestEmailChange);
 
@@ -130,5 +130,7 @@ router.post('/email-change/verify-new', [
 ], validate, authController.verifyNewEmailOTP);
 
 router.post('/email-change/cancel', authController.cancelEmailChange);
+
+router.post('/email-change/resend', authController.resendEmailChangeOTP);
 
 module.exports = router;

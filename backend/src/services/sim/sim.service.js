@@ -12,6 +12,18 @@ const path = require('path');
 const fs = require('fs');
 
 class SimService {
+  // Check if a user has reached the SIM assignment limit (max 2 per user)
+  async validateSimAssignmentLimit(userId, excludeSimId = null) {
+    const filter = { assignedTo: userId };
+    if (excludeSimId) {
+      filter._id = { $ne: excludeSimId };
+    }
+    const assignedCount = await Sim.countDocuments(filter);
+    if (assignedCount >= 2) {
+      throw new ValidationError(`User is already assigned to ${assignedCount} SIMs. Maximum 2 SIMs allowed per user.`);
+    }
+  }
+
   async createSim(data, user) {
     const { mobileNumber, operator, companyId, assignedTo } = data;
 
@@ -22,10 +34,10 @@ class SimService {
       throw new ForbiddenError('Company ID is required');
     }
 
-    // Check if mobile number exists
+    // Check if Contact Number exists
     const existingMobile = await Sim.findOne({ mobileNumber, companyId: targetCompanyId });
     if (existingMobile) {
-      throw new ConflictError('Mobile number already exists in your company');
+      throw new ConflictError('Contact Number already exists in your company');
     }
 
     // Validate assignedTo if provided
@@ -35,6 +47,8 @@ class SimService {
       if (!assignedUser || assignedUser.companyId.toString() !== targetCompanyId.toString()) {
         throw new ValidationError('Invalid user assignment. User must belong to the same company.');
       }
+      // Check SIM assignment limit (max 2 per user)
+      await this.validateSimAssignmentLimit(assignedTo);
     }
 
     const sim = new Sim({
@@ -78,8 +92,10 @@ class SimService {
     const createdUsers = [];
     // [SIM ASSIGNMENT EMAIL] Track existing users who were assigned SIMs
     const assignedExistingUsers = [];
+    // Track per-user SIM count within this batch for assignment limit validation
+    const batchUserAssignmentCount = {};
 
-    // Combine country code with mobile number for each SIM
+    // Combine country code with Contact Number for each SIM
     const processedData = simsData.map(row => ({
       ...row,
       mobileNumber: (row.countryCode || '+91') + row.mobileNumber
@@ -87,13 +103,13 @@ class SimService {
 
     const mobileNumbers = processedData.map(s => s.mobileNumber);
 
-    // Check for duplicate mobile numbers within the batch
+    // Check for duplicate Contact Numbers within the batch
     const duplicates = mobileNumbers.filter((item, index) => mobileNumbers.indexOf(item) !== index);
     if (duplicates.length > 0) {
-      throw new ValidationError(`Duplicate mobile numbers in batch: ${[...new Set(duplicates)].join(', ')}`);
+      throw new ValidationError(`Duplicate Contact Numbers in batch: ${[...new Set(duplicates)].join(', ')}`);
     }
 
-    // Check existing mobile numbers
+    // Check existing Contact Numbers
     const existingSims = await Sim.find({
       mobileNumber: { $in: mobileNumbers },
       companyId: targetCompanyId,
@@ -139,9 +155,9 @@ class SimService {
       const originalRow = simsData[i];
       const rowErrors = [];
 
-      // Validate mobile number (10 digits without country code)
+      // Validate Contact Number (10 digits without country code)
       if (!originalRow.mobileNumber || !/^\d{10}$/.test(originalRow.mobileNumber)) {
-        rowErrors.push('Invalid 10-digit mobile number');
+        rowErrors.push('Invalid 10-digit Contact Number');
       }
 
       // Validate operator
@@ -154,9 +170,9 @@ class SimService {
         rowErrors.push(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
       }
 
-      // Check if mobile number already exists
+      // Check if Contact Number already exists
       if (existingMobileNumbers.includes(row.mobileNumber)) {
-        rowErrors.push('Mobile number already exists');
+        rowErrors.push('Contact Number already exists');
       }
 
       // [BULK UPLOAD FIX] Handle assigned user - create if not exists
@@ -237,6 +253,19 @@ class SimService {
               }
             }
           }
+        }
+      }
+
+      // Check SIM assignment limit (max 2 per user) for this assigned user
+      if (assignedTo) {
+        const userIdStr = assignedTo.toString();
+        const currentCount = await Sim.countDocuments({ assignedTo: assignedTo });
+        const batchCount = batchUserAssignmentCount[userIdStr] || 0;
+        if (currentCount + batchCount >= 2) {
+          const totalCount = currentCount + batchCount;
+          rowErrors.push(`User is already assigned to ${totalCount} SIM${totalCount > 1 ? 's' : ''}. Maximum 2 SIMs allowed per user.`);
+        } else {
+          batchUserAssignmentCount[userIdStr] = batchCount + 1;
         }
       }
 
@@ -390,16 +419,19 @@ class SimService {
       assignedExistingUsers: [],
     };
 
+    // Track per-user SIM count within this batch for assignment limit validation
+    const batchUserAssignmentCount = {};
+
     for (const row of data) {
       try {
         const countryCode = row['Country Code'] || row.countryCode || row.country_code || '+91';
-        const mobileNumberRaw = row['Mobile Number'] || row.mobileNumber || row.mobile_number;
+        const mobileNumberRaw = row['Contact Number'] || row.mobileNumber || row.mobile_number;
         const assignedUserEmail = row['Assigned User Email'] || row.assignedUserEmail || row.assigned_user_email || '';
         // [BULK UPLOAD FIX] Read additional user fields from Excel
         const assignedUserName = row['Assigned User Name'] || row.assignedUserName || row.assigned_user_name || '';
         const assignedUserPhone = row['Assigned User Phone'] || row.assignedUserPhone || row.assigned_user_phone || '';
 
-        // Combine country code with mobile number
+        // Combine country code with Contact Number
         const mobileNumber = countryCode + mobileNumberRaw;
 
         const simData = {
@@ -416,7 +448,7 @@ class SimService {
         let assignedToName = null;
 
         if (!mobileNumberRaw) {
-          throw new Error('Missing mobile number');
+          throw new Error('Missing Contact Number');
         }
 
         // Check duplicates
@@ -426,7 +458,7 @@ class SimService {
         });
 
         if (existing) {
-          throw new Error('Mobile number already exists');
+          throw new Error('Contact Number already exists');
         }
 
         // [GLOBAL UNIQUE EMAIL] Handle assigned user - create if not exists
@@ -524,6 +556,18 @@ class SimService {
               }
             }
           }
+        }
+
+        // Check SIM assignment limit (max 2 per user) for this assigned user
+        if (simData.assignedTo) {
+          const userIdStr = simData.assignedTo.toString();
+          const currentCount = await Sim.countDocuments({ assignedTo: simData.assignedTo });
+          const batchCount = batchUserAssignmentCount[userIdStr] || 0;
+          if (currentCount + batchCount >= 2) {
+            const totalCount = currentCount + batchCount;
+            throw new Error(`User is already assigned to ${totalCount} SIM${totalCount > 1 ? 's' : ''}. Maximum 2 SIMs allowed per user.`);
+          }
+          batchUserAssignmentCount[userIdStr] = batchCount + 1;
         }
 
         const sim = new Sim(simData);
@@ -805,7 +849,7 @@ class SimService {
       filter.companyId = user.companyId;
     }
 
-    const allowedUpdates = ['mobileNumber', 'operator', 'circle', 'assignedTo', 'status', 'plan', 'notes', 'tags'];
+    const allowedUpdates = ['mobileNumber', 'operator', 'circle', 'assignedTo', 'status', 'plan', 'notes', 'tags', 'isAdminCaller'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -832,6 +876,8 @@ class SimService {
         throw new ValidationError('Invalid user assignment. User must belong to the same company.');
       }
       newAssignedUser = assignedUser;
+      // Check SIM assignment limit (max 2 per user), exclude current SIM from count
+      await this.validateSimAssignmentLimit(updates.assignedTo, simId);
     }
 
     // Handle empty string as unassign
@@ -946,6 +992,9 @@ class SimService {
     if (!targetUser || (user.role !== 'super_admin' && targetUser.companyId.toString() !== user.companyId.toString())) {
       throw new NotFoundError('User');
     }
+
+    // Check SIM assignment limit (max 2 per user), exclude current SIM from count
+    await this.validateSimAssignmentLimit(userId, simId);
 
     const sim = await Sim.findOneAndUpdate(
       filter,
@@ -1074,7 +1123,7 @@ class SimService {
     const template = [
       {
         'Country Code': '+91',
-        'Mobile Number': '9876543210',
+        'Contact Number': '9876543210',
         'Operator': 'Jio',
         'Circle': 'Maharashtra',
         'Status': 'active',

@@ -9,8 +9,6 @@ import {
   FiUserCheck,
   FiUserX,
   FiX,
-  FiEye,
-  FiEyeOff,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -26,22 +24,88 @@ import {
   Pagination,
   Table,
   PhoneInput,
+  ConfirmModal,
+  Tooltip,
 } from '../components/ui'
 
 // User Modal Component
 function UserModal({ isOpen, onClose, user, onSave, users }) {
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    password: '',
     isActive: true,
   })
-  const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState({})
 
-  // All users created via this modal have role 'user', so password is optional
-  const isPasswordRequired = false
+  const validateField = (name, value) => {
+    let error = ''
+
+    switch (name) {
+      case 'name':
+        if (!value || !value.trim()) {
+          error = 'Name is required'
+        } else if (value.trim().length < 2) {
+          error = 'Name must be at least 2 characters'
+        } else if (value.trim().length > 100) {
+          error = 'Name cannot exceed 100 characters'
+        } else if (!/^[a-zA-Z\s.''-]+$/.test(value.trim())) {
+          error = 'Name can only contain letters, spaces, dots, hyphens and apostrophes'
+        }
+        break
+
+      case 'email':
+        if (!value || !value.trim()) {
+          error = 'Email Id is required'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          error = 'Please enter a valid email id'
+        }
+        break
+
+      case 'phone':
+        if (value && value.trim()) {
+          if (!/^\+?\d{10,15}$/.test(value.trim())) {
+            error = 'Contact Number must be 10-15 digits'
+          }
+        }
+        break
+
+      default:
+        break
+    }
+
+    return error
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    const nameError = validateField('name', formData.name)
+    if (nameError) newErrors.name = nameError
+
+    // Email only validated on Add (not editable on Edit)
+    if (!user) {
+      const emailError = validateField('email', formData.email)
+      if (emailError) newErrors.email = emailError
+    }
+
+    const phoneError = validateField('phone', formData.phone)
+    if (phoneError) newErrors.phone = phoneError
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   useEffect(() => {
     if (user) {
@@ -49,7 +113,6 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        password: '',
         isActive: user.isActive ?? true,
       })
     } else {
@@ -57,37 +120,43 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
         name: '',
         email: '',
         phone: '',
-        password: '',
         isActive: true,
       })
     }
+    setErrors({})
   }, [user])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
+    const newValue = type === 'checkbox' ? checked : value
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: newValue,
     }))
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    }
   }
 
   const handlePhoneChange = (phone) => {
     setFormData((prev) => ({ ...prev, phone }))
+    if (errors.phone) {
+      setErrors((prev) => ({ ...prev, phone: '' }))
+    }
+  }
+
+  // Validate on blur for immediate feedback
+  const handleBlur = (e) => {
+    const { name, value } = e.target
+    const error = validateField(name, value)
+    setErrors((prev) => ({ ...prev, [name]: error }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.email) {
-      toast.error('Name and Email are required')
-      return
-    }
-
-    // Password is optional for SIM users - auto-generated if not provided
-    if (formData.password && formData.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
-    }
+    if (!validateForm()) return
 
     setLoading(true)
 
@@ -99,7 +168,7 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
           isActive: formData.isActive,
         }
         await onSave(user._id, updateData)
-        toast.success('User updated successfully')
+        toast.success('User updated successfully.')
       } else {
         await onSave(null, formData)
         toast.success('User created successfully')
@@ -113,6 +182,16 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
   }
 
   if (!isOpen) return null
+
+  const inputErrorStyle = (field) => ({
+    width: '100%',
+    padding: '10px 14px',
+    border: `1px solid ${errors[field] ? '#ef4444' : '#d1d5db'}`,
+    borderRadius: '8px',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
+  })
 
   return (
     <div
@@ -159,6 +238,7 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+          {/* Name */}
           <div style={{ marginBottom: '16px' }}>
             <label
               style={{
@@ -176,20 +256,24 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="Enter full name"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              required
+              onBlur={handleBlur}
+              placeholder="John Michael Doe"
+              maxLength={100}
+              style={inputErrorStyle('name')}
             />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '12px' }}>
+              {errors.name ? (
+                <span style={{ color: '#ef4444' }}>{errors.name}</span>
+              ) : (
+                <span />
+              )}
+              <span style={{ color: formData.name.length >= 100 ? '#d97706' : '#9ca3af' }}>
+                {formData.name.length}/100
+              </span>
+            </div>
           </div>
 
+          {/* Email */}
           <div style={{ marginBottom: '16px' }}>
             <label
               style={{
@@ -200,69 +284,77 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
                 color: '#374151',
               }}
             >
-              Email *
+              Email ID *
             </label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter email address"
+              onBlur={!user ? handleBlur : undefined}
+              placeholder="john@gmail.com"
               disabled={!!user}
               style={{
-                width: '100%',
-                padding: '10px 14px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                boxSizing: 'border-box',
-                backgroundColor: user ? '#f9fafb' : '#ffffff',
+                ...inputErrorStyle('email'),
+                ...(user ? {
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#f3f4f6',
+                  color: '#9ca3af',
+                  cursor: 'not-allowed',
+                } : {}),
               }}
-              required
             />
+            {errors.email && !user && (
+              <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px', marginBottom: 0 }}>
+                {errors.email}
+              </p>
+            )}
             {user && (
               <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                Email cannot be changed
+                Email Id cannot be changed
               </p>
             )}
           </div>
 
+          {/* Phone */}
           <div style={{ marginBottom: '16px' }}>
             <PhoneInput
               value={formData.phone}
               onChange={handlePhoneChange}
-              label="Phone"
-              placeholder="Enter phone number"
+              label="Contact Number"
+              placeholder="8805771695"
             />
+            {errors.phone && (
+              <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px', marginBottom: 0 }}>
+                {errors.phone}
+              </p>
+            )}
           </div>
 
-      
-          {user && (
-            <div
-              style={{
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-              }}
+          {/* Active Status */}
+          <div
+            style={{
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <input
+              type="checkbox"
+              id="isActive"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={handleChange}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <label
+              htmlFor="isActive"
+              style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }}
             >
-              <input
-                type="checkbox"
-                id="isActive"
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleChange}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              <label
-                htmlFor="isActive"
-                style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }}
-              >
-                Active User
-              </label>
-            </div>
-          )}
+              Active User
+            </label>
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
             <Button variant="secondary" onClick={onClose}>
@@ -281,6 +373,16 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
 // Reset Password Modal
 function ResetPasswordModal({ isOpen, onClose, user, onReset }) {
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
@@ -343,7 +445,7 @@ function ResetPasswordModal({ isOpen, onClose, user, onReset }) {
                 color: '#374151',
               }}
             >
-              New Password
+              New Password*
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -406,6 +508,7 @@ export default function Users() {
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetUser, setResetUser] = useState(null)
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, activeLast30Days: 0 })
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null, userName: '' })
 
   useEffect(() => {
     fetchUsers()
@@ -477,18 +580,21 @@ export default function Users() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to deactivate this user?')) return
+    const user = users.find(u => u._id === id)
+    setDeleteConfirm({ show: true, userId: id, userName: user?.name || 'this user' })
+  }
 
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/users/${id}`)
-      toast.success('User Remove successfully')
-      setUsers(prev => prev.filter(user => user._id !== id))
-
+      await api.delete(`/users/${deleteConfirm.userId}`)
+      toast.success('User deleted successfully.')
+      setUsers(prev => prev.filter(user => user._id !== deleteConfirm.userId))
       fetchUsers()
-          fetchStats() // ✅ ADD THIS
-
+      fetchStats()
     } catch (error) {
-      toast.error('Failed to deactivate user')
+      toast.error('Failed to delete user')
+    } finally {
+      setDeleteConfirm({ show: false, userId: null, userName: '' })
     }
   }
 
@@ -529,7 +635,7 @@ export default function Users() {
     },
     {
       key: 'phone',
-      header: 'Phone',
+      header: 'Contact Numbe',
       render: (row) => row.phone || '-',
     },
     {
@@ -562,46 +668,35 @@ export default function Users() {
       render: (row) =>
         row.role !== 'admin' ? (
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => openModal(row)}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-              }}
-              title="Edit"
-            >
-              <FiEdit style={{ width: '16px', height: '16px' }} />
-            </button>
-            {/* <button
-              onClick={() => openResetModal(row)}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-              }}
-              title="Reset Password"
-            >
-              <FiUserX style={{ width: '16px', height: '16px', color: '#d97706' }} />
-            </button> */}
-            <button
-              onClick={() => handleDelete(row._id)}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-                color: '#dc2626',
-              }}
-              title="Deactivate"
-            >
-              <FiTrash2 style={{ width: '16px', height: '16px' }} />
-            </button>
+            <Tooltip text="Edit">
+              <button
+                onClick={() => openModal(row)}
+                style={{
+                  padding: '8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <FiEdit style={{ width: '16px', height: '16px' }} />
+              </button>
+            </Tooltip>
+            <Tooltip text="Delete">
+              <button
+                onClick={() => handleDelete(row._id)}
+                style={{
+                  padding: '8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  color: '#dc2626',
+                }}
+              >
+                <FiTrash2 style={{ width: '16px', height: '16px' }} />
+              </button>
+            </Tooltip>
           </div>
         ) : (
           <span style={{ color: '#9ca3af', fontSize: '12px' }}>Admin</span>
@@ -672,7 +767,7 @@ export default function Users() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value.replace(/[\t\n\r]+/g, '').trim())}
-                placeholder="Search by name, email, or phone..."
+                placeholder="Search by name, emai idl, or contact Number..."
                 style={{
                   width: '100%',
                   padding: '10px 12px 10px 40px',
@@ -701,7 +796,7 @@ export default function Users() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <Button type="submit">Search</Button>
+            {/* <Button type="submit">Search</Button> */}
           </form>
         </CardBody>
       </Card>
@@ -709,7 +804,7 @@ export default function Users() {
       {/* Table */}
       <Card>
         <CardBody style={{ padding: 0 }}>
-          <Table columns={columns} data={users} emptyMessage="No users found. Add your first user to get started." />
+          <Table columns={columns} data={users} emptyMessage="No users found. Add your first user to get started." showSerial serialOffset={(pagination.page - 1) * pagination.limit} />
         </CardBody>
       </Card>
 
@@ -719,6 +814,7 @@ export default function Users() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}
@@ -731,6 +827,16 @@ export default function Users() {
         onClose={closeResetModal}
         user={resetUser}
         onReset={handleResetPassword}
+      />
+
+      <ConfirmModal
+        isOpen={deleteConfirm.show}
+        onClose={() => setDeleteConfirm({ show: false, userId: null, userName: '' })}
+        onConfirm={confirmDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete ${deleteConfirm.userName}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
       />
     </PageContainer>
   )

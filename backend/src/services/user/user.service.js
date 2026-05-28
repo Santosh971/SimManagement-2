@@ -68,7 +68,7 @@ class UserService {
     // One email can only belong to one user across all companies
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      throw new ConflictError('This email address is already used by another user in the system. Each email can only be used once.');
+      throw new ConflictError('This Email ID is already used by another user in the system. Each email can only be used once.');
     }
 
     // Verify company exists
@@ -111,7 +111,7 @@ class UserService {
       mobileNumber: normalizedPhone, // [OTP EMAIL FIX] - Also set mobileNumber for OTP login
       role: 'user',
       companyId: adminUser.companyId,
-      isActive: true,
+      isActive: userData.isActive !== undefined ? userData.isActive : true,
       emailVerified: true,
     });
 
@@ -122,7 +122,7 @@ class UserService {
       if (saveError.code === 11000) {
         const field = Object.keys(saveError.keyValue)[0];
         if (field === 'email') {
-          throw new ConflictError('This email address is already registered in the system. Each email can only be used once.');
+          throw new ConflictError('This Email ID is already registered in the system. Each email can only be used once.');
         } else if (field === 'mobileNumber') {
           throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
         } else {

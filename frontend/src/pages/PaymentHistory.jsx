@@ -300,6 +300,7 @@ const filterInputStyle = {
                 <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', width: '50px' }}>S.No.</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '140px', whiteSpace: 'nowrap' }}>Date</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '180px' }}>Company</th>
                       <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', minWidth: '160px' }}>User</th>
@@ -311,8 +312,9 @@ const filterInputStyle = {
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.map((payment) => (
+                    {payments.map((payment, index) => (
                       <tr key={payment._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>{(pagination.page - 1) * pagination.limit + index + 1}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap', minWidth: '140px' }}>
                           {formatDateTime(payment.paidAt || payment.createdAt)}
                         </td>

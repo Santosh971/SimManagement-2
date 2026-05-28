@@ -206,6 +206,19 @@
   }
 }
 
+/* Hide browser-native password reveal and clear icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-reveal-password-icon {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;

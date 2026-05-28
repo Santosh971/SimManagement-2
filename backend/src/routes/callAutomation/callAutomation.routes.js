@@ -42,6 +42,14 @@ const saveConfigValidation = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean'),
+  body('callerSimIds').custom((callerSimIds, { req }) => {
+    const targetSimIds = req.body.targetSimIds || [];
+    const overlap = callerSimIds.filter(id => targetSimIds.includes(id));
+    if (overlap.length > 0) {
+      throw new Error('Caller SIMs and Target SIMs cannot overlap. A SIM cannot be both a caller and a target.');
+    }
+    return true;
+  }),
 ];
 
 const toggleValidation = [

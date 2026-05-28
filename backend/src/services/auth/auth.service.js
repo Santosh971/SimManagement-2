@@ -13,7 +13,7 @@ class AuthService {
     // One email can only belong to one user across all companies
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      throw new ConflictError('This email address is already registered in the system.');
+      throw new ConflictError('This Email ID is already registered in the system.');
     }
 
     // Validate role-specific requirements
@@ -42,7 +42,7 @@ class AuthService {
       if (saveError.code === 11000) {
         const field = Object.keys(saveError.keyValue)[0];
         if (field === 'email') {
-          throw new ConflictError('This email address is already registered in the system. Each email can only be used once.');
+          throw new ConflictError('This Email ID is already registered in the system. Each email can only be used once.');
         } else if (field === 'mobileNumber') {
           throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
         } else {
@@ -347,7 +347,7 @@ class AuthService {
     user.passwordChangedAt = Date.now();
     await user.save();
 
-    return { message: 'Password changed successfully' };
+    return { message: 'Password changed successfully.' };
   }
 
   async getProfile(userId) {
@@ -657,6 +657,40 @@ class AuthService {
     await user.save();
 
     return { success: true, message: 'Email change cancelled' };
+  }
+
+  async resendEmailChangeOTP(userId) {
+    const user = await User.findById(userId).select('+emailChangeOTP');
+    if (!user) {
+      throw new NotFoundError('User');
+    }
+
+    if (!user.emailChangeOTP || !user.emailChangeOTPExpires || !user.pendingNewEmail) {
+      throw new AppError('No pending email change request. Please start over.', 400);
+    }
+
+    // Generate new OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    user.emailChangeOTP = crypto.createHash('sha256').update(otp).digest('hex');
+    user.emailChangeOTPExpires = otpExpires;
+    await user.save();
+
+    // Resend to appropriate email based on verification status
+    try {
+      if (!user.emailChangeOTPVerified) {
+        // Old email not yet verified — resend to old email
+        await emailService.sendEmailChangeOTPOld(user.email, otp, user.name, user.pendingNewEmail);
+      } else {
+        // Old email verified — resend to new email
+        await emailService.sendEmailChangeOTPNew(user.pendingNewEmail, otp, user.name, user.email);
+      }
+    } catch (error) {
+      throw new AppError('Failed to send verification email. Please try again.', 500);
+    }
+
+    return { success: true, message: 'Verification code resent successfully' };
   }
 }
 

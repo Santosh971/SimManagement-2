@@ -73,10 +73,10 @@ class RechargeService {
     // [DUPLICATE CHECK] - Prevent duplicate recharges within ±2 minutes
     const duplicateCheckWindow = new Date(Date.now() - 2 * 60 * 1000); // 2 minutes ago
 
-    // Find SIM by mobile number (using phone query for compatibility)
+    // Find SIM by Contact Number (using phone query for compatibility)
     const phoneQuery = buildPhoneQuery(mobileNumber);
     if (!phoneQuery) {
-      throw new BadRequestError('Invalid mobile number format');
+      throw new BadRequestError('Invalid Contact Number format');
     }
 
     const sim = await Sim.findOne(phoneQuery);
@@ -99,7 +99,7 @@ class RechargeService {
         existingRechargeId: existingRecharge._id,
         simId: sim._id,
       });
-      throw new BadRequestError('Duplicate recharge detected. A recharge with the same amount for this mobile number was created within the last 2 minutes.');
+      throw new BadRequestError('Duplicate recharge detected. A recharge with the same amount for this Contact Number was created within the last 2 minutes.');
     }
 
     // Parse validity to number (handle string like "28 days" or "28")
@@ -280,7 +280,7 @@ class RechargeService {
       status: 'completed',
       reminderSent: false,
     })
-      .populate('simId', 'mobileNumber operator status')
+      .populate('simId', 'mobileNumber operator status circle')
       .sort({ nextRechargeDate: 1 });
 
     return recharges;
@@ -292,7 +292,7 @@ class RechargeService {
       nextRechargeDate: { $lt: new Date() },
       status: 'completed',
     })
-      .populate('simId', 'mobileNumber operator status')
+      .populate('simId', 'mobileNumber operator status circle')
       .sort({ nextRechargeDate: 1 });
   }
 
@@ -435,7 +435,7 @@ class RechargeService {
                   <h2>Hello ${admin.name},</h2>
                   <p>A recharge has been added to a SIM card.</p>
                   <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
-                    <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                    <p style="margin: 0;"><strong>Contact Number:</strong> ${sim.mobileNumber}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Amount:</strong> ₹${recharge.amount}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Validity:</strong> ${recharge.validity} days</p>
@@ -511,7 +511,7 @@ class RechargeService {
                   <h2>Hello ${admin.name},</h2>
                   <p>An automatic recharge has been detected from SMS.</p>
                   <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 15px 0;">
-                    <p style="margin: 0;"><strong>Mobile Number:</strong> ${sim.mobileNumber}</p>
+                    <p style="margin: 0;"><strong>Contact Number:</strong> ${sim.mobileNumber}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Operator:</strong> ${sim.operator}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Amount:</strong> ₹${recharge.amount}</p>
                     <p style="margin: 10px 0 0 0;"><strong>Validity:</strong> ${recharge.validity} days</p>

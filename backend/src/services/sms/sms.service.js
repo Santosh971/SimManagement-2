@@ -19,7 +19,7 @@ class SmsService {
       return { synced: 0, message: 'No SMS to sync' };
     }
 
-    // Find SIM by mobile number for the logged-in user
+    // Find SIM by Contact Number for the logged-in user
     // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
     const sim = await Sim.findOne({
       mobileNumber: simNumber,

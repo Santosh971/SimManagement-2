@@ -42,16 +42,17 @@ const upload = multer({
 
 // [INTERNATIONAL OPERATORS] - Validation rules updated to accept any operator
 const createSimValidation = [
-  body('mobileNumber').matches(/^\+?\d{10,15}$/).withMessage('Valid mobile number required (10-15 digits, optional + prefix)'),
+  body('mobileNumber').matches(/^\+?\d{10,15}$/).withMessage('Valid Contact Number required (Must be 10-15 digits)'),
   body('operator').notEmpty().trim().withMessage('Operator is required').isLength({ max: 50 }).withMessage('Operator name too long'),
   body('companyId').optional().isMongoId().withMessage('Invalid company ID'),
   body('circle').optional().isString().isLength({ max: 100 }).withMessage('Circle/region too long'),
   body('notes').optional().isString().isLength({ max: 500 }),
+  body('isAdminCaller').optional().isBoolean().withMessage('isAdminCaller must be a boolean'),
 ];
 
 const bulkCreateValidation = [
   body('sims').isArray({ min: 1 }).withMessage('SIMs must be a non-empty array'),
-  body('sims.*.mobileNumber').matches(/^\d{10}$/).withMessage('Valid 10-digit mobile number required'),
+  body('sims.*.mobileNumber').matches(/^\d{10}$/).withMessage('Valid 10-digit Contact Number required'),
   body('sims.*.countryCode').optional().matches(/^\+\d{1,4}$/).withMessage('Valid country code required (e.g., +91)'),
   body('sims.*.operator').notEmpty().trim().withMessage('Operator is required'),
   body('sims.*.status').optional().isIn(['active', 'inactive', 'suspended', 'lost']),
@@ -65,6 +66,7 @@ const updateSimValidation = [
   body('circle').optional().isString().isLength({ max: 100 }),
   body('notes').optional().isString().isLength({ max: 500 }),
   body('status').optional().isIn(['active', 'inactive', 'suspended', 'lost']),
+  body('isAdminCaller').optional().isBoolean().withMessage('isAdminCaller must be a boolean'),
 ];
 
 const queryValidation = [
@@ -108,7 +110,7 @@ router.get('/my', simController.getMySims);
 router.post('/bulk', checkCompanyAccess, checkSubscriptionLimit('sims'), bulkCreateValidation, validate, simController.bulkCreate);
 router.post('/', checkCompanyAccess, checkSubscriptionLimit('sims'), createSimValidation, validate, simController.create);
 router.post('/import', checkCompanyAccess, checkSubscriptionLimit('sims'), upload.single('file'), simController.bulkImport);
-router.post('/detect-operator', simController.detectOperator); // Operator detection from mobile number
+router.post('/detect-operator', simController.detectOperator); // Operator detection from Contact Number
 router.get('/template', simController.downloadTemplate);
 router.get('/export', checkSubscriptionFeature('excelExport'), simController.export);
 router.get('/stats', simController.getStats);

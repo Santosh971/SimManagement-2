@@ -97,7 +97,7 @@ function SimMultiSelect({ label, sims, selected, onChange, placeholder, disabled
           }}
         />
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={selectAll}
           disabled={disabled}
@@ -105,7 +105,7 @@ function SimMultiSelect({ label, sims, selected, onChange, placeholder, disabled
           Select All
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={clearAll}
           disabled={disabled}
@@ -204,10 +204,16 @@ export default function CallAutomation() {
   const [callerSimIds, setCallerSimIds] = useState([])
   const [targetSimIds, setTargetSimIds] = useState([])
   const [callDuration, setCallDuration] = useState(10)
+  const [callDurationError, setCallDurationError] = useState('')
   const [frequency, setFrequency] = useState('daily')
   const [scheduledTime, setScheduledTime] = useState('09:00') // Time in HH:MM format
   const [scheduledDay, setScheduledDay] = useState('monday') // Day of week for weekly
   const [isActive, setIsActive] = useState(true)
+
+  // Computed: Caller SIMs only show SIMs marked as admin caller, exclude SIMs selected as target
+  const callerSims = sims.filter(sim => sim.isAdminCaller && !targetSimIds.includes(sim._id))
+  // Target SIMs show all active SIMs except those selected as caller
+  const targetSims = sims.filter(sim => !callerSimIds.includes(sim._id))
 
   useEffect(() => {
     fetchData()
@@ -228,8 +234,12 @@ export default function CallAutomation() {
       if (configRes.data.data) {
         const existingConfig = configRes.data.data
         setConfig(existingConfig)
-        setCallerSimIds(existingConfig.callerSimIds?.map(s => s._id || s) || [])
-        setTargetSimIds(existingConfig.targetSimIds?.map(s => s._id || s) || [])
+        const loadedCallers = existingConfig.callerSimIds?.map(s => s._id || s) || []
+        const loadedTargets = existingConfig.targetSimIds?.map(s => s._id || s) || []
+        // Remove any SIM from targets that is also in callers (defensive cleanup)
+        const cleanedTargets = loadedTargets.filter(id => !loadedCallers.includes(id))
+        setCallerSimIds(loadedCallers)
+        setTargetSimIds(cleanedTargets)
         setCallDuration(existingConfig.callDuration || 10)
         setFrequency(existingConfig.frequency || 'daily')
         setScheduledTime(existingConfig.scheduledTime || '09:00')
@@ -256,8 +266,19 @@ export default function CallAutomation() {
       return
     }
 
-    if (callDuration < 10 || callDuration > 60) {
+    if (!callDuration || callDuration < 10 || callDuration > 60) {
       toast.error('Call duration must be between 10 and 60 seconds')
+      return
+    }
+
+    // Check for overlap between caller and target SIMs
+    const overlap = callerSimIds.filter(id => targetSimIds.includes(id))
+    if (overlap.length > 0) {
+      const overlappingNumbers = sims
+        .filter(sim => overlap.includes(sim._id))
+        .map(sim => sim.mobileNumber)
+        .join(', ')
+      toast.error(`A SIM cannot be both Caller and Target. Remove from one list: ${overlappingNumbers}`)
       return
     }
 
@@ -405,29 +426,48 @@ export default function CallAutomation() {
       {/* Configuration Form */}
       <Card>
         <CardBody>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FiPhoneOutgoing style={{ color: '#2563eb' }} />
             Caller SIMs (will make outgoing calls)
           </h3>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: 0, marginBottom: '12px' }}>
+            Only SIMs marked as "Admin Caller SIM" in the SIMs page will appear here.
+          </p>
 
           <SimMultiSelect
             label=""
-            sims={sims}
+            sims={callerSims}
             selected={callerSimIds}
             onChange={setCallerSimIds}
             placeholder="Search caller SIMs..."
             disabled={!isActive}
           />
 
+          <div style={{
+            marginTop: '12px',
+            padding: '8px 12px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#92400e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <FiAlertCircle style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+            A SIM selected as a Caller cannot also be a Target, and vice versa.
+          </div>
+
           <div style={{ marginTop: '32px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FiPhoneIncoming style={{ color: '#16a34a' }} />
-              Target SIMs (will receive calls)
+              Target SIMs – receive incoming calls
             </h3>
 
             <SimMultiSelect
               label=""
-              sims={sims}
+              sims={targetSims}
               selected={targetSimIds}
               onChange={setTargetSimIds}
               placeholder="Search target SIMs..."
@@ -450,22 +490,52 @@ export default function CallAutomation() {
               <input
                 type="number"
                 value={callDuration}
-                onChange={(e) => setCallDuration(e.target.value)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === '') {
+                    setCallDuration('')
+                    setCallDurationError('Call duration is required')
+                    return
+                  }
+                  const val = parseInt(raw, 10)
+                  if (isNaN(val)) return
+                  if (val < 10) {
+                    setCallDuration(10)
+                    setCallDurationError('Minimum duration is 10 seconds')
+                  } else if (val > 60) {
+                    setCallDuration(60)
+                    setCallDurationError('Maximum duration is 60 seconds')
+                  } else {
+                    setCallDuration(val)
+                    setCallDurationError('')
+                  }
+                }}
+                onBlur={() => {
+                  if (callDuration === '' || callDuration < 10) {
+                    setCallDuration(10)
+                    setCallDurationError('')
+                  } else if (callDuration > 60) {
+                    setCallDuration(60)
+                    setCallDurationError('')
+                  } else {
+                    setCallDurationError('')
+                  }
+                }}
                 min={10}
                 max={60}
                 disabled={!isActive}
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  border: '1px solid #d1d5db',
+                  border: callDurationError ? '1px solid #ef4444' : '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
                   backgroundColor: isActive ? '#fff' : '#f3f4f6',
                 }}
               />
-              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                Min: 10 seconds, Max: 60 seconds
+              <div style={{ fontSize: '12px', color: callDurationError ? '#ef4444' : '#6b7280', marginTop: '4px' }}>
+                {callDurationError || 'Min: 10 seconds, Max: 60 seconds'}
               </div>
             </div>
 
@@ -528,7 +598,7 @@ export default function CallAutomation() {
                 }}
               />
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                {frequency === 'hourly' ? 'Not applicable for hourly frequency' : 'Time when calls will be made'}
+                {frequency === 'hourly' ? 'Not applicable for hourly frequency' : 'Time at which calls will be made each day'}
               </div>
             </div>
 
@@ -602,8 +672,12 @@ export default function CallAutomation() {
               variant="secondary"
               onClick={() => {
                 if (config) {
-                  setCallerSimIds(config.callerSimIds?.map(s => s._id || s) || [])
-                  setTargetSimIds(config.targetSimIds?.map(s => s._id || s) || [])
+                  const loadedCallers = config.callerSimIds?.map(s => s._id || s) || []
+                  const loadedTargets = config.targetSimIds?.map(s => s._id || s) || []
+                  // Remove any SIM from targets that is also in callers (defensive)
+                  const cleanedTargets = loadedTargets.filter(id => !loadedCallers.includes(id))
+                  setCallerSimIds(loadedCallers)
+                  setTargetSimIds(cleanedTargets)
                   setCallDuration(config.callDuration || 10)
                   setFrequency(config.frequency || 'daily')
                   setScheduledTime(config.scheduledTime || '09:00')

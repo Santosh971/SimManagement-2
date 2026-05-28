@@ -88,7 +88,7 @@ class WifiController {
         req,
       });
 
-      return successResponse(res, null, 'WiFi network deleted successfully');
+      return successResponse(res, null, 'WiFi network deleted successfully.');
     } catch (error) {
       next(error);
     }

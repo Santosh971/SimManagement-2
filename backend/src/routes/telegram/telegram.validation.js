@@ -14,6 +14,8 @@ const sendBulkValidation = [
     .trim()
     .notEmpty()
     .withMessage('Message is required')
+    .isLength({ min: 10 })
+    .withMessage('Message must be at least 10 characters')
     .isLength({ max: 4096 })
     .withMessage('Message cannot exceed 4096 characters'),
 ];

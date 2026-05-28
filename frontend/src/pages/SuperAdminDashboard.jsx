@@ -468,6 +468,7 @@ export default function SuperAdminDashboard() {
               columns={recentCompaniesColumns}
               data={data.recentCompanies}
               emptyMessage="No recent companies"
+              showSerial
             />
           ) : (
             <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>

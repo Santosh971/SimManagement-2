@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { FiMessageCircle, FiSend, FiRefreshCw, FiCheck, FiX, FiClock, FiAlertCircle, FiPause, FiPlay } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import SendMessageModal from '../components/whatsapp/SendMessageModal'
+import { formatDateTime } from '../utils/dateFormat'
 import {
   PageContainer,
   PageHeader,
@@ -26,8 +27,10 @@ export default function WhatsAppMessages() {
     status: '',
     phoneNumber: '',
   })
+  const [phoneSearch, setPhoneSearch] = useState('')
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10 })
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const [initialLoad, setInitialLoad] = useState(true)
 
   // FIXED: Fetch data when page or filters change
   useEffect(() => {
@@ -42,6 +45,16 @@ export default function WhatsAppMessages() {
       setPagination((prev) => ({ ...prev, page: 1 }))
     }
   }, [filters.status, filters.phoneNumber])
+
+  // Debounce phone search: update local state immediately, apply to filters after delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (filters.phoneNumber !== phoneSearch) {
+        setFilters((prev) => ({ ...prev, phoneNumber: phoneSearch }))
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [phoneSearch])
 
   // Auto-refresh polling (every 20 seconds)
   useEffect(() => {
@@ -79,6 +92,7 @@ export default function WhatsAppMessages() {
         page: messagesRes.data.pagination?.page || 1,
       }))
       setStats(statsRes.data.data)
+      setInitialLoad(false)
     } catch (error) {
       console.error('Failed to fetch messages:', error)
       // Only show toast error for manual refresh, not polling
@@ -109,21 +123,12 @@ export default function WhatsAppMessages() {
     return statusConfig[status] || statusConfig.sent
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const formatDate = formatDateTime
 
   const columns = [
     {
       key: 'phoneNumber',
-      header: 'Phone Number',
+      header: 'Contact Number',
       render: (row) => (
         <span style={{ fontWeight: '500' }}>{row.phoneNumber}</span>
       ),
@@ -153,7 +158,7 @@ export default function WhatsAppMessages() {
       key: 'message',
       header: 'Message',
       render: (row) => (
-        <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div title={row.message} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>
           {row.message}
         </div>
       ),
@@ -196,7 +201,7 @@ export default function WhatsAppMessages() {
     },
   ]
 
-  if (loading && messages.length === 0) {
+  if (loading && initialLoad) {
     return (
       <PageContainer>
         <Spinner size="lg" />
@@ -265,57 +270,56 @@ export default function WhatsAppMessages() {
       {/* Filters */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          {/* First row: Filters */}
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                style={{
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minWidth: '140px',
-                  outline: 'none',
-                }}
-              >
-                <option value="">All Status</option>
-                <option value="sent">Sent</option>
-                <option value="delivered">Delivered</option>
-                <option value="replied">Replied</option>
-                <option value="inactive">Inactive</option>
-                <option value="failed">Failed</option>
-              </select>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    minWidth: '140px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="sent">Sent</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="replied">Replied</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  Contact Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search by Contact Number..."
+                  value={phoneSearch}
+                  onChange={(e) => setPhoneSearch(e.target.value)}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    minWidth: '180px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
-                Phone Number
-              </label>
-              <input
-                type="text"
-                placeholder="Search by phone..."
-                value={filters.phoneNumber}
-                onChange={(e) => setFilters({ ...filters, phoneNumber: e.target.value })}
-                style={{
-                  padding: '10px 14px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  minWidth: '180px',
-                  outline: 'none',
-                }}
-              />
-            </div>
-            <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
-              {loading ? 'Loading...' : 'Refresh'}
-            </Button>
-
-            <div>
-               <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* Auto-refresh toggle */}
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               style={{
@@ -347,9 +351,6 @@ export default function WhatsAppMessages() {
               )}
             </button>
           </div>
-            </div>
-          </div>
-         
         </CardBody>
       </Card>
 
@@ -360,6 +361,8 @@ export default function WhatsAppMessages() {
             columns={columns}
             data={messages}
             emptyMessage="No messages found"
+            showSerial
+            serialOffset={(pagination.page - 1) * pagination.limit}
           />
         </CardBody>
       </Card>
@@ -370,6 +373,7 @@ export default function WhatsAppMessages() {
           currentPage={pagination.page}
           totalPages={Math.ceil(pagination.total / pagination.limit)}
           total={pagination.total}
+          limit={pagination.limit}
           onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         />
       )}

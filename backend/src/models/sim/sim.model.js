@@ -15,9 +15,9 @@ const SimSchema = new Schema({
   // },
   mobileNumber: {
     type: String,
-    required: [true, 'Mobile number is required'],
+    required: [true, 'Contact Number is required'],
     trim: true,
-    match: [/^\+?\d{10,15}$/, 'Mobile number must be 10-15 digits (with optional + prefix)'],
+    match: [/^\+?\d{10,15}$/, 'Contact Number must be Must be 10-15 digits'],
   },
   // [INTERNATIONAL OPERATORS] - Operator field now accepts any value for international support
   operator: {
@@ -76,6 +76,10 @@ const SimSchema = new Schema({
     trim: true,
   }],
   whatsappEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  isAdminCaller: {
     type: Boolean,
     default: false,
   },
@@ -211,7 +215,7 @@ SimSchema.statics.findInactive = function (companyId, days = 7) {
   });
 };
 
-// [SIM-BASED WIFI ACCESS CONTROL] - Find SIM by mobile number for device auth
+// [SIM-BASED WIFI ACCESS CONTROL] - Find SIM by Contact Number for device auth
 // Handles both +91XXXXXXXXXX and XXXXXXXXXX formats
 SimSchema.statics.findByMobileNumber = function (mobileNumber) {
   // Normalize phone number

@@ -30,7 +30,7 @@ const WifiAlertSchema = new Schema({
   },
   alertType: {
     type: String,
-    enum: ['low_speed', 'high_latency', 'device_offline', 'wifi_off', 'wifi_disconnected', 'mobile_switched_off'],
+    enum: ['low_speed', 'device_offline', 'wifi_off', 'wifi_disconnected'],
     default: 'low_speed',
   },
   // Reference to the device that triggered this alert (for device-specific alerts)
@@ -97,11 +97,6 @@ WifiAlertSchema.statics.findActiveByCompany = function (companyId) {
     .sort({ createdAt: -1 });
 };
 
-// Static method to find active alert for a wifi
-WifiAlertSchema.statics.findActiveByWifi = function (wifiId) {
-  return this.findOne({ wifiId, status: 'active' });
-};
-
 // Static method to count active alerts by company
 WifiAlertSchema.statics.countActiveByCompany = function (companyId) {
   return this.countDocuments({ companyId, status: 'active' });
@@ -137,24 +132,6 @@ WifiAlertSchema.methods.resolve = function () {
   this.status = 'resolved';
   this.resolvedAt = new Date();
   return this.save();
-};
-
-// Static method to create or get active alert
-WifiAlertSchema.statics.createOrGetActive = async function (wifiId, companyId, avgSpeed, threshold, alertType = 'low_speed') {
-  let alert = await this.findOne({ wifiId, status: 'active' });
-
-  if (!alert) {
-    alert = await this.create({
-      wifiId,
-      companyId,
-      avgSpeed,
-      threshold,
-      alertType,
-      message: `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${threshold} Mbps`,
-    });
-  }
-
-  return alert;
 };
 
 module.exports = mongoose.model('WifiAlert', WifiAlertSchema);

@@ -6,7 +6,7 @@ const syncValidation = [
     .notEmpty()
     .withMessage('SIM number is required')
     .matches(/^\+?\d{10,15}$/)
-    .withMessage('Valid SIM number required (10-15 digits, optional + prefix)'),
+    .withMessage('Valid SIM number required (Must be 10-15 digits)'),
   body('messages')
     .isArray({ min: 1 })
     .withMessage('Messages array is required'),

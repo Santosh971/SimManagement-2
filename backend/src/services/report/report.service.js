@@ -27,7 +27,7 @@ class ReportService {
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
 
     // Get total count for pagination
@@ -87,7 +87,7 @@ class ReportService {
     if (startDate || endDate) {
       filter.rechargeDate = {};
       if (startDate) filter.rechargeDate.$gte = new Date(startDate);
-      if (endDate) filter.rechargeDate.$lte = new Date(endDate);
+      if (endDate) filter.rechargeDate.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
 
     // Get total count for pagination
@@ -132,8 +132,9 @@ class ReportService {
 
   // Call Log Report
   async generateCallLogReport(query, user) {
-    const { startDate, endDate, simId, callType, format = 'json', page = 1, limit = 10 } = query;
+    const { startDate, endDate, simId, callType, uniqueOnly, format = 'json', page = 1, limit = 10 } = query;
     const isExport = format === 'excel' || format === 'csv' || query.download === 'true';
+    const showUniqueOnly = uniqueOnly === 'true' || uniqueOnly === true;
 
     const filter = {};
 
@@ -150,7 +151,67 @@ class ReportService {
     if (startDate || endDate) {
       filter.timestamp = {};
       if (startDate) filter.timestamp.$gte = new Date(startDate);
-      if (endDate) filter.timestamp.$lte = new Date(endDate);
+      if (endDate) filter.timestamp.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+    }
+
+    // Calculate summary using aggregation for accuracy (no 10k limit bias)
+    const statsAgg = await CallLog.aggregate([
+      { $match: filter },
+      { $group: {
+        _id: null,
+        total: { $sum: 1 },
+        totalDuration: { $sum: '$duration' },
+        uniqueNumbers: { $addToSet: '$phoneNumber' },
+      }},
+    ]);
+
+    const byTypeAgg = await CallLog.aggregate([
+      { $match: filter },
+      { $group: { _id: '$callType', count: { $sum: 1 } } },
+    ]);
+
+    const stats = statsAgg[0] || { total: 0, totalDuration: 0, uniqueNumbers: [] };
+    const byType = {};
+    byTypeAgg.forEach(item => { byType[item._id] = item.count; });
+
+    const summary = {
+      total: stats.total,
+      totalDuration: stats.totalDuration || 0,
+      avgDuration: stats.total > 0 ? (stats.totalDuration || 0) / stats.total : 0,
+      byType,
+      uniqueNumbers: stats.uniqueNumbers ? stats.uniqueNumbers.length : 0,
+    };
+
+    // Unique numbers mode: return one record per phone number (most recent call)
+    if (showUniqueOnly) {
+      const allCallLogs = await CallLog.find(filter)
+        .populate('simId', 'mobileNumber operator')
+        .sort({ timestamp: -1 })
+        .limit(10000)
+        .lean();
+
+      const uniqueMap = new Map();
+      allCallLogs.forEach(c => {
+        const key = c.phoneNumber;
+        if (!uniqueMap.has(key) || new Date(c.timestamp) > new Date(uniqueMap.get(key).timestamp)) {
+          uniqueMap.set(key, c);
+        }
+      });
+
+      const uniqueResults = Array.from(uniqueMap.values())
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      const totalUnique = uniqueResults.length;
+
+      let paginatedResults;
+      if (isExport) {
+        paginatedResults = uniqueResults;
+      } else {
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        paginatedResults = uniqueResults.slice(skip, skip + parseInt(limit));
+      }
+
+      return { data: paginatedResults, summary, total: totalUnique, page: parseInt(page), limit: parseInt(limit) };
     }
 
     // Get total count for pagination
@@ -161,34 +222,14 @@ class ReportService {
       .populate('simId', 'mobileNumber operator')
       .sort({ timestamp: -1 });
 
-    // Only apply pagination if not exporting
     if (!isExport) {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       callLogsQuery = callLogsQuery.skip(skip).limit(parseInt(limit));
     } else {
-      callLogsQuery = callLogsQuery.limit(10000); // Safety limit for exports
+      callLogsQuery = callLogsQuery.limit(10000);
     }
 
     const callLogs = await callLogsQuery.lean();
-
-    // Calculate summary (based on all data)
-    const summary = {
-      total,
-      totalDuration: 0,
-      avgDuration: 0,
-      byType: {},
-      uniqueNumbers: 0,
-    };
-
-    // For summary stats, get all records
-    const allCallLogs = isExport ? callLogs : await CallLog.find(filter).limit(10000).lean();
-    summary.totalDuration = allCallLogs.reduce((sum, c) => sum + (c.duration || 0), 0);
-    summary.avgDuration = allCallLogs.length > 0 ? summary.totalDuration / allCallLogs.length : 0;
-    summary.uniqueNumbers = new Set(allCallLogs.map(c => c.phoneNumber)).size;
-
-    allCallLogs.forEach(c => {
-      summary.byType[c.callType] = (summary.byType[c.callType] || 0) + 1;
-    });
 
     return { data: callLogs, summary, total, page: parseInt(page), limit: parseInt(limit) };
   }
@@ -205,9 +246,8 @@ class ReportService {
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
-
     // Get total count for pagination
     const total = await Company.countDocuments(filter);
 
@@ -294,7 +334,7 @@ class ReportService {
 
     switch (reportType) {
       case 'sims':
-        headers = ['Mobile Number', 'Operator', 'Circle', 'Status', 'WhatsApp', 'Telegram', 'Assigned To', 'Created'];
+        headers = ['Contact Number', 'Operator', 'Circle', 'Status', 'WhatsApp', 'Telegram', 'Assigned To', 'Created'];
         rows = data.map(item => [
           item.mobileNumber,
           item.operator,
@@ -308,7 +348,7 @@ class ReportService {
         break;
 
       case 'recharges':
-        headers = ['Mobile Number', 'Operator', 'Amount', 'Validity', 'Plan', 'Payment Method', 'Date', 'Next Recharge'];
+        headers = ['Contact Number', 'Operator', 'Amount', 'Validity', 'Plan', 'Payment Method', 'Date', 'Next Recharge'];
         rows = data.map(item => [
           item.simId?.mobileNumber || 'N/A',
           item.simId?.operator || 'N/A',
@@ -325,8 +365,8 @@ class ReportService {
         headers = ['Phone Number', 'Call Type', 'Duration (s)', 'SIM', 'Contact Name', 'Date'];
         rows = data.map(item => [
           item.phoneNumber,
-          item.callType,
-          item.duration,
+          item.callType.charAt(0).toUpperCase() + item.callType.slice(1),
+          item.callType === 'missed' ? 0 : item.duration,
           item.simId?.mobileNumber || 'N/A',
           item.contactName || '',
           new Date(item.timestamp).toLocaleString(),
@@ -378,8 +418,8 @@ class ReportService {
 
   getHeaders(reportType) {
     const headerMap = {
-      sims: ['Mobile Number', 'Operator', 'Circle', 'Status', 'WhatsApp', 'Telegram', 'Assigned To', 'Created'],
-      recharges: ['Mobile Number', 'Operator', 'Amount', 'Validity', 'Plan', 'Payment Method', 'Date', 'Next Recharge'],
+      sims: ['Contact Number', 'Operator', 'Circle', 'Status', 'WhatsApp', 'Telegram', 'Assigned To', 'Created'],
+      recharges: ['Contact Number', 'Operator', 'Amount', 'Validity', 'Plan', 'Payment Method', 'Date', 'Next Recharge'],
       callLogs: ['Phone Number', 'Call Type', 'Duration', 'SIM', 'Contact Name', 'Date'],
       companies: ['Company Name', 'Email', 'Status', 'Subscription', 'SIMs', 'Revenue', 'Created'],
     };
@@ -414,8 +454,8 @@ class ReportService {
       case 'callLogs':
         return [
           item.phoneNumber,
-          item.callType,
-          item.duration,
+          item.callType.charAt(0).toUpperCase() + item.callType.slice(1),
+          item.callType === 'missed' ? 0 : item.duration,
           item.simId?.mobileNumber || 'N/A',
           item.contactName || '',
           new Date(item.timestamp).toLocaleString(),

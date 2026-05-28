@@ -12,8 +12,14 @@ class AppError extends Error {
 
 class ValidationError extends AppError {
   constructor(errors) {
-    super('Validation failed', 400, 'VALIDATION_ERROR');
-    this.errors = errors;
+    // If errors is a string, use it as the message directly for clear toast display
+    if (typeof errors === 'string') {
+      super(errors, 400, 'VALIDATION_ERROR');
+      this.errors = null;
+    } else {
+      super('Validation failed', 400, 'VALIDATION_ERROR');
+      this.errors = errors;
+    }
   }
 }
 

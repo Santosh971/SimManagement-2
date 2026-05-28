@@ -16,9 +16,16 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
   const [activeTab, setActiveTab] = useState('send') // 'send', 'link', or 'email'
   const [updateSimStatus, setUpdateSimStatus] = useState(false)
 
-  // Fetch eligible SIMs (with telegramChatId) and all SIMs
+  // Reset form state and fetch SIMs when modal opens
   useEffect(() => {
     if (isOpen) {
+      setSelectedIds([])
+      setEmailSelectedIds([])
+      setMessage('')
+      setSearch('')
+      setActiveTab('send')
+      setUpdateSimStatus(false)
+      setSendingEmailId(null)
       fetchSIMs()
     }
   }, [isOpen])
@@ -54,8 +61,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Filter SIMs based on search
   const filteredSIMs = sims.filter((sim) => {
-    if (!search) return true
-    const searchLower = search.toLowerCase()
+    if (!search || !search.trim()) return true
+    const searchLower = search.trim().toLowerCase()
     return (
       sim.mobileNumber.toLowerCase().includes(searchLower) ||
       sim.operator?.toLowerCase().includes(searchLower) ||
@@ -65,8 +72,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Filter all SIMs for email/link tabs
   const filteredAllSIMs = allSIMs.filter((sim) => {
-    if (!search) return true
-    const searchLower = search.toLowerCase()
+    if (!search || !search.trim()) return true
+    const searchLower = search.trim().toLowerCase()
     return (
       sim.mobileNumber.toLowerCase().includes(searchLower) ||
       sim.operator?.toLowerCase().includes(searchLower) ||
@@ -115,6 +122,11 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
     if (!message.trim()) {
       toast.error('Please enter a message')
+      return
+    }
+
+    if (message.trim().length < 10) {
+      toast.error('Message must be at least 10 characters')
       return
     }
 
@@ -388,7 +400,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           <div style={{ marginBottom: '16px' }}>
             <input
               type="text"
-              placeholder="Search by mobile number, operator, or user..."
+              placeholder="Search by Contact Number, operator, or user..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -507,35 +519,45 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                     fontSize: '14px',
                   }}
                 >
-                  Message
+                  Message <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Enter your message here..."
+                  placeholder="Enter your message here (minimum 10 characters)..."
                   rows={5}
                   maxLength={4096}
                   style={{
                     width: '100%',
+                    height: '120px',
                     padding: '12px 14px',
-                    border: '1px solid #d1d5db',
+                    border: `1px solid ${message.length > 0 && message.trim().length < 10 ? '#dc2626' : '#d1d5db'}`,
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
-                    resize: 'vertical',
+                    resize: 'none',
+                    overflow: 'auto',
                   }}
                 />
                 <div
                   style={{
                     display: 'flex',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'space-between',
                     marginTop: '4px',
                     fontSize: '12px',
-                    color: message.length > 3800 ? '#dc2626' : '#6b7280',
                   }}
                 >
-                  {message.length}/4096 characters
+                  {message.length > 0 && message.trim().length < 10 ? (
+                    <span style={{ color: '#dc2626' }}>
+                      Minimum 10 characters required ({10 - message.trim().length} more needed)
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  <span style={{ color: message.length > 3800 ? '#dc2626' : '#6b7280' }}>
+                    {message.length}/4096
+                  </span>
                 </div>
               </div>
 
@@ -860,7 +882,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                   </span>
                 </div>
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                  Telegram links will be sent to the registered email addresses of assigned users.
+                  Telegram links will be sent to the registered Email IDes of assigned users.
                   SIMs without assigned users or email will be skipped.
                 </p>
               </div>
@@ -873,6 +895,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           style={{
             display: 'flex',
             justifyContent: 'space-between',
+            alignItems: 'center',
             gap: '12px',
             padding: '16px 24px',
             borderTop: '1px solid #e5e7eb',
@@ -881,6 +904,58 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
             backgroundColor: '#fff',
           }}
         >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {activeTab === 'send' && (
+              <button
+                onClick={handleSend}
+                disabled={loading || selectedIds.length === 0 || message.trim().length < 10}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: loading || selectedIds.length === 0 || message.trim().length < 10 ? '#9ca3af' : '#0088cc',
+                  color: '#fff',
+                  cursor: loading || selectedIds.length === 0 || message.trim().length < 10 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <FiSend />
+                {loading ? 'Sending...' : `Send to ${selectedIds.length} SIM${selectedIds.length !== 1 ? 's' : ''}`}
+              </button>
+            )}
+
+            {activeTab === 'email' && (
+              <button
+                onClick={sendEmailToAll}
+                disabled={loading || emailSelectedIds.length === 0}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: loading || emailSelectedIds.length === 0 ? '#9ca3af' : '#16a34a',
+                  color: '#fff',
+                  cursor: loading || emailSelectedIds.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <FiMail />
+                {loading ? 'Sending...' : `Send Email to ${emailSelectedIds.length} User${emailSelectedIds.length !== 1 ? 's' : ''}`}
+              </button>
+            )}
+
+            {activeTab === 'link' && (
+              <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center' }}>
+                Click "Copy Link" next to any SIM to copy its Telegram link
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onClose}
             style={{
@@ -894,56 +969,6 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           >
             Cancel
           </button>
-
-          {activeTab === 'send' && (
-            <button
-              onClick={handleSend}
-              disabled={loading || selectedIds.length === 0}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                border: 'none',
-                borderRadius: '8px',
-                background: loading || selectedIds.length === 0 ? '#9ca3af' : '#0088cc',
-                color: '#fff',
-                cursor: loading || selectedIds.length === 0 ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FiSend />
-              {loading ? 'Sending...' : `Send to ${selectedIds.length} SIM${selectedIds.length !== 1 ? 's' : ''}`}
-            </button>
-          )}
-
-          {activeTab === 'email' && (
-            <button
-              onClick={sendEmailToAll}
-              disabled={loading || emailSelectedIds.length === 0}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                border: 'none',
-                borderRadius: '8px',
-                background: loading || emailSelectedIds.length === 0 ? '#9ca3af' : '#16a34a',
-                color: '#fff',
-                cursor: loading || emailSelectedIds.length === 0 ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FiMail />
-              {loading ? 'Sending...' : `Send Email to ${emailSelectedIds.length} User${emailSelectedIds.length !== 1 ? 's' : ''}`}
-            </button>
-          )}
-
-          {activeTab === 'link' && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center' }}>
-              Click "Copy Link" next to any SIM to copy its Telegram link
-            </div>
-          )}
         </div>
       </div>
     </div>

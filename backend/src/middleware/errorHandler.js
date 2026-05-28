@@ -42,7 +42,7 @@ const errorHandler = (err, req, res, next) => {
 
     // [GLOBAL UNIQUE EMAIL] Provide more specific error messages
     if (field === 'email') {
-      message = 'This email address is already registered in the system. Each email can only be used once.';
+      message = 'This Email ID is already registered in the system. Each email can only be used once.';
     } else if (field === 'mobileNumber') {
       message = 'This phone number is already registered in the system. Please use a different phone number.';
     }

@@ -1531,7 +1531,7 @@ const LandingContent = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-secondary-500 mb-1">Email Address</label>
+                        <label className="block text-xs text-secondary-500 mb-1">Email ID</label>
                         <input
                           type="email"
                           value={content.footer?.contact?.email || ''}

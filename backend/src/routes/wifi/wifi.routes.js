@@ -56,6 +56,7 @@ const updateNetworkValidation = [
     }),
   body('ssid').optional().trim().isLength({ max: 100 }),
   body('bssid').optional().trim().isLength({ max: 20 }),
+  body('location').optional().trim().isLength({ max: 200 }).withMessage('Location cannot exceed 200 characters'),
 ];
 
 // Device validations

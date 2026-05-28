@@ -304,7 +304,7 @@ export default function Subscription() {
   if (!data?.plan) {
     return (
       <PageContainer>
-        <PageHeader title="My Subscription" description="Your current plan and usage details" />
+        <PageHeader title="Subscription" description="Your current plan and usage details" />
         <Card>
           <CardBody>
             <div style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -346,7 +346,7 @@ export default function Subscription() {
 
   return (
     <PageContainer>
-      <PageHeader title="My Subscription" description="Your current plan and usage details" />
+      <PageHeader title="Subscription" description="Your current plan and usage details" />
 
       {/* Expired Banner */}
       {isExpired && (
@@ -589,21 +589,22 @@ export default function Subscription() {
               <table className="payment-table">
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                    {['Date', 'Plan', 'Billing', 'Amount', 'Valid Until', 'Status'].map((h, i) => (
+                    {['S.No.', 'Date', 'Plan', 'Billing', 'Amount', 'Valid Until', 'Status'].map((h) => (
                       <th key={h} style={{
-                        textAlign: i === 3 ? 'right' : 'left',
-                        padding: '12px 8px',
+                        padding: '12px 16px',
                         fontSize: '12px',
                         fontWeight: '600',
                         color: '#6b7280',
                         textTransform: 'uppercase',
                         whiteSpace: 'nowrap',
+                          textAlign: h === 'S.No.' ? 'center' : 'left',
+                          width: h === 'S.No.' ? '50px' : undefined,
                       }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {paymentHistory.map((payment) => {
+                  {paymentHistory.map((payment, index) => {
                     const validUntil = payment.paidAt
                       ? new Date(new Date(payment.paidAt).getTime() + payment.planDuration * 86400000)
                           .toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -614,16 +615,17 @@ export default function Subscription() {
 
                     return (
                       <tr key={payment._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', whiteSpace: 'nowrap' }}>{paidDate}</td>
-                        <td style={{ padding: '12px 8px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>{payment.planName}</td>
-                        <td style={{ padding: '12px 8px', fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>{index + 1}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#374151', whiteSpace: 'nowrap' }}>{paidDate}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>{payment.planName}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>
                           {payment.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}
                         </td>
-                        <td style={{ padding: '12px 8px', fontSize: '14px', fontWeight: '600', color: '#111827', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
                           ₹{payment.amount?.toLocaleString()}
                         </td>
-                        <td style={{ padding: '12px 8px', fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>{validUntil}</td>
-                        <td style={{ padding: '12px 8px' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280', whiteSpace: 'nowrap' }}>{validUntil}</td>
+                        <td style={{ padding: '12px 16px' }}>
                           <Badge
                             variant={payment.status === 'completed' ? 'success' : payment.status === 'failed' ? 'danger' : 'warning'}
                             size="sm"
@@ -761,9 +763,10 @@ export default function Subscription() {
                         )}
                         {isCurrentPlan && (
                           <span style={{
-                            position: 'absolute', top: '-12px', right: '10px',
+                            position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
                             backgroundColor: '#16a34a', color: 'white',
                             padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+                            whiteSpace: 'nowrap',
                           }}>
                             Current
                           </span>
@@ -779,17 +782,17 @@ export default function Subscription() {
                             ₹{price?.toLocaleString()}
                           </span>
                           <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                            /{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                            /{billingCycle === 'monthly' ? 'month' : 'year'}
                           </span>
                         </div>
                         <div style={{ fontSize: '13px', color: '#374151' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                             <FiCheck style={{ width: '14px', height: '14px', color: '#16a34a', flexShrink: 0 }} />
-                            <span>{planOption.limits?.maxSims === -1 ? 'Unlimited' : planOption.limits?.maxSims} SIMs</span>
+                            <span>{planOption.limits?.maxSims === -1 ? 'Unlimited' : planOption.limits?.maxSims} SIM{planOption.limits?.maxSims !== 1 ? 's' : ''}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <FiCheck style={{ width: '14px', height: '14px', color: '#16a34a', flexShrink: 0 }} />
-                            <span>{planOption.limits?.maxUsers === -1 ? 'Unlimited' : planOption.limits?.maxUsers} Users</span>
+                            <span>{planOption.limits?.maxUsers === -1 ? 'Unlimited' : planOption.limits?.maxUsers} User{planOption.limits?.maxUsers !== 1 ? 's' : ''}</span>
                           </div>
                         </div>
                       </div>

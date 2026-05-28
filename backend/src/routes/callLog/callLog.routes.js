@@ -20,7 +20,7 @@ const syncValidation = [
 ];
 
 // [PHONE NORMALIZATION FIX] - Validation rules for device sync (public endpoint)
-// Custom validator for mobile number (accepts 10 digits or with country code)
+// Custom validator for Contact Number (accepts 10 digits or with country code)
 const validateMobileNumberForCallLog = (value) => {
   const { valid } = normalizePhoneNumber(value);
   return valid;
@@ -29,7 +29,7 @@ const validateMobileNumberForCallLog = (value) => {
 const deviceSyncValidation = [
   body('mobileNumber')
     .custom(validateMobileNumberForCallLog)
-    .withMessage('Invalid mobile number. Enter 10 digits or number with country code (e.g., +91XXXXXXXXXX)')
+    .withMessage('Invalid Contact Number. Enter 10 digits or number with country code (e.g., +91XXXXXXXXXX)')
     .trim()
     .customSanitizer(value => {
       // [PHONE NORMALIZATION FIX] - Sanitize: normalize the phone number
@@ -50,7 +50,7 @@ const userSyncValidation = [
     .notEmpty()
     .withMessage('SIM number is required')
     .matches(/^\+?\d{10,15}$/)
-    .withMessage('Valid SIM number required (10-15 digits, optional + prefix)'),
+    .withMessage('Valid SIM number required (Must be 10-15 digits)'),
   body('callLogs').isArray({ min: 1 }).withMessage('Call logs array is required'),
   body('callLogs.*.phoneNumber').notEmpty().withMessage('Phone number is required'),
   body('callLogs.*.callType').isIn(['incoming', 'outgoing', 'missed']).withMessage('Invalid call type'),
@@ -72,6 +72,7 @@ const queryValidation = [
   }),
   query('startDate').optional().isISO8601(),
   query('endDate').optional().isISO8601(),
+  query('uniqueOnly').optional().isIn(['true', 'false']),
   query('sortBy').optional().isIn(['timestamp', 'duration', 'callType']),
   query('sortOrder').optional().isIn(['asc', 'desc']),
 ];

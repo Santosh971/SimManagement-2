@@ -66,7 +66,7 @@ class UserController {
         req,
       });
 
-      return successResponse(res, user, 'User updated successfully');
+      return successResponse(res, user, 'User updated successfully.');
     } catch (error) {
       next(error);
     }
@@ -90,7 +90,7 @@ class UserController {
         req,
       });
 
-      return successResponse(res, null, 'User deleted successfully');
+      return successResponse(res, null, 'User deleted successfully.');
     } catch (error) {
       next(error);
     }

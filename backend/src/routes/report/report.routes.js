@@ -12,6 +12,7 @@ const reportValidation = [
   query('endDate').optional().isISO8601().withMessage('Invalid end date'),
   query('format').optional().isIn(['json', 'excel', 'csv']).withMessage('Invalid format'),
   query('download').optional().isBoolean().withMessage('Download must be boolean'),
+  query('uniqueOnly').optional().isIn(['true', 'false']).withMessage('uniqueOnly must be true or false'),
 ];
 
 /**

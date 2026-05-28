@@ -25,7 +25,7 @@ const sendOTP = async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Please enter a valid email address',
+        message: 'Please enter a valid Email ID',
       });
     }
 
@@ -87,7 +87,7 @@ const verifyOTP = async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Please enter a valid email address',
+        message: 'Please enter a valid Email ID',
       });
     }
 
@@ -157,7 +157,7 @@ const resendOTP = async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Please enter a valid email address',
+        message: 'Please enter a valid Email ID',
       });
     }
 

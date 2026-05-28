@@ -316,7 +316,7 @@ export default function Register() {
 
             {/* Email */}
             <div className="form-group">
-              <label className="label">Email Address *</label>
+              <label className="label">Email ID *</label>
               <div className="relative">
                 <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
                 <input
@@ -331,9 +331,9 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Company Name */}
+            {/* Company Name*/}
             <div className="form-group">
-              <label className="label">Company Name *</label>
+              <label className="label">Company Name*</label>
               <div className="relative">
                 <FiBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
                 <input

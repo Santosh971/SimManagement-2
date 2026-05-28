@@ -1,9 +1,10 @@
 
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { animations } from '../../styles/common'
 
 export { default as PhoneInput } from './PhoneInput'
+export { default as CountryCodeSelect } from './CountryCodeSelect'
 
 const globalStyles = `
   ${animations?.fadeIn || ''}
@@ -378,7 +379,7 @@ export function Select({ label, options, placeholder, error, style, ...props }) 
 }
 
 // ── Table ───────────────────────────────────────────────────────────────────
-export function Table({ columns, data, loading, emptyMessage, emptyAction, onRowClick }) {
+export function Table({ columns, data, loading, emptyMessage, emptyAction, onRowClick, showSerial, serialOffset = 0 }) {
   return (
     <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
       {loading ? (
@@ -389,6 +390,16 @@ export function Table({ columns, data, loading, emptyMessage, emptyAction, onRow
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '560px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f9fafb' }}>
+              {showSerial && (
+                <th key="_serial" style={{
+                  padding: '11px 14px', textAlign: 'center',
+                  fontWeight: '600', color: '#6b7280', fontSize: '11px',
+                  textTransform: 'uppercase', letterSpacing: '0.05em',
+                  borderBottom: '2px solid #e5e7eb', whiteSpace: 'nowrap', width: '50px',
+                }}>
+                  S.No.
+                </th>
+              )}
               {columns.map((col) => (
                 <th key={col.key} style={{
                   padding: '11px 14px', textAlign: col.align || 'left',
@@ -408,6 +419,11 @@ export function Table({ columns, data, loading, emptyMessage, emptyAction, onRow
                 style={{ borderBottom: '1px solid #f3f4f6', cursor: onRowClick ? 'pointer' : 'default', transition: 'background-color 0.15s' }}
                 onClick={() => onRowClick && onRowClick(row)}
               >
+                {showSerial && (
+                  <td key="_serial" style={{ padding: '12px 14px', fontSize: '13px', color: '#6b7280', textAlign: 'center' }}>
+                    {serialOffset + index + 1}
+                  </td>
+                )}
                 {columns.map((col) => (
                   <td key={col.key} style={{ padding: '12px 14px', fontSize: '13px', color: '#1f2937' }}>
                     {col.render ? col.render(row) : row[col.key]}
@@ -441,6 +457,15 @@ export function EmptyState({ icon: Icon, title, description, action }) {
 
 // ── Modal ───────────────────────────────────────────────────────────────────
 export function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   if (!isOpen) return null
   const sizes = { sm: '400px', md: '500px', lg: '700px', xl: '900px' }
   return (
@@ -475,6 +500,135 @@ export function Spinner({ size = 'md' }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px' }}>
       <div style={{ width: sizes[size], height: sizes[size], border: '3px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
     </div>
+  )
+}
+
+// ── ConfirmModal ────────────────────────────────────────────────────────────
+export function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', variant = 'danger', loading }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
+  if (!isOpen) return null
+  const variantStyles = {
+    danger: { backgroundColor: '#dc2626', color: '#fff', border: 'none' },
+    warning: { backgroundColor: '#d97706', color: '#fff', border: 'none' },
+    primary: { backgroundColor: '#2563eb', color: '#fff', border: 'none' },
+  }
+  const v = variantStyles[variant] || variantStyles.danger
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '16px' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ backgroundColor: '#fff', borderRadius: '12px', width: '100%', maxWidth: '420px', overflow: 'hidden' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ padding: '24px', textAlign: 'center' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%',
+            backgroundColor: variant === 'danger' ? '#fef2f2' : variant === 'warning' ? '#fffbeb' : '#eff6ff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <svg style={{ width: '24px', height: '24px', color: variant === 'danger' ? '#dc2626' : variant === 'warning' ? '#d97706' : '#2563eb' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 style={{ fontSize: '17px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>{title}</h3>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>{message}</p>
+        </div>
+        <div style={{ display: 'flex', borderTop: '1px solid #e5e7eb' }}>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              flex: 1, padding: '14px', border: 'none', backgroundColor: '#fff',
+              color: '#374151', fontSize: '14px', fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              borderRight: '1px solid #e5e7eb',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              flex: 1, padding: '14px', fontSize: '14px', fontWeight: '500',
+              cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
+              ...v,
+            }}
+          >
+            {loading ? 'Deleting...' : confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Tooltip ────────────────────────────────────────────────────────────────
+export function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const ref = useRef(null)
+
+  const handleEnter = () => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      setPos({ top: rect.top - 8, left: rect.left + rect.width / 2 })
+    }
+    setShow(true)
+  }
+
+  return (
+    <>
+      <span
+        ref={ref}
+        onMouseEnter={handleEnter}
+        onMouseLeave={() => setShow(false)}
+        style={{ display: 'inline-flex' }}
+      >
+        {children}
+      </span>
+      {show && (
+        <div
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            transform: 'translate(-50%, -100%)',
+            backgroundColor: '#1f2937',
+            color: '#fff',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: '500',
+            whiteSpace: 'nowrap',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          {text}
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            border: '4px solid transparent',
+            borderTopColor: '#1f2937',
+          }} />
+        </div>
+      )}
+    </>
   )
 }
 
