@@ -1,7 +1,7 @@
 const Subscription = require('../../models/subscription/subscription.model');
 const Company = require('../../models/company/company.model');
 const SubscriptionHistory = require('../../models/subscription/subscriptionHistory.model');
-const { NotFoundError, ConflictError } = require('../../utils/errors');
+const { NotFoundError, ConflictError, BadRequestError } = require('../../utils/errors');
 
 // Constants for upgrade logic
 const MAX_BONUS_DAYS = 7;
@@ -386,6 +386,11 @@ class SubscriptionService {
   async createPlan(data) {
     const { name } = data;
 
+    // Validate plan name — only letters, spaces, hyphens, and basic punctuation allowed
+    if (name && /\d/.test(name)) {
+      throw new BadRequestError('Plan name cannot contain numbers');
+    }
+
     // Check if plan name exists
     const existingPlan = await Subscription.findOne({ name });
     if (existingPlan) {
@@ -443,6 +448,11 @@ class SubscriptionService {
   }
 
   async updatePlan(planId, updateData) {
+    // Validate plan name — only letters, spaces, hyphens, and basic punctuation allowed
+    if (updateData.name && /\d/.test(updateData.name)) {
+      throw new BadRequestError('Plan name cannot contain numbers');
+    }
+
     const plan = await Subscription.findByIdAndUpdate(
       planId,
       updateData,
@@ -516,12 +526,18 @@ class SubscriptionService {
   }
 
   /**
-   * Ensure free trial plan exists
+   * Ensure free trial plan exists and has correct duration
    */
   async ensureFreeTrialPlan() {
     const existingTrial = await Subscription.findOne({ planType: 'free_trial' });
     if (!existingTrial) {
       await Subscription.createFreeTrialPlan();
+    } else {
+      // Fix: ensure existing free trial plan has 14-day duration (not the schema default of 28)
+      if (existingTrial.durationDays?.monthly !== 14 || existingTrial.durationDays?.yearly !== 14) {
+        existingTrial.durationDays = { monthly: 14, yearly: 14 };
+        await existingTrial.save();
+      }
     }
   }
 

@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { useBranding } from './components/Logo'
 import Layout from './layouts/Layout'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -25,6 +26,7 @@ import SmsLogs from './pages/SmsLogs'
 import WifiMonitor from './pages/WifiMonitor'
 import WifiDevices from './pages/WifiDevices'
 import CallAutomation from './pages/CallAutomation' // [CALL AUTOMATION]
+import Leads from './pages/Leads'
 import LandingContent from './pages/LandingContent'
 import PaymentHistory from './pages/PaymentHistory'
 import LegalPage from './pages/LegalPage'
@@ -72,8 +74,16 @@ const PublicRoute = ({ children }) => {
   return children
 }
 
+// Lightweight component that applies dynamic favicon on app load
+function FaviconUpdater() {
+  useBranding() // This hook fetches branding and calls applyFavicon internally
+  return null
+}
+
 function App() {
   return (
+    <>
+      <FaviconUpdater />
     <AuthProvider>
       <Router>
         <Toaster
@@ -164,6 +174,14 @@ function App() {
               }
             />
             <Route
+              path="leads"
+              element={
+                <ProtectedRoute allowedRoles={['super_admin']}>
+                  <Leads />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="subscriptions"
               element={
                 <ProtectedRoute allowedRoles={['super_admin']}>
@@ -206,6 +224,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </>
   )
 }
 

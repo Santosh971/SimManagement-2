@@ -31,6 +31,7 @@ import {
   ConfirmModal,
 } from '../components/ui'
 import {  FiInfo } from 'react-icons/fi'
+import { formatDateTime, formatDate, formatTime } from '../utils/dateFormat'
 // Add WiFi Modal (Updated with SSID, BSSID, and SIM Assignment)
 function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
   const { api } = useAuth()
@@ -715,14 +716,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
               </div>
               {stats?.lastMetricTime && (
                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                  Last measured: {new Date(stats.lastMetricTime).toLocaleString('en-IN', {
-                    timeZone: 'Asia/Kolkata',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}
+                  Last measured: {formatDateTime(stats.lastMetricTime)}
                 </div>
               )}
             </div>
@@ -826,7 +820,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
                       <div>
                         <div style={{ fontWeight: '500' }}>{device.deviceName}</div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                          Last seen: {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Never'}
+                          Last seen: {device.lastSeen ? formatDateTime(device.lastSeen) : 'Never'}
                         </div>
                       </div>
                     </div>
@@ -865,7 +859,7 @@ export default function WifiMonitor() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
-  const limit = 10
+  const [limit, setLimit] = useState(10)
 
   useEffect(() => {
     fetchData()
@@ -1275,15 +1269,7 @@ export default function WifiMonitor() {
                         </div>
                         <div style={{ fontSize: '13px', color: '#374151' }} className="break-words">{alert.message}</div>
                         <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                          {new Date(alert.createdAt).toLocaleString('en-IN', {
-                            timeZone: 'Asia/Kolkata',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}
+                          {formatDateTime(alert.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -1379,14 +1365,7 @@ export default function WifiMonitor() {
                     <div className="col-span-2">
                       <span className="text-gray-500">Last measured</span>
                       <p className="text-gray-600">
-                        {new Date(network.lastMetricTime).toLocaleString('en-IN', {
-                          timeZone: 'Asia/Kolkata',
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}
+                        {formatDateTime(network.lastMetricTime)}
                       </p>
                     </div>
                   )}
@@ -1477,14 +1456,7 @@ export default function WifiMonitor() {
                             </div>
                             {network.lastMetricTime && (
                               <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
-                                {new Date(network.lastMetricTime).toLocaleString('en-IN', {
-                                  timeZone: 'Asia/Kolkata',
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                                }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}
+                                {formatDateTime(network.lastMetricTime)}
                               </div>
                             )}
                           </div>
@@ -1533,14 +1505,48 @@ export default function WifiMonitor() {
       </Card>
 
       {/* Pagination */}
-      {sortedNetworks.length > limit && (
-        <Pagination
-          currentPage={safePage}
-          totalPages={totalPages}
-          total={sortedNetworks.length}
-          limit={limit}
-          onPageChange={setPage}
-        />
+      {sortedNetworks.length > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(parseInt(e.target.value))
+                  setPage(1)
+                }}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  total={sortedNetworks.length}
+                  limit={limit}
+                  onPageChange={setPage}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Empty state for mobile (when no networks or no search results) */}

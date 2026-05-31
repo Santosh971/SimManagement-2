@@ -9,8 +9,8 @@ const { validate } = require('../../middleware/validate');
 const createCompanyValidation = [
   body('name').trim().notEmpty().withMessage('Company name is required').isLength({ max: 100 }),
   body('email').isEmail().withMessage('Valid email is required').trim(),
-  // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // Phone is optional — allow empty string, null, or undefined; validate format only when provided
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('subscriptionId').isMongoId().withMessage('Valid subscription ID is required'),
   body('billingCycle').optional().isIn(['monthly', 'yearly']).withMessage('Billing cycle must be monthly or yearly'),
   body('address.street').optional().isString(),
@@ -23,8 +23,8 @@ const createCompanyValidation = [
 const updateCompanyValidation = [
   param('id').isMongoId().withMessage('Invalid company ID'),
   body('name').optional().trim().isLength({ max: 100 }),
-  // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // Phone is optional — allow empty string; validate format only when provided
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('logo').optional().isString(),
   body('settings.currency').optional().isString(),
   body('settings.timezone').optional().isString(),
@@ -38,7 +38,7 @@ const updateCompanyValidation = [
 const updateMyCompanyValidation = [
   body('name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Company name must be between 1 and 100 characters'),
   body('email').optional().isEmail().withMessage('Valid email is required').trim(),
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('website').optional().isURL().withMessage('Valid website URL is required'),
   body('address.street').optional().trim().isLength({ max: 200 }).withMessage('Street address cannot exceed 200 characters')
     .matches(/^[a-zA-Z0-9\s,.\-/'()#&]*$/).withMessage('Street can only contain letters, numbers, spaces, comma, period, hyphen, slash, apostrophe, parentheses, hash, and ampersand'),
@@ -68,15 +68,15 @@ const createAdminValidation = [
   body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 50 }),
   body('email').isEmail().withMessage('Valid email is required').trim(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // Phone is optional — allow empty string; validate format only when provided
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
 ];
 
 const updateAdminValidation = [
   param('adminId').isMongoId().withMessage('Invalid admin ID'),
   body('name').optional().trim().isLength({ max: 50 }),
-  // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // Phone is optional — allow empty string; validate format only when provided
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('isActive').optional().isBoolean(),
 ];
 
@@ -101,6 +101,10 @@ const historyQueryValidation = [
 
 // All routes require authentication and super admin role
 router.use(authenticate);
+
+// Public endpoint: Check if company name is available (accessible by any authenticated user)
+router.get('/check-name', companyController.checkCompanyName);
+router.get('/check-admin-email', companyController.checkAdminEmail);
 
 // Admin-only route to get their company's subscription
 router.get('/my-subscription', authorize('admin'), companyController.getMySubscription);

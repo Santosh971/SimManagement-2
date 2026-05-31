@@ -150,12 +150,13 @@ export default function Notifications() {
   const [filter, setFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const fetchIdRef = useRef(0)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [viewingNotification, setViewingNotification] = useState(null)
 
-  useEffect(() => { fetchNotifications() }, [pagination.page])
+  useEffect(() => { fetchNotifications() }, [pagination.page, pagination.limit])
 
   useEffect(() => {
     if (pagination.page === 1) {
@@ -168,6 +169,7 @@ export default function Notifications() {
   useEffect(() => { setSelectedIds([]) }, [filter, priorityFilter, pagination.page])
 
   const fetchNotifications = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -178,13 +180,15 @@ export default function Notifications() {
         ...(priorityFilter !== 'all' && { priority: priorityFilter }),
       })
       const response = await api.get(`/notifications?${params}`)
+      if (fetchIdRef.current !== id) return
       setNotifications(response.data.data || [])
       setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
     } catch {
+      if (fetchIdRef.current !== id) return
       toast.error('Failed to fetch notifications')
       setNotifications([])
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
@@ -352,7 +356,7 @@ export default function Notifications() {
               className="text-sm"
             >
               <span className="hidden sm:inline">
-                Delete Selected{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+                Delete All{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
               </span>
               <span className="sm:hidden">
                 Delete{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
@@ -369,7 +373,7 @@ export default function Notifications() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Filter tabs */}
             <div className="flex gap-2">
-              {['all', 'unread', 'read'].map((f) => (
+              {['all', 'unread'].map((f) => (
                 <button
                   key={f}
                   type="button"
@@ -576,15 +580,44 @@ export default function Notifications() {
       )}
 
       {/* ── Pagination ── */}
-      {pagination.total > pagination.limit && (
-        <div className="mt-4 sm:mt-6">
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={Math.ceil(pagination.total / pagination.limit)}
-            total={pagination.total}
-            limit={pagination.limit}
-            onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-          />
+      {pagination.total > 0 && (
+        <div className="mt-4 sm:mt-6 px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

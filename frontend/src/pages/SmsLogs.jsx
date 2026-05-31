@@ -26,6 +26,7 @@ import {
   Spinner,
   Pagination,
 } from '../components/ui'
+import { formatDate, formatTime } from '../utils/dateFormat'
 
 export default function SmsLogs() {
   const { api, user } = useAuth()
@@ -46,6 +47,7 @@ export default function SmsLogs() {
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
   const isInitialMount = useRef(true)
   const fetchSmsLogsRef = useRef(null)
+  const fetchIdRef = useRef(0)
 
   // Initial data load (SIMs, users, stats — only once)
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function SmsLogs() {
     // In unique sender mode, pagination is client-side — no API fetch needed on page change
     if (type === 'unique_sender') return
     fetchSmsLogs(true)
-  }, [pagination.page])
+  }, [pagination.page, pagination.limit])
 
   // Fetch SMS logs when filters change — reset to page 1
   useEffect(() => {
@@ -143,6 +145,7 @@ export default function SmsLogs() {
   }
 
   const fetchSmsLogs = async (silent = false) => {
+    const id = ++fetchIdRef.current
     try {
       if (!silent) {
         setLoading(true)
@@ -173,6 +176,7 @@ export default function SmsLogs() {
 
         // Fetch first page to get total count
         const firstResponse = await api.get(`/sms?${params}`)
+        if (fetchIdRef.current !== id) return
         const firstPageData = firstResponse.data.data || []
         const totalCount = firstResponse.data.pagination?.total || 0
         const totalPages = Math.ceil(totalCount / 100)
@@ -192,6 +196,7 @@ export default function SmsLogs() {
             pagePromises.push(api.get(`/sms?${pageParams}`))
           }
           const responses = await Promise.all(pagePromises)
+          if (fetchIdRef.current !== id) return
           responses.forEach((r) => {
             allLogs = allLogs.concat(r.data.data || [])
           })
@@ -222,6 +227,7 @@ export default function SmsLogs() {
         })
 
         const response = await api.get(`/sms?${params}`)
+        if (fetchIdRef.current !== id) return
         setSmsLogs(response.data.data || [])
         setPagination((prev) => {
           const newTotal = response.data.pagination?.total || 0
@@ -230,13 +236,14 @@ export default function SmsLogs() {
         })
       }
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       // Only show toast error for manual refresh, not polling
       if (!silent) {
         toast.error('Failed to fetch SMS logs')
       }
       setSmsLogs([])
     } finally {
-      if (!silent) {
+      if (!silent && fetchIdRef.current === id) {
         setLoading(false)
       }
     }
@@ -261,13 +268,6 @@ export default function SmsLogs() {
     } catch (error) {
       console.error('Failed to fetch senders')
     }
-  }
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    setActiveDateRange({ start: dateRange.start, end: dateRange.end })
-    if (pagination.page === 1) fetchSmsLogs()
-    else setPagination(p => ({ ...p, page: 1 }))
   }
 
   const handleExport = async () => {
@@ -304,6 +304,7 @@ export default function SmsLogs() {
     setSender('')
     setSearch('')
     setDateRange({ start: '', end: '' })
+    setActiveDateRange({ start: '', end: '' })
     setPagination((prev) => ({ ...prev, page: 1 }))
   }
 
@@ -313,14 +314,6 @@ export default function SmsLogs() {
 
   const getTypeStyle = (smsType) => {
     return smsType === 'sent' ? 'primary' : 'success'
-  }
-
-  const formatDateTime = (timestamp) => {
-    const date = new Date(timestamp)
-    return {
-      date: date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    }
   }
 
   const truncateMessage = (message, maxLength = 80) => {
@@ -409,11 +402,10 @@ export default function SmsLogs() {
       key: 'timestamp',
       header: 'Date & Time',
       render: (row) => {
-        const dateTime = formatDateTime(row.timestamp)
         return (
           <div>
-            <div>{dateTime.date}</div>
-            <div style={{ fontSize: '12px', color: '#6b7280' }}>{dateTime.time}</div>
+            <div>{formatDate(row.timestamp)}</div>
+            <div style={{ fontSize: '12px', color: '#6b7280' }}>{formatTime(row.timestamp)}</div>
           </div>
         )
       }
@@ -591,7 +583,11 @@ export default function SmsLogs() {
                 value={dateRange.start}
                 max={dateRange.end || today}
                 onKeyDown={(e) => e.preventDefault()}
-                onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setDateRange((prev) => ({ ...prev, start: val }))
+                  setActiveDateRange((prev) => ({ ...prev, start: val }))
+                }}
                 style={{
                   padding: '10px 14px',
                   border: '1px solid #d1d5db',
@@ -610,7 +606,11 @@ export default function SmsLogs() {
                 min={dateRange.start || undefined}
                 max={today}
                 onKeyDown={(e) => e.preventDefault()}
-                onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setDateRange((prev) => ({ ...prev, end: val }))
+                  setActiveDateRange((prev) => ({ ...prev, end: val }))
+                }}
                 style={{
                   padding: '10px 14px',
                   border: '1px solid #d1d5db',
@@ -621,7 +621,6 @@ export default function SmsLogs() {
                 }}
               />
             </div>
-            <Button onClick={() => fetchSmsLogs(true)}>Apply Filters</Button>
             <Button variant="secondary" onClick={resetFilters}>Reset</Button>
             {/* Auto-refresh toggle */}
             <button
@@ -671,36 +670,98 @@ export default function SmsLogs() {
       </Card>
 
       {/* Pagination — server-side for normal mode, client-side for unique sender mode */}
-      {!isUniqueSenderMode && pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => {
-            setPagination((prev) => {
-              const totalPages = Math.ceil(prev.total / prev.limit)
-              if (page >= 1 && page <= totalPages) {
-                return { ...prev, page }
-              }
-              return prev
-            })
-          }}
-        />
+      {!isUniqueSenderMode && pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => {
+                    setPagination((prev) => {
+                      const totalPages = Math.ceil(prev.total / prev.limit)
+                      if (page >= 1 && page <= totalPages) {
+                        return { ...prev, page }
+                      }
+                      return prev
+                    })
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-      {isUniqueSenderMode && smsLogs.length > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(smsLogs.length / pagination.limit)}
-          total={smsLogs.length}
-          limit={pagination.limit}
-          onPageChange={(page) => {
-            const totalPages = Math.ceil(smsLogs.length / pagination.limit)
-            if (page >= 1 && page <= totalPages) {
-              setPagination((prev) => ({ ...prev, page }))
-            }
-          }}
-        />
+      {isUniqueSenderMode && smsLogs.length > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(smsLogs.length / pagination.limit)}
+                  total={smsLogs.length}
+                  limit={pagination.limit}
+                  onPageChange={(page) => {
+                    const totalPages = Math.ceil(smsLogs.length / pagination.limit)
+                    if (page >= 1 && page <= totalPages) {
+                      setPagination((prev) => ({ ...prev, page }))
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </PageContainer>
   )

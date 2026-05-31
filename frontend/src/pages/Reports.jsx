@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { formatDateTime, formatDate } from '../utils/dateFormat'
 import {
   FiFileText,
   FiSmartphone,
@@ -39,19 +40,11 @@ export default function Reports() {
     callType: '',
     uniqueOnly: false,
   })
-  const [activeFilters, setActiveFilters] = useState({
-    startDate: '',
-    endDate: '',
-    status: '',
-    operator: '',
-    callType: '',
-    uniqueOnly: false,
-  })
   const [showFilters, setShowFilters] = useState(false)
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
 
   const isSuperAdmin = user?.role === 'super_admin'
-  const skipNextPageFetch = useRef(false)
+  const fetchIdRef = useRef(0)
 
   const reportTypes = [
     { id: 'sims', name: 'SIM Report', icon: FiSmartphone, description: 'Export SIM card data with status and details' },
@@ -68,19 +61,20 @@ export default function Reports() {
     { value: 'missed', label: 'Missed' },
   ]
 
-  // Use a ref to store active filters for the fetch function
-  const filtersRef = useRef(activeFilters)
-  filtersRef.current = activeFilters
+  // Use a ref to store filters for the fetch function
+  const filtersRef = useRef(filters)
+  filtersRef.current = filters
 
-  const fetchReport = async (page = 1, overrideFilters = null) => {
+  const fetchReport = async (overrideFilters = null) => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       const params = new URLSearchParams()
       const currentFilters = overrideFilters || filtersRef.current
 
       // Pagination params
-      params.append('page', page)
-      params.append('limit', 10)
+      params.append('page', pagination.page)
+      params.append('limit', pagination.limit)
 
       // Filter params
       if (currentFilters.startDate) params.append('startDate', currentFilters.startDate)
@@ -91,44 +85,27 @@ export default function Reports() {
       if (currentFilters.uniqueOnly && activeReport === 'callLogs') params.append('uniqueOnly', 'true')
 
       const response = await api.get(`/reports/${activeReport}?${params}`)
+      if (fetchIdRef.current !== id) return
       setReportData(response.data)
       setPagination((prev) => ({
         ...prev,
-        page,
         total: response.data?.pagination?.total || 0,
       }))
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       toast.error('Failed to fetch report')
       setReportData(null)
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
-  // Fetch report when activeReport changes
+  // Single unified fetch effect — fires on page, limit, filter, or report type changes
   useEffect(() => {
     if (activeReport) {
-      skipNextPageFetch.current = true // Skip next page fetch to avoid double-fetch
-      setPagination((prev) => ({ ...prev, page: 1, total: 0 }))
-      fetchReport(1)
+      fetchReport()
     }
-  }, [activeReport])
-
-  // Fetch report when page changes
-  useEffect(() => {
-    if (activeReport) {
-      if (skipNextPageFetch.current) {
-        skipNextPageFetch.current = false
-        return
-      }
-      fetchReport(pagination.page)
-    }
-  }, [pagination.page])
-
-  // Reset to page 1 when active filters change
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, page: 1 }))
-  }, [activeFilters.startDate, activeFilters.endDate, activeFilters.status, activeFilters.operator, activeFilters.callType, activeFilters.uniqueOnly])
+  }, [pagination.page, pagination.limit, filters.startDate, filters.endDate, filters.status, filters.operator, filters.callType, filters.uniqueOnly, activeReport])
 
   const handleExport = async (format) => {
     try {
@@ -171,12 +148,7 @@ export default function Reports() {
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const applyFilters = () => {
-    setActiveFilters({ ...filters })
     setPagination((prev) => ({ ...prev, page: 1 }))
-    fetchReport(1, filters)
   }
 
   const clearFilters = () => {
@@ -189,10 +161,7 @@ export default function Reports() {
       uniqueOnly: false,
     }
     setFilters(clearedFilters)
-    setActiveFilters(clearedFilters)
     setPagination((prev) => ({ ...prev, page: 1 }))
-    // Pass cleared filters directly to avoid stale closure
-    fetchReport(1, clearedFilters)
   }
 
   const renderSummary = () => {
@@ -379,7 +348,7 @@ export default function Reports() {
     if (!reportData?.data || reportData.data.length === 0) {
       return (
         <div style={{ padding: '48px', textAlign: 'center' }}>
-          <FiFileText style={{ width: '48px', height: '48px', color: '#9ca3af', marginBottom: '16px' }} />
+         
           <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>No Data Available</h3>
           <p style={{ color: '#6b7280' }}>Adjust filters and try again</p>
         </div>
@@ -407,7 +376,7 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.whatsappEnabled ? '✓' : '-'}</td>
               <td style={{ padding: '12px 16px' }}>{item.telegramEnabled ? '✓' : '-'}</td>
               <td style={{ padding: '12px 16px' }}>{item.assignedTo?.name || 'Unassigned'}</td>
-              <td style={{ padding: '12px 16px' }}>{new Date(item.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
+              <td style={{ padding: '12px 16px' }}>{formatDateTime(item.createdAt)}</td>
             </tr>
           )
         case 'recharges':
@@ -420,8 +389,8 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.validity} days</td>
               <td style={{ padding: '12px 16px' }}>{item.plan?.name || 'N/A'}</td>
               <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{item.paymentMethod}</td>
-              <td style={{ padding: '12px 16px' }}>{new Date(item.rechargeDate).toLocaleDateString()}</td>
-              <td style={{ padding: '12px 16px' }}>{item.nextRechargeDate ? new Date(item.nextRechargeDate).toLocaleDateString() : '-'}</td>
+              <td style={{ padding: '12px 16px' }}>{formatDate(item.rechargeDate)}</td>
+              <td style={{ padding: '12px 16px' }}>{item.nextRechargeDate ? formatDate(item.nextRechargeDate) : '-'}</td>
             </tr>
           )
         case 'callLogs':
@@ -437,7 +406,7 @@ export default function Reports() {
               {filters.callType !== 'missed' && <td style={{ padding: '12px 16px' }}>{item.callType === 'missed' ? '0s' : `${item.duration}s`}</td>}
               <td style={{ padding: '12px 16px' }}>{item.simId?.mobileNumber || 'N/A'}</td>
               <td style={{ padding: '12px 16px' }}>{item.contactName || '-'}</td>
-              <td style={{ padding: '12px 16px' }}>{new Date(item.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
+              <td style={{ padding: '12px 16px' }}>{formatDateTime(item.timestamp)}</td>
             </tr>
           )
         case 'companies':
@@ -454,7 +423,7 @@ export default function Reports() {
               <td style={{ padding: '12px 16px' }}>{item.subscriptionId?.name || 'N/A'}</td>
               <td style={{ padding: '12px 16px' }}>{item.stats?.totalSims || 0}</td>
               <td style={{ padding: '12px 16px' }}>₹{(item.stats?.totalRechargeAmount || 0).toLocaleString()}</td>
-              <td style={{ padding: '12px 16px' }}>{new Date(item.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())}</td>
+              <td style={{ padding: '12px 16px' }}>{formatDateTime(item.createdAt)}</td>
             </tr>
           )
         default:
@@ -497,15 +466,44 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
-        {pagination.total > pagination.limit && (
+        {pagination.total > 0 && (
           <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb' }}>
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={Math.ceil(pagination.total / pagination.limit)}
-              total={pagination.total}
-              limit={pagination.limit}
-              onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-            />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    minWidth: '60px',
+                  }}
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+              <div className="w-full sm:w-auto overflow-x-auto">
+                <div className="flex justify-center sm:justify-end min-w-max">
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={Math.ceil(pagination.total / pagination.limit)}
+                    total={pagination.total}
+                    limit={pagination.limit}
+                    onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </>
@@ -537,6 +535,7 @@ export default function Reports() {
             onClick={() => {
               setActiveReport(report.id)
               setReportData(null)
+              setPagination((prev) => ({ ...prev, page: 1 }))
             }}
             style={{
               padding: '16px',
@@ -660,12 +659,7 @@ export default function Reports() {
                 <>
                 <select
                   value={filters.callType}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setFilters((prev) => ({ ...prev, callType: value }))
-                    setPagination((prev) => ({ ...prev, page: 1 }))
-                    fetchReport(1, { ...filtersRef.current, callType: value })
-                  }}
+                  onChange={(e) => handleFilterChange('callType', e.target.value)}
                   style={{
                     padding: '8px 12px',
                     border: '1px solid #d1d5db',
@@ -692,14 +686,7 @@ export default function Reports() {
                   <input
                     type="checkbox"
                     checked={filters.uniqueOnly}
-                    onChange={(e) => {
-                      setFilters((prev) => ({ ...prev, uniqueOnly: e.target.checked }))
-                      // Auto-apply filter when toggled
-                      setTimeout(() => {
-                        setPagination((prev) => ({ ...prev, page: 1 }))
-                        fetchReport(1, { ...filtersRef.current, uniqueOnly: e.target.checked })
-                      }, 0)
-                    }}
+                    onChange={(e) => handleFilterChange('uniqueOnly', e.target.checked)}
                     style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                   />
                   Unique Numbers Only
@@ -708,7 +695,6 @@ export default function Reports() {
               )}
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <Button onClick={applyFilters}>Apply</Button>
                 <Button variant="secondary" onClick={clearFilters}>Clear</Button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiPlus,
@@ -75,8 +75,8 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
 
       case 'phone':
         if (value && value.trim()) {
-          if (!/^\+?\d{10,15}$/.test(value.trim())) {
-            error = 'Contact Number must be 10-15 digits'
+          if (!/^\+?\d{7,20}$/.test(value.trim())) {
+            error = 'Enter a valid contact number'
           }
         }
         break
@@ -509,11 +509,12 @@ export default function Users() {
   const [resetUser, setResetUser] = useState(null)
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, activeLast30Days: 0 })
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null, userName: '' })
+  const fetchIdRef = useRef(0)
 
   useEffect(() => {
     fetchUsers()
     fetchStats()
-  }, [pagination.page, status])
+  }, [pagination.page, pagination.limit, status])
 
   // Debounced search - reset to page 1 when search changes
   useEffect(() => {
@@ -529,6 +530,7 @@ export default function Users() {
   }, [search])
 
   const fetchUsers = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -539,13 +541,15 @@ export default function Users() {
       })
 
       const response = await api.get(`/users?${params}`)
+      if (fetchIdRef.current !== id) return
       setUsers(response.data.data || [])
       setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       toast.error('Failed to fetch users')
       setUsers([])
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
@@ -809,14 +813,45 @@ export default function Users() {
       </Card>
 
       {/* Pagination */}
-      {pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-        />
+      {pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modals */}

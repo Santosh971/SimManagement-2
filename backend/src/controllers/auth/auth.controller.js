@@ -7,6 +7,26 @@ class AuthController {
   async register(req, res, next) {
     try {
       const result = await authService.register(req.body);
+
+      // Audit log: USER_REGISTER
+      try {
+        await auditLogService.logAction({
+          action: 'USER_REGISTER',
+          module: 'AUTH',
+          description: `New user registered: ${result.user?.name || result.user?.email || 'Unknown'}`,
+          performedBy: result.user?._id || null,
+          role: result.user?.role || 'user',
+          companyId: result.user?.companyId || result.company?._id || null,
+          metadata: {
+            email: result.user?.email || req.body.email,
+            companyName: req.body.companyName || null,
+          },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail registration if audit log fails
+      }
+
       return successResponse(res, result, 'User registered successfully', 201);
     } catch (error) {
       next(error);
@@ -98,20 +118,33 @@ class AuthController {
   // Forgot Password OTP - Step 1: Send OTP to admin email
   async forgotPasswordOTP(req, res, next) {
     try {
-      const { email } = req.body;
+      const { email, isResend } = req.body;
       const result = await authService.forgotPasswordOTP(email);
 
-      // Log the attempt
-      await auditLogService.logAction({
-        action: 'FORGOT_PASSWORD_OTP_REQUEST',
-        module: 'AUTH',
-        description: `Password reset OTP requested for ${email}`,
-        performedBy: null,
-        role: 'admin',
-        companyId: null,
-        metadata: { email },
-        req,
-      });
+      // Audit log
+      try {
+        // Look up user for better audit data (performedBy, companyId, role)
+        let userForAudit = null;
+        try {
+          userForAudit = await User.findOne({ email: email.toLowerCase() }).select('companyId role _id');
+        } catch (e) { /* ignore lookup failure */ }
+
+        const action = isResend ? 'FORGOT_PASSWORD_OTP_RESEND' : 'FORGOT_PASSWORD_OTP_REQUEST';
+        await auditLogService.logAction({
+          action,
+          module: 'AUTH',
+          description: isResend
+            ? `Password reset OTP resent for ${email}`
+            : `Password reset OTP requested for ${email}`,
+          performedBy: userForAudit?._id || null,
+          role: userForAudit?.role || 'anonymous',
+          companyId: userForAudit?.companyId || null,
+          metadata: { email, isResend: !!isResend },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail forgot password if audit log fails
+      }
 
       return successResponse(res, result, 'If an admin account exists with this email, a verification code will be sent');
     } catch (error) {
@@ -126,20 +159,46 @@ class AuthController {
       const result = await authService.verifyForgotPasswordOTP(email, otp);
 
       if (!result.success) {
+        // Audit log: failed verification attempt
+        try {
+          await auditLogService.logAction({
+            action: 'FORGOT_PASSWORD_OTP_VERIFIED',
+            module: 'AUTH',
+            description: `Failed password reset OTP verification for ${email}: ${result.message}`,
+            performedBy: null,
+            role: 'anonymous',
+            companyId: null,
+            metadata: { email, success: false, reason: result.message },
+            req,
+          });
+        } catch (auditError) {
+          // Don't fail verification if audit log fails
+        }
+
         return res.status(400).json(result);
       }
 
-      // Log successful verification
-      await auditLogService.logAction({
-        action: 'FORGOT_PASSWORD_OTP_VERIFIED',
-        module: 'AUTH',
-        description: `Password reset OTP verified for ${email}`,
-        performedBy: null,
-        role: 'admin',
-        companyId: null,
-        metadata: { email },
-        req,
-      });
+      // Audit log: successful verification
+      try {
+        // Look up user for better audit data
+        let userForAudit = null;
+        try {
+          userForAudit = await User.findOne({ email: email.toLowerCase() }).select('companyId role _id');
+        } catch (e) { /* ignore lookup failure */ }
+
+        await auditLogService.logAction({
+          action: 'FORGOT_PASSWORD_OTP_VERIFIED',
+          module: 'AUTH',
+          description: `Password reset OTP verified for ${email}`,
+          performedBy: userForAudit?._id || null,
+          role: userForAudit?.role || 'anonymous',
+          companyId: userForAudit?.companyId || null,
+          metadata: { email, success: true },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail verification if audit log fails
+      }
 
       return successResponse(res, result, 'Verification successful');
     } catch (error) {
@@ -153,20 +212,46 @@ class AuthController {
       const { email, otp, newPassword } = req.body;
       const result = await authService.resetPasswordWithOTP(email, otp, newPassword);
 
-      // Log successful password reset
-      await auditLogService.logAction({
-        action: 'PASSWORD_RESET_VIA_OTP',
-        module: 'AUTH',
-        description: `Password reset successfully for ${email}`,
-        performedBy: null,
-        role: 'admin',
-        companyId: null,
-        metadata: { email },
-        req,
-      });
+      // Audit log: successful password reset
+      try {
+        // Look up user for better audit data
+        let userForAudit = null;
+        try {
+          userForAudit = await User.findOne({ email: email.toLowerCase() }).select('companyId role _id');
+        } catch (e) { /* ignore lookup failure */ }
+
+        await auditLogService.logAction({
+          action: 'PASSWORD_RESET_VIA_OTP',
+          module: 'AUTH',
+          description: `Password reset successfully for ${email}`,
+          performedBy: userForAudit?._id || null,
+          role: userForAudit?.role || 'anonymous',
+          companyId: userForAudit?.companyId || null,
+          metadata: { email },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail password reset if audit log fails
+      }
 
       return successResponse(res, result, 'Password reset successfully');
     } catch (error) {
+      // Audit log: failed password reset attempt
+      try {
+        await auditLogService.logAction({
+          action: 'PASSWORD_RESET_VIA_OTP',
+          module: 'AUTH',
+          description: `Failed password reset attempt for ${req.body.email}: ${error.message}`,
+          performedBy: null,
+          role: 'anonymous',
+          companyId: null,
+          metadata: { email: req.body.email, success: false, error: error.message },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail error handling if audit log fails
+      }
+
       next(error);
     }
   }
@@ -176,6 +261,23 @@ class AuthController {
       const { token } = req.params;
       const { password } = req.body;
       const result = await authService.resetPassword(token, password);
+
+      // Audit log: PASSWORD_RESET
+      try {
+        await auditLogService.logAction({
+          action: 'PASSWORD_RESET',
+          module: 'AUTH',
+          description: 'Password reset via token completed',
+          performedBy: null,
+          role: 'anonymous',
+          companyId: null,
+          metadata: { method: 'token_reset' },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail password reset if audit log fails
+      }
+
       return successResponse(res, result, 'Password reset successful');
     } catch (error) {
       next(error);
@@ -186,6 +288,24 @@ class AuthController {
     try {
       const { currentPassword, newPassword } = req.body;
       const result = await authService.changePassword(req.user.id, currentPassword, newPassword);
+
+      // Audit log: PASSWORD_CHANGE
+      try {
+        const userForAudit = await User.findById(req.user.id).select('companyId role email name');
+        await auditLogService.logAction({
+          action: 'PASSWORD_CHANGE',
+          module: 'AUTH',
+          description: `Password changed for ${userForAudit?.email || req.user.email}`,
+          performedBy: req.user.id,
+          role: userForAudit?.role || req.user.role,
+          companyId: userForAudit?.companyId || req.user.companyId,
+          metadata: { email: userForAudit?.email || req.user.email },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail password change if audit log fails
+      }
+
       return successResponse(res, result, 'Password changed successfully.');
     } catch (error) {
       next(error);

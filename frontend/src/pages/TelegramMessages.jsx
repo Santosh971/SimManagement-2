@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { FiSend, FiRefreshCw, FiCheck, FiX, FiAlertCircle, FiPause, FiPlay } from 'react-icons/fi'
+import { FiSend, FiCheck, FiX, FiAlertCircle, FiPause, FiPlay, FiSearch } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import SendMessageModal from '../components/telegram/SendMessageModal'
 import { formatDateTime } from '../utils/dateFormat'
@@ -27,13 +27,17 @@ export default function TelegramMessages() {
     status: '',
     simId: '',
   })
+  const [chatSearch, setChatSearch] = useState('')
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10 })
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const fetchIdRef = useRef(0)
+  const today = new Date().toISOString().split('T')[0]
 
   // Fetch data when page changes
   useEffect(() => {
     fetchData()
-  }, [pagination.page])
+  }, [pagination.page, pagination.limit])
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function TelegramMessages() {
     } else {
       setPagination((prev) => ({ ...prev, page: 1 }))
     }
-  }, [filters.status, filters.simId])
+  }, [filters.status, filters.simId, dateRange.start, dateRange.end])
 
   // Auto-refresh polling (every 15 seconds)
   useEffect(() => {
@@ -54,9 +58,10 @@ export default function TelegramMessages() {
     }, 15000) // 15 seconds
 
     return () => clearInterval(interval)
-  }, [autoRefresh, pagination.page, filters.status, filters.simId])
+  }, [autoRefresh, pagination.page, pagination.limit, filters.status, filters.simId, dateRange.start, dateRange.end])
 
   const fetchData = async (silent = false) => {
+    const id = ++fetchIdRef.current
     try {
       if (!silent) {
         setLoading(true)
@@ -66,6 +71,8 @@ export default function TelegramMessages() {
         limit: pagination.limit,
         ...(filters.status && { status: filters.status }),
         ...(filters.simId && { simId: filters.simId }),
+        ...(dateRange.start && { startDate: dateRange.start }),
+        ...(dateRange.end && { endDate: dateRange.end }),
       })
 
       const [messagesRes, statsRes] = await Promise.all([
@@ -73,6 +80,7 @@ export default function TelegramMessages() {
         api.get('/telegram/stats'),
       ])
 
+      if (fetchIdRef.current !== id) return
       setMessages(messagesRes.data.data || [])
       setPagination((prev) => ({
         ...prev,
@@ -81,21 +89,23 @@ export default function TelegramMessages() {
       }))
       setStats(statsRes.data.data)
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       console.error('Failed to fetch messages:', error)
       // Only show toast error for manual refresh, not polling
       if (!silent) {
         toast.error('Failed to load messages')
       }
     } finally {
-      if (!silent) {
+      if (!silent && fetchIdRef.current === id) {
         setLoading(false)
       }
     }
   }
 
-  const handleRefresh = () => {
-    setPagination((prev) => ({ ...prev, page: 1 }))
-    fetchData()
+  const handleClearFilters = () => {
+    setFilters({ status: '', simId: '' })
+    setChatSearch('')
+    setDateRange({ start: '', end: '' })
   }
 
   const getStatusBadge = (status) => {
@@ -108,6 +118,17 @@ export default function TelegramMessages() {
     }
     return statusConfig[status] || statusConfig.sent
   }
+
+  const filteredMessages = chatSearch.trim()
+    ? messages.filter((m) => {
+        const q = chatSearch.toLowerCase().trim()
+        return (
+          (m.chatId || '').toLowerCase().includes(q) ||
+          (m.message || '').toLowerCase().includes(q) ||
+          (m.simId?.mobileNumber || '').toLowerCase().includes(q)
+        )
+      })
+    : messages
 
   const formatDate = formatDateTime
 
@@ -279,9 +300,70 @@ export default function TelegramMessages() {
                   <option value="failed">Failed</option>
                 </select>
               </div>
-              <Button onClick={handleRefresh} disabled={loading} icon={FiRefreshCw}>
-                {loading ? 'Loading...' : 'Refresh'}
-              </Button>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  Search
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: '#9ca3af' }} />
+                  <input
+                    type="text"
+                    placeholder="Search by Chat ID, message, SIM..."
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    style={{
+                      padding: '10px 14px 10px 32px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      minWidth: '180px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  From
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  max={dateRange.end || today}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                  onKeyDown={(e) => e.preventDefault()}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  To
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  min={dateRange.start || undefined}
+                  max={today}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                  onKeyDown={(e) => e.preventDefault()}
+                  style={{
+                    padding: '10px 14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                />
+              </div>
+              <Button variant="secondary" onClick={handleClearFilters}>Clear</Button>
             </div>
             {/* Auto-refresh toggle */}
             <button
@@ -322,7 +404,7 @@ export default function TelegramMessages() {
         <CardBody style={{ padding: 0 }}>
           <Table
             columns={columns}
-            data={messages}
+            data={filteredMessages}
             emptyMessage="No Telegram messages found"
             showSerial
             serialOffset={(pagination.page - 1) * pagination.limit}
@@ -331,14 +413,45 @@ export default function TelegramMessages() {
       </Card>
 
       {/* Pagination */}
-      {pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-        />
+      {pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Send Message Modal */}

@@ -24,8 +24,10 @@ import {
   FiDollarSign,
   FiFile,
   FiPhoneOutgoing, // [CALL AUTOMATION]
+  FiMail,
 } from 'react-icons/fi'
-import { FaWhatsapp, FaTelegramPlane } from 'react-icons/fa'
+
+import { FaWhatsapp, FaTelegramPlane, FaBuilding } from 'react-icons/fa'
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const { user, api } = useAuth()
@@ -54,7 +56,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
       case 'super_admin':
         return [
           { name: 'Dashboard', href: '/app/dashboard', icon: FiHome },
-          { name: 'Companies', href: '/app/companies', icon: FiUsers },
+          { name: 'Companies', href: '/app/companies', icon: FaBuilding },
+          { name: 'Leads', href: '/app/leads', icon: FiMail },
           { name: 'Subscriptions', href: '/app/subscriptions', icon: FiPackage },
           { name: 'Payment History', href: '/app/payment-history', icon: FiDollarSign },
           { name: 'Landing Content', href: '/app/landing-content', icon: FiLayout },

@@ -18,6 +18,13 @@ const BASE_URL = getBaseUrl()
 let brandingCache = null
 let brandingPromise = null
 
+// Subscriber list — Logo components and useBranding hooks register here
+const subscribers = new Set()
+
+function notifySubscribers(data) {
+  subscribers.forEach(fn => fn(data))
+}
+
 const fetchBranding = async () => {
   // Return cached data if available
   if (brandingCache) {
@@ -33,17 +40,58 @@ const fetchBranding = async () => {
   brandingPromise = fetch(`${API_URL}/landing-content/public`)
     .then(res => res.json())
     .then(data => {
-      brandingCache = data.data?.branding || { siteName: 'SIM Manager', logoUrl: '' }
+      brandingCache = data.data?.branding || { siteName: 'SIM Manager', logoUrl: '', faviconUrl: '' }
       brandingPromise = null
       return brandingCache
     })
     .catch(() => {
-      brandingCache = { siteName: 'SIM Manager', logoUrl: '' }
+      brandingCache = { siteName: 'SIM Manager', logoUrl: '', faviconUrl: '' }
       brandingPromise = null
       return brandingCache
     })
 
   return brandingPromise
+}
+
+// Apply favicon from branding data to the browser tab
+export function applyFavicon(branding) {
+  const faviconUrl = branding?.faviconUrl
+  // Find or create the favicon link element
+  let link = document.querySelector("link[rel*='icon']")
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = 'icon'
+    document.head.appendChild(link)
+  }
+
+  if (faviconUrl) {
+    const fullUrl = getLogoUrl(faviconUrl)
+    // Determine type based on extension
+    if (fullUrl.endsWith('.svg')) {
+      link.type = 'image/svg+xml'
+    } else if (fullUrl.endsWith('.png')) {
+      link.type = 'image/png'
+    } else if (fullUrl.endsWith('.ico')) {
+      link.type = 'image/x-icon'
+    } else {
+      link.type = 'image/png' // default
+    }
+    link.href = fullUrl
+  } else if (branding?.logoUrl) {
+    // Fallback: use the main logo as favicon when no dedicated favicon
+    const fullUrl = getLogoUrl(branding.logoUrl)
+    if (fullUrl.endsWith('.svg')) {
+      link.type = 'image/svg+xml'
+    } else if (fullUrl.endsWith('.png')) {
+      link.type = 'image/png'
+    } else if (fullUrl.endsWith('.ico')) {
+      link.type = 'image/x-icon'
+    } else {
+      link.type = 'image/png'
+    }
+    link.href = fullUrl
+  }
+  // If neither faviconUrl nor logoUrl, the existing static favicon stays unchanged
 }
 
 // Helper to get full URL for logo
@@ -66,12 +114,24 @@ export default function Logo({
 }) {
   const [branding, setBranding] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [logoError, setLogoError] = useState(false)
 
   useEffect(() => {
     fetchBranding().then(data => {
       setBranding(data)
       setLoading(false)
     })
+
+    // Subscribe to live branding updates
+    const onBrandingUpdate = (data) => {
+      setBranding(data)
+      setLogoError(false)
+    }
+    subscribers.add(onBrandingUpdate)
+
+    return () => {
+      subscribers.delete(onBrandingUpdate)
+    }
   }, [])
 
   // Size configurations
@@ -122,8 +182,8 @@ export default function Logo({
       )
     }
 
-    // If custom logo exists
-    if (logoUrl) {
+    // If custom logo exists and hasn't failed to load
+    if (logoUrl && !logoError) {
       const fullLogoUrl = getLogoUrl(logoUrl)
       return (
         <div style={{
@@ -139,9 +199,8 @@ export default function Logo({
               width: 'auto',
               objectFit: 'contain',
             }}
-            onError={(e) => {
-              // Fallback to default if image fails to load
-              e.target.style.display = 'none'
+            onError={() => {
+              setLogoError(true)
             }}
           />
           {showText && (
@@ -217,13 +276,32 @@ export function useBranding() {
     fetchBranding().then(data => {
       setBranding(data)
       setLoading(false)
+      // Apply dynamic favicon when branding loads
+      applyFavicon(data)
     })
+
+    // Subscribe to live branding updates
+    const onBrandingUpdate = (data) => {
+      setBranding(data)
+      applyFavicon(data)
+    }
+    subscribers.add(onBrandingUpdate)
+
+    return () => {
+      subscribers.delete(onBrandingUpdate)
+    }
   }, [])
 
   return { branding, loading }
 }
 
-// Function to clear branding cache (useful after updating branding)
+// Function to update branding cache and notify all mounted Logo/useBranding instances
+export function updateBrandingCache(newBranding) {
+  brandingCache = { ...brandingCache, ...newBranding }
+  notifySubscribers(brandingCache)
+}
+
+// Function to clear branding cache so next mount re-fetches from server
 export function clearBrandingCache() {
   brandingCache = null
 }

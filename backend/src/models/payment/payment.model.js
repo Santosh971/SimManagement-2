@@ -17,6 +17,24 @@ const PaymentSchema = new Schema({
     required: false,
   },
 
+  // Denormalized company/user info — preserves names even if company/user is deleted
+  companyName: {
+    type: String,
+    required: false,
+  },
+  companyEmail: {
+    type: String,
+    required: false,
+  },
+  userName: {
+    type: String,
+    required: false,
+  },
+  userEmail: {
+    type: String,
+    required: false,
+  },
+
   // Subscription plan purchased
   subscriptionId: {
     type: Schema.Types.ObjectId,

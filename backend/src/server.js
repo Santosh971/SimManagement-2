@@ -37,6 +37,7 @@ const deviceRoutes = require('./routes/device/device.routes'); // [SIM-BASED WIF
 const landingContentRoutes = require('./routes/landingContent/landingContent.routes');
 const pageContentRoutes = require('./routes/pageContent/pageContent.routes');
 const callAutomationRoutes = require('./routes/callAutomation/callAutomation.routes'); // [CALL AUTOMATION]
+const leadRoutes = require('./routes/lead/lead.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -152,6 +153,7 @@ app.use('/api/device', deviceRoutes); // [SIM-BASED WIFI ACCESS CONTROL]
 app.use('/api/landing-content', landingContentRoutes);
 app.use('/api/pages', pageContentRoutes);
 app.use('/api/call-automation', callAutomationRoutes); // [CALL AUTOMATION]
+app.use('/api/leads', leadRoutes);
 
 // 404 handler
 app.use((req, res, next) => {

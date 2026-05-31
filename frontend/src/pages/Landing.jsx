@@ -197,7 +197,7 @@ const defaultContent = {
       {
         question: "Is my data secure?",
         answer:
-          "Absolutely. We use industry-standard encryption, JWT authentication, and role-based access control. Your data is stored securely in the cloud with regular backups.",
+          "Absolutely, We use industry-standard encryption, JWT authentication, and role-based access control. Your data is stored securely in the cloud with regular backups.",
       },
       {
         question: "Can I track WhatsApp/Telegram status?",
@@ -267,7 +267,94 @@ const Landing = () => {
   const [content, setContent] = useState(defaultContent);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Contact form state
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', company: '', message: '' });
+  const [contactErrors, setContactErrors] = useState({});
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
   const [billingCycle, setBillingCycle] = useState("monthly");
+
+  // Contact form handlers
+  const validateContactField = (name, value) => {
+    switch (name) {
+      case 'name':
+        if (!value || !value.trim()) return 'Name is required'
+        if (value.trim().length > 100) return 'Name cannot exceed 100 characters'
+        return ''
+      case 'email':
+        if (!value || !value.trim()) return 'Email is required'
+        if (!/^\S+@\S+\.\S+$/.test(value.trim())) return 'Please enter a valid email address'
+        return ''
+      case 'phone':
+        if (value && value.trim() && !/^\+?\d{10,15}$/.test(value.trim())) return 'Phone number must be 10-15 digits'
+        return ''
+      case 'message':
+        if (!value || !value.trim()) return 'Message is required'
+        if (value.trim().length > 1000) return 'Message cannot exceed 1000 characters'
+        return ''
+      default:
+        return ''
+    }
+  }
+
+  const handleContactChange = (e) => {
+    const { name, value } = e.target
+    setContactForm((prev) => ({ ...prev, [name]: value }))
+    if (contactErrors[name]) {
+      setContactErrors((prev) => {
+        const updated = { ...prev }
+        delete updated[name]
+        return updated
+      })
+    }
+  }
+
+  const handleContactBlur = (e) => {
+    const { name, value } = e.target
+    const error = validateContactField(name, value)
+    setContactErrors((prev) => ({ ...prev, [name]: error }))
+  }
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault()
+    const newErrors = {}
+    const fieldsToValidate = ['name', 'email', 'phone', 'message']
+    fieldsToValidate.forEach((field) => {
+      const error = validateContactField(field, contactForm[field])
+      if (error) newErrors[field] = error
+    })
+
+    if (Object.keys(newErrors).length > 0) {
+      setContactErrors(newErrors)
+      return
+    }
+
+    setContactSubmitting(true)
+    try {
+      const response = await fetch(`${API_URL}/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: contactForm.name,
+          email: contactForm.email,
+          phone: contactForm.phone,
+          company: contactForm.company,
+          message: contactForm.message,
+        }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setContactSubmitted(true)
+      } else {
+        alert(data.message || 'Something went wrong. Please try again.')
+      }
+    } catch {
+      alert('Something went wrong. Please try again.')
+    } finally {
+      setContactSubmitting(false)
+    }
+  }
 
   // Fetch dynamic content
   useEffect(() => {
@@ -973,15 +1060,120 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Contact Us Section */}
+      <section id="contact" className="py-20 bg-secondary-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-secondary-900 mb-4">Get In Touch</h2>
+            <p className="text-secondary-600 text-lg max-w-2xl mx-auto">
+              Have questions about our SIM management platform? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+            </p>
+          </div>
+          <div className="max-w-2xl mx-auto">
+            {contactSubmitted ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FiCheck className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-secondary-900 mb-2">Thank You!</h3>
+                <p className="text-secondary-600 mb-6">Your message has been sent successfully. We'll get back to you soon.</p>
+                <button
+                  onClick={() => { setContactSubmitted(false); setContactForm({ name: '', email: '', phone: '', company: '', message: '' }); setContactErrors({}); }}
+                  className="text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Send another message
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={contactForm.name}
+                      onChange={handleContactChange}
+                      onBlur={handleContactBlur}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${contactErrors.name ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200`}
+                      placeholder="Your name"
+                    />
+                    {contactErrors.name && <p className="text-xs text-red-500 mt-1">{contactErrors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Email *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={contactForm.email}
+                      onChange={handleContactChange}
+                      onBlur={handleContactBlur}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${contactErrors.email ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200`}
+                      placeholder="your@email.com"
+                    />
+                    {contactErrors.email && <p className="text-xs text-red-500 mt-1">{contactErrors.email}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Phone</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={contactForm.phone}
+                      onChange={handleContactChange}
+                      onBlur={handleContactBlur}
+                      className={`w-full px-4 py-2.5 rounded-lg border ${contactErrors.phone ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200`}
+                      placeholder="+91 9876543210"
+                    />
+                    {contactErrors.phone && <p className="text-xs text-red-500 mt-1">{contactErrors.phone}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Company</label>
+                    <input
+                      type="text"
+                      name="company"
+                      value={contactForm.company}
+                      onChange={handleContactChange}
+                      className="w-full px-4 py-2.5 rounded-lg border border-secondary-300 focus:ring-primary-500 focus:border-primary-500 focus:outline-none focus:ring-2 transition-all duration-200"
+                      placeholder="Your company name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">Message *</label>
+                  <textarea
+                    name="message"
+                    value={contactForm.message}
+                    onChange={handleContactChange}
+                    onBlur={handleContactBlur}
+                    rows={4}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${contactErrors.message ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200 resize-vertical`}
+                    placeholder="How can we help you?"
+                  />
+                  {contactErrors.message && <p className="text-xs text-red-500 mt-1">{contactErrors.message}</p>}
+                </div>
+                <button
+                  type="submit"
+                  disabled={contactSubmitting}
+                  className="w-full bg-primary-600 text-white px-8 py-3 rounded-xl font-semibold text-lg hover:bg-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {contactSubmitting ? 'Sending...' : 'Send Message'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer id="footer" className="bg-secondary-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {/* Brand */}
             <div>
-              <div className="mb-4">
+              <div className="mb-4" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') window.location.href = '/' }}>
                 <Logo
-                  linkTo="/"
                   size="default"
                   variant="light"
                 />

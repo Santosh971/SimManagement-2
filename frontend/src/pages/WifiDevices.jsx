@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiWifi,
@@ -23,6 +23,7 @@ import {
   Spinner,
   Pagination,
 } from '../components/ui'
+import { formatDateTime } from '../utils/dateFormat'
 
 // Assign Device Modal
 function AssignDeviceModal({ isOpen, onClose, device, wifiNetworks, onAssign }) {
@@ -174,13 +175,14 @@ export default function WifiDevices() {
   const [wifiFilter, setWifiFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const fetchIdRef = useRef(0)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState(null)
 
   useEffect(() => {
     fetchDevices()
     fetchWifiNetworks()
-  }, [pagination.page])
+  }, [pagination.page, pagination.limit])
 
   useEffect(() => {
     if (pagination.page === 1) {
@@ -191,6 +193,7 @@ export default function WifiDevices() {
   }, [search, wifiFilter, statusFilter])
 
   const fetchDevices = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       setError(null)
@@ -203,19 +206,21 @@ export default function WifiDevices() {
       })
 
       const response = await api.get(`/wifi/devices?${params}`)
+      if (fetchIdRef.current !== id) return
       setDevices(response.data.data || [])
       setPagination((prev) => ({
         ...prev,
         total: response.data.pagination?.total || 0
       }))
     } catch (err) {
+      if (fetchIdRef.current !== id) return
       console.error('Failed to fetch devices:', err)
       const message = err.response?.data?.message || err.message || 'Failed to fetch devices'
       setError(message)
       toast.error(message)
       setDevices([])
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
@@ -291,18 +296,6 @@ export default function WifiDevices() {
     }
 
     return { variant: 'default', label: 'Offline' }
-  }
-
-  const formatDate = (date) => {
-    if (!date) return 'Never'
-    return new Date(date).toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    }).replace(/\b(am|pm)\b/gi, m => m.toUpperCase())
   }
 
   // Check if user is admin
@@ -461,7 +454,7 @@ export default function WifiDevices() {
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {formatDate(device.lastSeen)}
+                          {device.lastSeen ? formatDateTime(device.lastSeen) : 'Never'}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '8px' }}>
@@ -515,14 +508,45 @@ export default function WifiDevices() {
       </Card>
 
       {/* Pagination */}
-      {pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-        />
+      {pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Assign Modal */}

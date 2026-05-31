@@ -131,7 +131,7 @@ export default function ForgotPassword() {
 
     setLoading(true)
     try {
-      await axios.post(`${API_URL}/auth/forgot-password-otp`, { email })
+      await axios.post(`${API_URL}/auth/forgot-password-otp`, { email, isResend: true })
       toast.success('New verification code sent')
       setCountdown(60)
       setOtp(['', '', '', '', '', ''])

@@ -32,20 +32,30 @@ const sendOTP = async (req, res) => {
     const result = await otpService.sendOTP(email);
 
     // Log OTP send attempt
-    await auditLogService.logAction({
-      action: 'OTP_SEND',
-      module: 'AUTH',
-      description: `OTP sent to email ${email}`,
-      performedBy: null,
-      role: 'user',
-      companyId: null,
-      metadata: {
-        email,
-        success: result.success,
-        retryAfter: result.retryAfter || null,
-      },
-      req,
-    });
+    try {
+      // Look up user for better audit data
+      let userForAudit = null;
+      try {
+        userForAudit = await User.findOne({ email: email.toLowerCase() }).select('companyId role _id');
+      } catch (e) { /* ignore lookup failure */ }
+
+      await auditLogService.logAction({
+        action: 'OTP_SEND',
+        module: 'AUTH',
+        description: `OTP sent to email ${email}`,
+        performedBy: userForAudit?._id || null,
+        role: userForAudit?.role || 'anonymous',
+        companyId: userForAudit?.companyId || null,
+        metadata: {
+          email,
+          success: result.success,
+          retryAfter: result.retryAfter || null,
+        },
+        req,
+      });
+    } catch (auditError) {
+      // Don't fail OTP send if audit log fails
+    }
 
     // Handle different response scenarios
     if (!result.success) {
@@ -109,6 +119,25 @@ const verifyOTP = async (req, res) => {
     const userForAudit = await User.findById(result.user.id).select('companyId role');
     const actualCompanyId = userForAudit?.companyId || null;
 
+    // Audit log: OTP_VERIFY
+    try {
+      await auditLogService.logAction({
+        action: 'OTP_VERIFY',
+        module: 'AUTH',
+        description: `OTP verified for ${result.user.email}`,
+        performedBy: result.user.id,
+        role: userForAudit?.role || result.user.role,
+        companyId: actualCompanyId,
+        metadata: {
+          loginMethod: 'otp_email',
+          email: result.user.email,
+        },
+        req,
+      });
+    } catch (auditError) {
+      // Don't fail login if audit log fails
+    }
+
     // Log user login
     await auditLogService.logAction({
       action: 'USER_LOGIN',
@@ -164,19 +193,29 @@ const resendOTP = async (req, res) => {
     const result = await otpService.resendOTP(email);
 
     // Log OTP resend attempt
-    await auditLogService.logAction({
-      action: 'OTP_RESEND',
-      module: 'AUTH',
-      description: `OTP resent to email ${email}`,
-      performedBy: null,
-      role: 'user',
-      companyId: null,
-      metadata: {
-        email,
-        success: result.success,
-      },
-      req,
-    });
+    try {
+      // Look up user for better audit data
+      let userForAudit = null;
+      try {
+        userForAudit = await User.findOne({ email: email.toLowerCase() }).select('companyId role _id');
+      } catch (e) { /* ignore lookup failure */ }
+
+      await auditLogService.logAction({
+        action: 'OTP_RESEND',
+        module: 'AUTH',
+        description: `OTP resent to email ${email}`,
+        performedBy: userForAudit?._id || null,
+        role: userForAudit?.role || 'anonymous',
+        companyId: userForAudit?.companyId || null,
+        metadata: {
+          email,
+          success: result.success,
+        },
+        req,
+      });
+    } catch (auditError) {
+      // Don't fail OTP resend if audit log fails
+    }
 
     // Handle different response scenarios
     if (!result.success) {

@@ -1,6 +1,6 @@
+﻿
 
-
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiActivity,
@@ -15,7 +15,7 @@ import {
   FiChevronUp,
 } from 'react-icons/fi'
 import { Pagination, Button } from '../components/ui'
-import { formatDateTime, formatDateTimeShort } from '../utils/dateFormat'
+import { formatDate, formatTime, formatDateTime, formatDateTimeShort } from '../utils/dateFormat'
 
 const AuditLogs = () => {
   const { api, user } = useAuth()
@@ -35,27 +35,27 @@ const AuditLogs = () => {
   const [activeStartDate, setActiveStartDate] = useState(null)
   const [activeEndDate, setActiveEndDate] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
+  const fetchIdRef = useRef(0)
 
   // Available options
-  // Available options — synced with backend auditLog.service.js getModuleActions()
+  // Available options â€” synced with backend auditLog.service.js getModuleActions()
   const modules = [
     'AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY',
-    'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION',
-    'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM',
+    'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'SETTINGS', 'WHATSAPP', 'TELEGRAM',
     'WIFI', 'CALL_AUTOMATION', 'SMS',
   ]
   const actions = {
-    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'REGISTRATION', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED'],
+    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER',  'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_RESEND', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED'],
     SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT', 'SIM_MESSAGING_UPDATE'],
-    RECHARGE: ['RECHARGE_ADD', 'RECHARGE_UPDATE', 'RECHARGE_DELETE', 'RECHARGE_EXPIRE', 'RECHARGE_REMINDER_SENT'],
+    RECHARGE: ['RECHARGE_ADD'],
     USER: ['USER_CREATE', 'USER_UPDATE', 'USER_DELETE', 'USER_PASSWORD_RESET', 'USER_STATUS_CHANGE'],
     REPORT: ['REPORT_EXPORT', 'REPORT_IMPORT', 'REPORT_DOWNLOAD', 'REPORT_GENERATE'],
     COMPANY: ['COMPANY_CREATE', 'COMPANY_UPDATE', 'COMPANY_DELETE', 'COMPANY_ADMIN_CREATE', 'COMPANY_ADMIN_UPDATE', 'COMPANY_ADMIN_DELETE', 'COMPANY_SUBSCRIPTION_RENEW', 'COMPANY_PROFILE_UPDATE', 'COMPANY_EMAIL_CHANGE_REQUEST', 'COMPANY_EMAIL_CHANGE_COMPLETE', 'COMPANY_EMAIL_CHANGE_CANCEL', 'COMPANY_TRIAL_EXTEND'],
     SUBSCRIPTION: ['SUBSCRIPTION_CREATE', 'SUBSCRIPTION_UPDATE', 'SUBSCRIPTION_DELETE', 'SUBSCRIPTION_TOGGLE'],
     PAYMENT: ['PAYMENT_INITIATE', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUND'],
     CALL_LOG: ['CALL_LOG_SYNC', 'CALL_LOG_EXPORT', 'CALL_LOG_FLAG'],
-    NOTIFICATION: ['NOTIFICATION_CREATE', 'NOTIFICATION_READ', 'NOTIFICATION_DELETE', 'NOTIFICATION_BULK_READ'],
-    DASHBOARD: ['DASHBOARD_VIEW'],
+    NOTIFICATION: [ 'NOTIFICATION_READ', 'NOTIFICATION_DELETE', 'NOTIFICATION_BULK_READ'],
+  
     SETTINGS: ['SETTINGS_UPDATE', 'PREFERENCES_UPDATE', 'CONTENT_UPDATE', 'CONTENT_CREATE'],
     WHATSAPP: ['WHATSAPP_MESSAGE_SEND', 'WHATSAPP_MESSAGE_SEND_BULK', 'WHATSAPP_WEBHOOK_REPLY', 'WHATSAPP_SIM_ACTIVE', 'WHATSAPP_SIM_INACTIVE'],
     TELEGRAM: ['TELEGRAM_MESSAGE_SEND', 'TELEGRAM_MESSAGE_SEND_BULK', 'TELEGRAM_LINK_SEND', 'TELEGRAM_LINK_SEND_BULK', 'TELEGRAM_LINK_GENERATED', 'TELEGRAM_SIM_LINK_INITIATED', 'TELEGRAM_SIM_UNLINK', 'TELEGRAM_PHONE_VERIFICATION_FAILED', 'TELEGRAM_PHONE_VERIFIED', 'TELEGRAM_SIM_ACTIVE', 'TELEGRAM_SIM_INACTIVE'],
@@ -68,6 +68,7 @@ const AuditLogs = () => {
   const availableActions = module ? actions[module] || [] : []
 
   const fetchLogs = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       setError(null)
@@ -82,22 +83,24 @@ const AuditLogs = () => {
       if (activeEndDate) params.append('endDate', activeEndDate.toISOString())
 
       const response = await api.get(`/audit-logs?${params.toString()}`)
+      if (fetchIdRef.current !== id) return
       const data = response.data
 
       setLogs(data.data || [])
       const paginationData = data.pagination || {}
       setPagination((prev) => ({ ...prev, total: paginationData.total || 0 }))
     } catch (err) {
+      if (fetchIdRef.current !== id) return
       console.error('Failed to fetch audit logs:', err)
       setError('Failed to load audit logs. Please try again.')
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchLogs()
-  }, [pagination.page, module, action, activeStartDate, activeEndDate])
+  }, [pagination.page, pagination.limit, module, action, activeStartDate, activeEndDate])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -125,16 +128,12 @@ const AuditLogs = () => {
 
   const handleStartDateChange = (date) => {
     setStartDate(date)
+    setActiveStartDate(date)
   }
 
   const handleEndDateChange = (date) => {
     setEndDate(date)
-  }
-
-  const applyDateFilters = () => {
-    setActiveStartDate(startDate)
-    setActiveEndDate(endDate)
-    setPagination((prev) => ({ ...prev, page: 1 }))
+    setActiveEndDate(date)
   }
 
   const clearFilters = () => {
@@ -146,6 +145,10 @@ const AuditLogs = () => {
     setActiveStartDate(null)
     setActiveEndDate(null)
     setPagination((prev) => ({ ...prev, page: 1 }))
+  }
+
+  const handleLimitChange = (newLimit) => {
+    setPagination((prev) => ({ ...prev, limit: parseInt(newLimit), page: 1 }))
   }
 
   const handleExport = async () => {
@@ -174,8 +177,6 @@ const AuditLogs = () => {
     }
   }
 
-  const formatDate = formatDateTime
-
   // Shorter format for mobile
   const formatDateMobile = formatDateTimeShort
 
@@ -184,7 +185,12 @@ const AuditLogs = () => {
     if (action?.includes('UPDATE')) return 'bg-blue-100 text-blue-700'
     if (action?.includes('DELETE')) return 'bg-red-100 text-red-700'
     if (action?.includes('LOGIN') || action?.includes('LOGOUT')) return 'bg-purple-100 text-purple-700'
+    if (action?.includes('REGISTER') || action?.includes('REGISTRATION')) return 'bg-emerald-100 text-emerald-700'
+    if (action?.includes('PASSWORD_CHANGE') || action?.includes('PASSWORD_RESET')) return 'bg-amber-100 text-amber-700'
+    if (action?.includes('OTP')) return 'bg-sky-100 text-sky-700'
+    if (action?.includes('EMAIL_CHANGE')) return 'bg-indigo-100 text-indigo-700'
     if (action?.includes('EXPORT') || action?.includes('GENERATE')) return 'bg-orange-100 text-orange-700'
+    if (action?.includes('SYNC') || action?.includes('SEND')) return 'bg-teal-100 text-teal-700'
     return 'bg-gray-100 text-gray-700'
   }
 
@@ -204,6 +210,11 @@ const AuditLogs = () => {
       SETTINGS: 'bg-gray-100 text-gray-700',
       WHATSAPP: 'bg-emerald-100 text-emerald-700',
       TELEGRAM: 'bg-sky-100 text-sky-700',
+      WIFI: 'bg-violet-100 text-violet-700',
+      CALL_AUTOMATION: 'bg-rose-100 text-rose-700',
+      SMS: 'bg-lime-100 text-lime-700',
+      DEVICE: 'bg-fuchsia-100 text-fuchsia-700',
+      LANDING_CONTENT: 'bg-orange-100 text-orange-700',
     }
     return colors[module] || 'bg-gray-100 text-gray-700'
   }
@@ -217,7 +228,7 @@ const AuditLogs = () => {
     <div className="min-h-screen bg-secondary-50 p-3 sm:p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <div className="mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -251,10 +262,10 @@ const AuditLogs = () => {
           </div>
         </div>
 
-        {/* ── Filters Panel ── */}
+        {/* â”€â”€ Filters Panel â”€â”€ */}
         <div className="bg-white rounded-xl shadow-sm border border-secondary-200 p-3 sm:p-4 mb-4 sm:mb-6">
 
-          {/* Filter header row — always visible */}
+          {/* Filter header row â€” always visible */}
           <div className="flex items-center justify-between gap-2">
             {/* Toggle button (mobile) / Label (desktop) */}
             <button
@@ -264,11 +275,7 @@ const AuditLogs = () => {
             >
               <FiFilter className="shrink-0" />
               <span>Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-primary-100 text-primary-700 rounded-full">
-                  {activeFilterCount}
-                </span>
-              )}
+           
 
             </button>
 
@@ -285,7 +292,7 @@ const AuditLogs = () => {
             )}
           </div>
 
-          {/* Filter fields — collapsible on mobile, always visible on desktop (md+) */}
+          {/* Filter fields â€” collapsible on mobile, always visible on desktop (md+) */}
           
           <div className={`mt-3 ${showFilters ? 'block' : 'block lg:block'}`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -341,7 +348,6 @@ const AuditLogs = () => {
                   max={endDate ? endDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                   onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleStartDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
-                  onBlur={applyDateFilters}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -366,7 +372,6 @@ const AuditLogs = () => {
                   max={new Date().toISOString().split('T')[0]}
                   onKeyDown={(e) => e.preventDefault()}
                   onChange={(e) => handleEndDateChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : null)}
-                  onBlur={applyDateFilters}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -384,22 +389,17 @@ const AuditLogs = () => {
           </div>
         </div>
 
-        {/* ── Error ── */}
+        {/* â”€â”€ Error â”€â”€ */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
           </div>
         )}
 
-        {/* ── Results summary ── */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs sm:text-sm text-secondary-500">
-            Showing <span className="font-medium">{logs.length}</span> of{' '}
-            <span className="font-medium">{pagination.total}</span> logs
-          </p>
-        </div>
+        {/* â”€â”€ Results summary â”€â”€ */}
+   
 
-        {/* ── Main content ── */}
+        {/* â”€â”€ Main content â”€â”€ */}
         <div className="bg-white rounded-xl shadow-sm border border-secondary-200 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -413,7 +413,7 @@ const AuditLogs = () => {
             </div>
           ) : (
             <>
-              {/* ─── Desktop table (md+) ─── */}
+              {/* â”€â”€â”€ Desktop table (md+) â”€â”€â”€ */}
               {/* <div className="hidden md:block overflow-x-auto"> */}
               {/* <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
@@ -536,19 +536,12 @@ const AuditLogs = () => {
     <div className="leading-tight">
       {/* Date */}
       <div className="font-medium">
-        {new Date(log.createdAt).toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        })}
+        {formatDate(log.createdAt)}
       </div>
 
       {/* Time */}
       <div className="text-[10px] sm:text-xs text-secondary-400">
-        {new Date(log.createdAt).toLocaleTimeString('en-IN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
+        {formatTime(log.createdAt)}
       </div>
     </div>
   </div>
@@ -624,13 +617,13 @@ const AuditLogs = () => {
     </tbody>
   </table>
 </div>
-              {/* ─── Mobile cards (< md) ─── */}
+              {/* â”€â”€â”€ Mobile cards (< md) â”€â”€â”€ */}
               {/* <div className="md:hidden divide-y divide-secondary-100"> */}
             
             </>
           )}
 
-          {/* ── Pagination ── */}
+          {/* â”€â”€ Pagination â”€â”€ */}
           {/* {!loading && pagination.total > 0 && (
             <div className="px-4 sm:px-6 py-4 border-t border-secondary-200">
               <Pagination
@@ -643,18 +636,42 @@ const AuditLogs = () => {
             </div>
           )} */}
 
-          {/* ── Pagination ── */}
-{/* ── Pagination ── */}
+          {/* â”€â”€ Pagination â”€â”€ */}
+{/* â”€â”€ Pagination â”€â”€ */}
 {!loading && pagination.total > 0 && (
   <div className="px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-white">
 
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-      {/* INFO TEXT */}
-      {/*  */}
+      {/* Rows Per Page */}
+      <div className="flex items-center gap-2">
+        <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+          Rows per page:
+        </span>
+        <select
+          value={pagination.limit}
+          onChange={(e) => handleLimitChange(e.target.value)}
+          style={{
+            padding: '4px 8px',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#374151',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer',
+            outline: 'none',
+            minWidth: '60px',
+          }}
+        >
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
 
       {/* PAGINATION WRAPPER (FIXED) */}
-      <div className="w-full overflow-x-auto">
+      <div className="w-full sm:w-auto overflow-x-auto">
         <div className="flex justify-center sm:justify-end min-w-max">
           <Pagination
             currentPage={pagination.page}

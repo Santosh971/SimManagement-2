@@ -2,6 +2,51 @@ import { useState, useEffect } from 'react'
 import { useAuth, extractErrorMessage } from '../context/AuthContext'
 import { FiUser, FiLock, FiMail, FiEye, FiEyeOff, FiX, FiBriefcase, FiMapPin, FiPhone, FiGlobe, FiSave, FiRefreshCw } from 'react-icons/fi'
 import toast from 'react-hot-toast'
+import { formatDate } from '../utils/dateFormat'
+import { countryCodes } from '../data/countries'
+
+/**
+ * Validate a phone number in PhoneInput combined format (e.g., "+919876543210").
+ * Uses the same 3-tier validation as the SIMs Add form:
+ *   1. Only digits allowed (after stripping + prefix)
+ *   2. Indian numbers (+91) must be exactly 10 digits
+ *   3. International numbers: combined total must be 10-15 digits
+ * Returns error message string, or empty string if valid.
+ */
+function validatePhone(phone) {
+  if (!phone || !phone.trim()) return '' // phone is optional
+  const trimmed = phone.trim()
+  // Must start with + (PhoneInput always prepends country code)
+  if (!trimmed.startsWith('+')) return 'Contact number must start with country code (e.g., +91)'
+  const digits = trimmed.substring(1) // strip the +
+  if (!/^\d+$/.test(digits)) return 'Only digits are allowed after country code'
+  // Find the matching country code
+  const dialCode = getDialCodeFromPhone(trimmed)
+  const numberPart = dialCode ? digits.substring(dialCode.length) : digits
+  const ccPrefix = dialCode ? '+' + dialCode : ''
+  if (!numberPart) return 'Enter a phone number after the country code'
+  if (!/^\d+$/.test(numberPart)) return 'Only digits are allowed in phone number'
+  if (ccPrefix === '+91' && !/^\d{10}$/.test(numberPart)) return 'Must be 10 digits for Indian numbers'
+  const totalDigits = digits.length
+  if (totalDigits < 10 || totalDigits > 15) return 'Combined number must be 10-15 digits'
+  return ''
+}
+
+/**
+ * Extract the country dial code from a combined phone string (e.g., "+919876543210" → "91").
+ * Matches the longest dial code prefix from the country codes list.
+ */
+function getDialCodeFromPhone(phone) {
+  if (!phone || !phone.startsWith('+')) return ''
+  const digits = phone.substring(1) // strip +
+  // Try longest match first (e.g., +971 before +97)
+  const sorted = [...countryCodes].sort((a, b) => b.code.length - a.code.length)
+  for (const c of sorted) {
+    const dc = c.code.replace('+', '')
+    if (digits.startsWith(dc)) return dc
+  }
+  return ''
+}
 import {
   PageContainer,
   PageHeader,
@@ -232,13 +277,14 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
           }}
         >
           <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
-            {step === 1 && 'Change Email Address'}
+            {step === 1 && 'Change Email ID'}
             {step === 2 && 'Verify Current Email'}
             {step === 3 && 'Verify New Email'}
           </h2>
           <button
             onClick={handleClose}
-            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            className="modal-close-btn"
+            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s' }}
           >
             <FiX style={{ width: '20px', height: '20px' }} />
           </button>
@@ -440,6 +486,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0}
+                className="modal-resend-btn"
                 style={{
                   width: '100%',
                   minHeight: '44px',
@@ -456,6 +503,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                   justifyContent: 'center',
                   gap: '6px',
                   whiteSpace: 'nowrap',
+                  transition: 'background-color 0.2s',
                 }}
               >
                 <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
@@ -464,6 +512,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
               <button
                 type="button"
                 onClick={handleClose}
+                className="modal-cancel-btn"
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -473,6 +522,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                   cursor: 'pointer',
                   fontSize: '14px',
                   color: '#6b7280',
+                  transition: 'background-color 0.2s, border-color 0.2s',
                 }}
               >
                 Cancel
@@ -531,6 +581,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0}
+                className="modal-resend-btn"
                 style={{
                   width: '100%',
                   minHeight: '44px',
@@ -547,6 +598,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                   justifyContent: 'center',
                   gap: '6px',
                   whiteSpace: 'nowrap',
+                  transition: 'background-color 0.2s',
                 }}
               >
                 <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
@@ -555,6 +607,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
               <button
                 type="button"
                 onClick={handleClose}
+                className="modal-cancel-btn"
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -564,6 +617,7 @@ function EmailChangeModal({ isOpen, onClose, currentEmail, onSuccess }) {
                   cursor: 'pointer',
                   fontSize: '14px',
                   color: '#6b7280',
+                  transition: 'background-color 0.2s, border-color 0.2s',
                 }}
               >
                 Cancel
@@ -802,7 +856,8 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
           </h2>
           <button
             onClick={handleClose}
-            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            className="modal-close-btn"
+            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer', transition: 'background-color 0.2s' }}
           >
             <FiX style={{ width: '20px', height: '20px' }} />
           </button>
@@ -1005,6 +1060,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0}
+                className="modal-resend-btn"
                 style={{
                   width: '100%',
                   minHeight: '44px',
@@ -1021,6 +1077,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                   justifyContent: 'center',
                   gap: '6px',
                   whiteSpace: 'nowrap',
+                  transition: 'background-color 0.2s',
                 }}
               >
                 <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
@@ -1029,6 +1086,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
               <button
                 type="button"
                 onClick={handleClose}
+                className="modal-cancel-btn"
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -1038,6 +1096,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                   cursor: 'pointer',
                   fontSize: '14px',
                   color: '#6b7280',
+                  transition: 'background-color 0.2s, border-color 0.2s',
                 }}
               >
                 Cancel
@@ -1096,6 +1155,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0}
+                className="modal-resend-btn"
                 style={{
                   width: '100%',
                   minHeight: '44px',
@@ -1112,6 +1172,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                   justifyContent: 'center',
                   gap: '6px',
                   whiteSpace: 'nowrap',
+                  transition: 'background-color 0.2s',
                 }}
               >
                 <FiRefreshCw style={{ width: '14px', height: '14px', flexShrink: 0 }} />
@@ -1120,6 +1181,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
               <button
                 type="button"
                 onClick={handleClose}
+                className="modal-cancel-btn"
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -1129,6 +1191,7 @@ function CompanyEmailChangeModal({ isOpen, onClose, currentEmail, companyName, o
                   cursor: 'pointer',
                   fontSize: '14px',
                   color: '#6b7280',
+                  transition: 'background-color 0.2s, border-color 0.2s',
                 }}
               >
                 Cancel
@@ -1284,9 +1347,8 @@ export default function Settings() {
     } else if (companyFormData.name.trim().length > 100) {
       errors.name = 'Company name cannot exceed 100 characters'
     }
-    if (companyFormData.phone && !/^\+?\d{10,15}$/.test(companyFormData.phone)) {
-      errors.phone = 'Invalid phone number (10-15 digits, optional + prefix)'
-    }
+    const companyPhoneError = validatePhone(companyFormData.phone)
+    if (companyPhoneError) errors.phone = companyPhoneError
     // Address validation
     const streetRegex = /^[a-zA-Z0-9\s,.\-/'()#&]*$/
     const cityStateCountryRegex = /^[\p{L}\s\-'.]*$/u
@@ -1368,12 +1430,15 @@ export default function Settings() {
     const errors = {}
     if (!profileData.name.trim()) {
       errors.name = 'Full name is required'
+    } else if (profileData.name.trim().length < 2) {
+      errors.name = 'Name must be at least 2 characters'
     } else if (profileData.name.trim().length > 50) {
       errors.name = 'Name cannot exceed 50 characters'
+    } else if (!/^[a-zA-Z\s.''-]+$/.test(profileData.name.trim())) {
+      errors.name = 'Name can only contain letters, spaces, dots, hyphens and apostrophes'
     }
-    if (profileData.phone && !/^\+?\d{10,15}$/.test(profileData.phone)) {
-      errors.phone = 'Invalid phone number (10-15 digits, optional + prefix)'
-    }
+    const phoneError = validatePhone(profileData.phone)
+    if (phoneError) errors.phone = phoneError
     if (Object.keys(errors).length > 0) {
       setProfileFieldErrors(errors)
       return
@@ -1416,6 +1481,14 @@ export default function Settings() {
       errors.newPassword = 'New password must be at least 8 characters.'
     } else if (passwordData.newPassword.length > 15) {
       errors.newPassword = 'New password cannot exceed 15 characters.'
+    } else if (!/[A-Z]/.test(passwordData.newPassword)) {
+      errors.newPassword = 'Password must contain at least one uppercase letter (A-Z).'
+    } else if (!/[a-z]/.test(passwordData.newPassword)) {
+      errors.newPassword = 'Password must contain at least one lowercase letter (a-z).'
+    } else if (!/[0-9]/.test(passwordData.newPassword)) {
+      errors.newPassword = 'Password must contain at least one number (0-9).'
+    } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordData.newPassword)) {
+      errors.newPassword = 'Password must contain at least one special character (!@#$%^&*...).'
     }
     if (!passwordData.confirmPassword) {
       errors.confirmPassword = 'Please confirm your new password.'
@@ -1621,12 +1694,15 @@ export default function Settings() {
                     <PhoneInput
                       value={companyFormData.phone}
                       onChange={handleCompanyPhoneChange}
+                      onBlur={() => {
+                        const err = validatePhone(companyFormData.phone)
+                        if (err) setCompanyFieldErrors((prev) => ({ ...prev, phone: err }))
+                      }}
                       label="Contact Number"
+                      required
                       placeholder="+91 9876543210"
+                      error={companyFieldErrors.phone || ''}
                     />
-                    {companyFieldErrors.phone && (
-                      <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors.phone}</p>
-                    )}
                   </div>
                 </div>
 
@@ -1690,7 +1766,7 @@ export default function Settings() {
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
-                          State / Province
+                          State/Province
                         </label>
                         <input
                           type="text"
@@ -1764,7 +1840,7 @@ export default function Settings() {
                       <div>
                         <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Valid Until</p>
                         <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                          {company.subscriptionEndDate ? new Date(company.subscriptionEndDate).toLocaleDateString() : 'N/A'}
+                          {company.subscriptionEndDate ? formatDate(company.subscriptionEndDate) : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -1856,9 +1932,10 @@ export default function Settings() {
     maxLength={50}
     placeholder="Mohit Patil"
     onChange={(e) => {
+      const filtered = e.target.value.replace(/[^a-zA-Z\s.''-]/g, '')
       setProfileData({
         ...profileData,
-        name: e.target.value,
+        name: filtered,
       });
 
       clearProfileFieldError('name');
@@ -1867,7 +1944,22 @@ export default function Settings() {
       if (!profileData.name.trim()) {
         setProfileFieldErrors((prev) => ({
           ...prev,
-          name: 'Full name is required.',
+          name: 'Full name is required',
+        }));
+      } else if (profileData.name.trim().length < 2) {
+        setProfileFieldErrors((prev) => ({
+          ...prev,
+          name: 'Name must be at least 2 characters',
+        }));
+      } else if (profileData.name.trim().length > 50) {
+        setProfileFieldErrors((prev) => ({
+          ...prev,
+          name: 'Name cannot exceed 50 characters',
+        }));
+      } else if (!/^[a-zA-Z\s.''-]+$/.test(profileData.name.trim())) {
+        setProfileFieldErrors((prev) => ({
+          ...prev,
+          name: 'Name can only contain letters, spaces, dots, hyphens and apostrophes',
         }));
       }
     }}
@@ -1954,20 +2046,22 @@ export default function Settings() {
                     </Button>
                   </div>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                    Click "Change" to update your Email ID with verification
+                    Click "Change" to update your Email ID with verification.
                   </p>
                 </div>
                 <div>
                   <PhoneInput
                     value={profileData.phone}
                     onChange={handleProfilePhoneChange}
+                    onBlur={() => {
+                      const err = validatePhone(profileData.phone)
+                      if (err) setProfileFieldErrors((prev) => ({ ...prev, phone: err }))
+                    }}
                     label="Contact Number"
                     required
                     placeholder="9356080318"
+                    error={profileFieldErrors.phone || ''}
                   />
-                  {profileFieldErrors.phone && (
-                    <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{profileFieldErrors.phone}</p>
-                  )}
                 </div>
                 <Button type="submit" loading={loading}>
                   {loading ? 'Saving...' : 'Save Changes'}
@@ -2053,6 +2147,10 @@ export default function Settings() {
                         if (!passwordData.newPassword) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password is required.' }))
                         else if (passwordData.newPassword.length < 8) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password must be at least 8 characters.' }))
                         else if (passwordData.newPassword.length > 15) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'New password cannot exceed 15 characters.' }))
+                        else if (!/[A-Z]/.test(passwordData.newPassword)) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'Password must contain at least one uppercase letter (A-Z).' }))
+                        else if (!/[a-z]/.test(passwordData.newPassword)) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'Password must contain at least one lowercase letter (a-z).' }))
+                        else if (!/[0-9]/.test(passwordData.newPassword)) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'Password must contain at least one number (0-9).' }))
+                        else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordData.newPassword)) setPasswordFieldErrors((prev) => ({ ...prev, newPassword: 'Password must contain at least one special character (!@#$%^&*...).' }))
                       }}
                       style={{
                         flex: '1',
@@ -2087,10 +2185,10 @@ export default function Settings() {
                   {passwordFieldErrors.newPassword ? (
                     <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px' }}>{passwordFieldErrors.newPassword}</p>
                   ) : (
-                    <p style={{ fontSize: '12px', color: passwordData.newPassword.length > 0 && passwordData.newPassword.length < 8 ? '#dc2626' : '#6b7280', marginTop: '4px' }}>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                       {passwordData.newPassword.length > 0
-                        ? `${passwordData.newPassword.length}/15 characters${passwordData.newPassword.length < 8 ? ' (minimum 8)' : ''}`
-                        : 'Minimum 8 characters, maximum 15 characters'}
+                        ? `${passwordData.newPassword.length}/15 characters`
+                        : '8-15 characters with uppercase, lowercase, number & special character'}
                     </p>
                   )}
                 </div>
@@ -2222,6 +2320,19 @@ export default function Settings() {
           fetchCompany()
         }}
       />
+
+      <style>{`
+        .modal-close-btn:hover {
+          background-color: #f1f5f9 !important;
+        }
+        .modal-cancel-btn:hover {
+          background-color: #f9fafb !important;
+          border-color: #9ca3af !important;
+        }
+        .modal-resend-btn:hover:not(:disabled) {
+          background-color: #eff6ff !important;
+        }
+      `}</style>
     </PageContainer>
   )
 }

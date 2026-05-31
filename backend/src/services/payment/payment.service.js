@@ -98,6 +98,9 @@ class PaymentService {
       throw new AppError(errorMessage, 500);
     }
 
+    // Get user details for denormalization
+    const payingUser = await User.findById(userId).select('name email');
+
     // Create payment record
     const payment = new Payment({
       companyId,
@@ -110,6 +113,11 @@ class PaymentService {
       billingCycle,
       razorpayOrderId: order.id,
       status: 'created',
+      // Denormalized — preserves names even if company/user is deleted later
+      companyName: company.name,
+      companyEmail: company.email,
+      userName: payingUser?.name || '',
+      userEmail: payingUser?.email || '',
     });
 
     await payment.save();
@@ -321,7 +329,17 @@ class PaymentService {
       throw new NotFoundError('Payment');
     }
 
-    return payment;
+    // Fallback for deleted user reference
+    const p = payment.toObject ? payment.toObject() : payment;
+    if (!p.userId) {
+      p.userId = {
+        _id: null,
+        name: p.userName || 'Deleted User',
+        email: p.userEmail || '',
+      };
+    }
+
+    return p;
   }
 
   /**
@@ -362,7 +380,7 @@ class PaymentService {
    * Get all payment history (Super Admin only)
    */
   async getAllPaymentHistory(options = {}) {
-    const { companyId, status, planId, startDate, endDate, page = 1, limit = 20 } = options;
+    const { companyId, status, planId, startDate, endDate, search, page = 1, limit = 20 } = options;
 
     // Build filter
     const filter = {};
@@ -384,6 +402,38 @@ class PaymentService {
         filter.createdAt.$lte = new Date(endDate);
       }
     }
+    // Search across company name, user name, plan name, and invoice number
+    if (search && search.trim()) {
+      const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Find matching company IDs
+      const matchingCompanies = await Company.find({
+        name: { $regex: escapedSearch, $options: 'i' }
+      }).select('_id').lean();
+      const companyIds = matchingCompanies.map(c => c._id);
+
+      // Find matching user IDs
+      const matchingUsers = await User.find({
+        name: { $regex: escapedSearch, $options: 'i' }
+      }).select('_id').lean();
+      const userIds = matchingUsers.map(u => u._id);
+
+      // Build $or conditions for direct Payment fields + matched IDs
+      const orConditions = [
+        { planName: { $regex: escapedSearch, $options: 'i' } },
+        { invoiceNumber: { $regex: escapedSearch, $options: 'i' } },
+        { companyName: { $regex: escapedSearch, $options: 'i' } },
+        { userName: { $regex: escapedSearch, $options: 'i' } },
+      ];
+      if (companyIds.length > 0) {
+        orConditions.push({ companyId: { $in: companyIds } });
+      }
+      if (userIds.length > 0) {
+        orConditions.push({ userId: { $in: userIds } });
+      }
+
+      filter.$or = orConditions;
+    }
 
     // Calculate skip
     const skip = (page - 1) * limit;
@@ -400,8 +450,28 @@ class PaymentService {
       .skip(skip)
       .limit(limit);
 
+    // Build response with fallback for deleted company/user references
+    const paymentsWithFallback = payments.map(payment => {
+      const p = payment.toObject ? payment.toObject() : payment;
+      return {
+        ...p,
+        // Use populated data if available, otherwise fall back to denormalized fields
+        companyId: p.companyId || {
+          _id: null,
+          name: p.companyName || 'Deleted Company',
+          email: p.companyEmail || '',
+          phone: '',
+        },
+        userId: p.userId || {
+          _id: null,
+          name: p.userName || 'Deleted User',
+          email: p.userEmail || '',
+        },
+      };
+    });
+
     return {
-      payments,
+      payments: paymentsWithFallback,
       pagination: {
         total,
         page,
@@ -526,12 +596,13 @@ class PaymentService {
       throw new ConflictError('This email is already registered. Please login instead.');
     }
 
-    // Check if company name already exists
+    // Check if company name already exists (case-insensitive, regex-safe)
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existingCompany = await Company.findOne({
-      name: { $regex: new RegExp(`^${userData.companyName}$`, 'i') }
+      name: { $regex: new RegExp(`^${escapeRegex(userData.companyName.trim())}$`, 'i') }
     });
     if (existingCompany) {
-      throw new ConflictError('A company with this name already exists.');
+      throw new ConflictError('A company with this name already exists. Please choose a different name.');
     }
 
     // Calculate amount
@@ -570,6 +641,11 @@ class PaymentService {
       billingCycle,
       razorpayOrderId: order.id,
       status: 'created',
+      // Denormalized — store intended company/user names from registration
+      companyName: userData.companyName || '',
+      companyEmail: userData.email || '',
+      userName: userData.name || '',
+      userEmail: userData.email || '',
       notes: JSON.stringify({
         type: 'registration',
         userData: {
@@ -578,6 +654,7 @@ class PaymentService {
           companyName: userData.companyName,
           phone: userData.phone,
           password: userData.password, // Will be used to create user
+          address: userData.address || {},
         },
       }),
     });
@@ -643,6 +720,15 @@ class PaymentService {
     const { userData } = notesData;
     const plan = await Subscription.findById(payment.subscriptionId);
 
+    // Check if company name already exists (case-insensitive)
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existingNameCompany = await Company.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(userData.companyName.trim())}$`, 'i') }
+    });
+    if (existingNameCompany) {
+      throw new ConflictError('A company with this name already exists. Please choose a different name.');
+    }
+
     // Calculate subscription dates
     const subscriptionStartDate = new Date();
     const subscriptionEndDate = new Date();
@@ -653,6 +739,7 @@ class PaymentService {
       name: userData.companyName,
       email: userData.email.toLowerCase(),
       phone: userData.phone || null,
+      address: userData.address || {},
       subscriptionId: plan._id,
       subscriptionStartDate,
       subscriptionEndDate,
@@ -692,8 +779,8 @@ class PaymentService {
       throw saveError;
     }
 
-    // Update company with creator
-    company.createdBy = user._id;
+    // Save company (createdBy remains null for self-registered companies)
+    // This ensures the frontend shows "Self" type instead of "Admin"
     await company.save();
 
     // Update payment record
@@ -702,6 +789,11 @@ class PaymentService {
     payment.razorpayPaymentId = paymentId;
     payment.razorpaySignature = signature;
     payment.status = 'completed';
+    // Denormalized — preserves names even if company/user is deleted later
+    payment.companyName = company.name;
+    payment.companyEmail = company.email;
+    payment.userName = user.name;
+    payment.userEmail = user.email;
     payment.paidAt = new Date();
     payment.notes = 'Registration completed'; // Clear sensitive data
     await payment.save();
@@ -917,7 +1009,7 @@ class PaymentService {
    * Free trial registration (no payment required)
    * Creates company and admin user with free trial plan
    */
-  async freeTrialRegister({ subscriptionId, name, email, password, companyName, phone }) {
+  async freeTrialRegister({ subscriptionId, name, email, password, companyName, phone, address }) {
     // Validate plan
     const plan = await Subscription.findById(subscriptionId);
     if (!plan) {
@@ -935,9 +1027,10 @@ class PaymentService {
       throw new ConflictError('This email is already registered in the system.');
     }
 
-    // Check if company with same name exists
+    // Check if company with same name exists (case-insensitive, regex-safe)
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existingCompany = await Company.findOne({
-      name: { $regex: new RegExp(`^${companyName}$`, 'i') }
+      name: { $regex: new RegExp(`^${escapeRegex(companyName.trim())}$`, 'i') }
     });
     if (existingCompany) {
       throw new ConflictError('A company with this name already exists.');
@@ -959,6 +1052,7 @@ class PaymentService {
       name: companyName,
       email: email.toLowerCase(),
       phone: phone || '',
+      address: address || {},
       subscriptionId,
       subscriptionStartDate,
       subscriptionEndDate,

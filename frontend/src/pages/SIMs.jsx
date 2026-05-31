@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiPlus,
@@ -1384,6 +1384,7 @@ export default function SIMs() {
   const [status, setStatus] = useState('')
   const [operator, setOperator] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const fetchIdRef = useRef(0)
   const [showModal, setShowModal] = useState(false)
   const [editingSim, setEditingSim] = useState(null)
   const [messagingStats, setMessagingStats] = useState(null)
@@ -1400,7 +1401,7 @@ export default function SIMs() {
   useEffect(() => {
     fetchSIMs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, status, operator, searchQuery])
+  }, [pagination.page, pagination.limit, status, operator, searchQuery])
 
   // Fetch messaging stats on mount
   useEffect(() => {
@@ -1422,6 +1423,7 @@ export default function SIMs() {
   }
 
   const fetchSIMs = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -1433,13 +1435,15 @@ export default function SIMs() {
       })
 
       const response = await api.get(`/sims?${params}`)
+      if (fetchIdRef.current !== id) return
       setSims(response.data.data || [])
       setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       toast.error('Failed to fetch SIMs')
       setSims([])
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
@@ -1877,14 +1881,45 @@ export default function SIMs() {
       </Card>
 
       {/* Pagination */}
-      {pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-        />
+      {pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal */}

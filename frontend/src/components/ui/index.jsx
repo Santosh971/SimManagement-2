@@ -35,6 +35,23 @@ const globalStyles = `
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Button styles */
+  .ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .ui-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+  .ui-btn-sm { padding: 6px 12px; font-size: 13px; }
+  .ui-btn-md { padding: 10px 16px; font-size: 14px; }
+  .ui-btn-lg { padding: 12px 20px; font-size: 15px; }
+  .ui-btn-primary { background-color: #2563eb; color: #fff; border: none; }
+  .ui-btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
+  .ui-btn-secondary { background-color: #fff; color: #374151; border: 1px solid #d1d5db; }
+  .ui-btn-secondary:hover:not(:disabled) { background-color: #f9fafb; border-color: #9ca3af; }
+  .ui-btn-danger { background-color: #dc2626; color: #fff; border: none; }
+  .ui-btn-danger:hover:not(:disabled) { background-color: #b91c1c; }
+  .ui-btn-success { background-color: #16a34a; color: #fff; border: none; }
+  .ui-btn-success:hover:not(:disabled) { background-color: #15803d; }
+  .ui-btn-ghost { background-color: transparent; color: #374151; border: none; }
+  .ui-btn-ghost:hover:not(:disabled) { background-color: #f3f4f6; }
 `
 
 // ── inject styles once ──────────────────────────────────────────────────────
@@ -168,13 +185,27 @@ export function StatCard({ title, value, subtitle, icon: Icon, iconColor, iconBg
         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         minWidth: 0,
         cursor: onClick ? 'pointer' : 'default',
         transition: 'box-shadow 0.2s',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {Icon && (
+        <div style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '10px',
+          backgroundColor: iconBg || '#eff6ff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Icon style={{ width: '20px', height: '20px', color: iconColor || '#2563eb' }} />
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0, marginLeft: Icon ? '12px' : 0 }}>
         <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
           {title}
         </p>
@@ -196,14 +227,6 @@ export function StatCard({ title, value, subtitle, icon: Icon, iconColor, iconBg
           </div>
         )}
       </div>
-      {Icon && (
-        <div style={{
-          padding: '10px', borderRadius: '10px',
-          backgroundColor: iconBg || '#eff6ff', flexShrink: 0,
-        }}>
-          <Icon style={{ width: '20px', height: '20px', color: iconColor || '#2563eb' }} />
-        </div>
-      )}
     </div>
   )
 }
@@ -272,34 +295,14 @@ export function Badge({ children, variant = 'default', size = 'sm' }) {
 }
 
 // ── Button ──────────────────────────────────────────────────────────────────
-export function Button({ children, variant = 'primary', size = 'md', icon: Icon, loading, disabled, style, ...props }) {
-  const variants = {
-    primary:   { backgroundColor: '#2563eb', color: '#fff',     border: 'none' },
-    secondary: { backgroundColor: '#ffffff', color: '#374151',  border: '1px solid #d1d5db' },
-    danger:    { backgroundColor: '#dc2626', color: '#fff',     border: 'none' },
-    success:   { backgroundColor: '#16a34a', color: '#fff',     border: 'none' },
-    ghost:     { backgroundColor: 'transparent', color: '#374151', border: 'none' },
-  }
-  const sizes = {
-    sm: { padding: '6px 12px',  fontSize: '13px' },
-    md: { padding: '10px 16px', fontSize: '14px' },
-    lg: { padding: '12px 20px', fontSize: '15px' },
-  }
-  const v = variants[variant] || variants.primary
-  const s = sizes[size] || sizes.md
+export function Button({ children, variant = 'primary', size = 'md', icon: Icon, loading, disabled, className, style, ...props }) {
+  ensureStyles()
+  const btnClass = `ui-btn ui-btn-${variant} ui-btn-${size}${className ? ` ${className}` : ''}`
   return (
     <button
       disabled={disabled || loading}
-      style={{
-        display: 'inline-flex', alignItems: 'center',
-        justifyContent: 'center', gap: '8px',
-        borderRadius: '8px', fontWeight: '500',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled || loading ? 0.6 : 1,
-        transition: 'all 0.2s',
-        backgroundColor: v.backgroundColor, color: v.color, border: v.border,
-        ...s, ...style,
-      }}
+      className={btnClass}
+      style={style || undefined}
       {...props}
     >
       {loading ? (

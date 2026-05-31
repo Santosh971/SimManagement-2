@@ -15,7 +15,7 @@ import {
   FiUpload,
   FiImage,
 } from 'react-icons/fi'
-import { clearBrandingCache } from '../components/Logo'
+import { clearBrandingCache, updateBrandingCache, applyFavicon } from '../components/Logo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -44,12 +44,16 @@ const availableIcons = [
 ]
 
 // Branding Section Component
-const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
+const BrandingSection = ({ content, updateField, api, onLogoUpdate, onFaviconUpdate }) => {
   const [uploading, setUploading] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isDraggingFavicon, setIsDraggingFavicon] = useState(false)
   const fileInputRef = useRef(null)
+  const faviconInputRef = useRef(null)
 
-  const handleFileSelect = async (e) => {
-    const file = e.target.files[0]
+  // Shared file upload logic for logo (works with both click and drop)
+  const processLogoUpload = async (file) => {
     if (!file) return
 
     // Validate file type
@@ -89,6 +93,41 @@ const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
     }
   }
 
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0]
+    await processLogoUpload(file)
+  }
+
+  // Logo drag event handlers — prevent browser from opening the file
+  const handleLogoDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleLogoDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleLogoDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set dragging false if we're leaving the drop zone entirely
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    setIsDragging(false)
+  }
+
+  const handleLogoDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      processLogoUpload(file)
+    }
+  }
+
   const handleDeleteLogo = async () => {
     if (!window.confirm('Are you sure you want to remove the logo?')) return
 
@@ -100,6 +139,95 @@ const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
       }
     } catch (error) {
       toast.error('Failed to remove logo')
+    }
+  }
+
+  // Shared file upload logic for favicon (works with both click and drop)
+  const processFaviconUpload = async (file) => {
+    if (!file) return
+
+    // Validate file type - favicons typically ICO, PNG, SVG
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only ICO, PNG, JPG, SVG, and WebP images are allowed')
+      return
+    }
+
+    // Validate file size (1MB for favicons)
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error('File size must be less than 1MB')
+      return
+    }
+
+    try {
+      setUploadingFavicon(true)
+      const formData = new FormData()
+      formData.append('logo', file)
+      formData.append('type', 'favicon')
+
+      const response = await api.post('/landing-content/upload-logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      if (response.data.success) {
+        toast.success('Favicon uploaded successfully')
+        onFaviconUpdate(response.data.data.faviconUrl || response.data.data.logoUrl)
+      } else {
+        toast.error(response.data.message || 'Failed to upload favicon')
+      }
+    } catch (error) {
+      console.error('Error uploading favicon:', error)
+      toast.error('Failed to upload favicon')
+    } finally {
+      setUploadingFavicon(false)
+    }
+  }
+
+  const handleFaviconSelect = async (e) => {
+    const file = e.target.files[0]
+    await processFaviconUpload(file)
+  }
+
+  // Favicon drag event handlers — prevent browser from opening the file
+  const handleFaviconDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleFaviconDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFavicon(true)
+  }
+
+  const handleFaviconDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    setIsDraggingFavicon(false)
+  }
+
+  const handleFaviconDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFavicon(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      processFaviconUpload(file)
+    }
+  }
+
+  const handleDeleteFavicon = async () => {
+    if (!window.confirm('Are you sure you want to remove the favicon? The logo will be used as fallback.')) return
+
+    try {
+      const response = await api.delete('/landing-content/logo/favicon')
+      if (response.data.success) {
+        toast.success('Favicon removed')
+        onFaviconUpdate('')
+      }
+    } catch (error) {
+      toast.error('Failed to remove favicon')
     }
   }
 
@@ -116,10 +244,9 @@ const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
           value={content.branding?.siteName || ''}
           onChange={(e) => {
             if (!content.branding) {
-              updateField('branding', 'branding', { siteName: e.target.value, logoUrl: '', logoDarkUrl: '' })
+              setContent(prev => ({ ...prev, branding: { siteName: e.target.value, logoUrl: '', logoDarkUrl: '' } }))
             } else {
-              const newBranding = { ...content.branding, siteName: e.target.value }
-              updateField('branding', 'branding', newBranding)
+              updateField('branding', 'siteName', e.target.value)
             }
           }}
           className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -160,7 +287,15 @@ const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
         {/* Upload Area */}
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-secondary-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-500 transition-colors"
+          onDragOver={handleLogoDragOver}
+          onDragEnter={handleLogoDragEnter}
+          onDragLeave={handleLogoDragLeave}
+          onDrop={handleLogoDrop}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragging
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-secondary-300 hover:border-primary-500'
+          }`}
         >
           <input
             ref={fileInputRef}
@@ -186,14 +321,84 @@ const BrandingSection = ({ content, updateField, api, onLogoUpdate }) => {
         </div>
       </div>
 
+      {/* Favicon Upload */}
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-2">Favicon</label>
+        <p className="text-xs text-secondary-500 mb-3">The favicon appears in the browser tab. If no favicon is uploaded, the logo will be used as fallback.</p>
+
+        {/* Current Favicon Preview */}
+        {content.branding?.faviconUrl && (
+          <div className="mb-4 p-4 bg-secondary-50 rounded-lg border border-secondary-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <img
+                  src={getLogoUrl(content.branding.faviconUrl)}
+                  alt="Current Favicon"
+                  className="h-8 w-8 object-contain"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">Current Favicon</p>
+                  <p className="text-xs text-secondary-500">Recommended: ICO or 32×32 PNG</p>
+                </div>
+              </div>
+              <button
+                onClick={handleDeleteFavicon}
+                className="text-red-600 hover:text-red-700 text-sm font-medium"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Area */}
+        <div
+          onClick={() => faviconInputRef.current?.click()}
+          onDragOver={handleFaviconDragOver}
+          onDragEnter={handleFaviconDragEnter}
+          onDragLeave={handleFaviconDragLeave}
+          onDrop={handleFaviconDrop}
+          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+            isDraggingFavicon
+              ? 'border-primary-500 bg-primary-50'
+              : 'border-secondary-300 hover:border-primary-500'
+          }`}
+        >
+          <input
+            ref={faviconInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/x-icon,image/webp"
+            onChange={handleFaviconSelect}
+            className="hidden"
+          />
+          {uploadingFavicon ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              <p className="text-sm text-secondary-600">Uploading...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <FiImage className="w-6 h-6 text-secondary-400" />
+              <p className="text-sm text-secondary-600">
+                <span className="text-primary-600 font-medium">Click to upload</span> favicon
+              </p>
+              <p className="text-xs text-secondary-500">ICO, PNG, JPG, SVG, or WebP (max 1MB)</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Tips */}
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">Logo Tips</h4>
+        <h4 className="text-sm font-medium text-blue-900 mb-2">Branding Tips</h4>
         <ul className="text-xs text-blue-700 space-y-1">
           <li>• Use PNG or SVG with transparent background for best results</li>
           <li>• Recommended logo height: 32-48px</li>
           <li>• The logo appears on light and dark backgrounds - ensure contrast</li>
           <li>• Square logos work best with the rounded icon container</li>
+          <li>• Favicon should be 32×32 or 16×16 pixels for best browser display</li>
+          <li>• If no favicon is uploaded, the logo image will be used as the browser tab icon</li>
         </ul>
       </div>
     </div>
@@ -244,7 +449,7 @@ const LandingContent = () => {
   }
 
   const handleLogoUpdate = async (logoUrl) => {
-    // Clear the logo cache so it fetches fresh data
+    // Clear the cache so next page load fetches fresh branding
     clearBrandingCache()
 
     // Update content with new branding
@@ -255,6 +460,26 @@ const LandingContent = () => {
         logoUrl: logoUrl
       }
     }))
+
+    // Re-apply favicon (if no dedicated favicon, logo is used as fallback)
+    applyFavicon({ faviconUrl: content?.branding?.faviconUrl || '', logoUrl: logoUrl })
+  }
+
+  const handleFaviconUpdate = async (faviconUrl) => {
+    // Clear the cache so next page load fetches fresh branding
+    clearBrandingCache()
+
+    // Update content with new favicon
+    setContent(prev => ({
+      ...prev,
+      branding: {
+        ...prev.branding,
+        faviconUrl: faviconUrl
+      }
+    }))
+
+    // Apply the favicon change immediately
+    applyFavicon({ faviconUrl: faviconUrl, logoUrl: content?.branding?.logoUrl || '' })
   }
 
   const handleSave = async () => {
@@ -273,6 +498,10 @@ const LandingContent = () => {
       if (data.success) {
         toast.success('Content saved successfully')
         setContent(data.data)
+        // Update branding cache with server-confirmed data so sidebar/header stays in sync
+        if (data.data?.branding) {
+          updateBrandingCache(data.data.branding)
+        }
       } else {
         toast.error(data.message || 'Failed to save content')
       }
@@ -297,6 +526,10 @@ const LandingContent = () => {
       if (data.success) {
         toast.success('Content reset to default')
         setContent(data.data)
+        // Update branding cache with reset data so sidebar/header stays in sync
+        if (data.data?.branding) {
+          updateBrandingCache(data.data.branding)
+        }
       } else {
         toast.error(data.message || 'Failed to reset content')
       }
@@ -501,6 +734,7 @@ const LandingContent = () => {
                   updateField={updateField}
                   api={api}
                   onLogoUpdate={handleLogoUpdate}
+                  onFaviconUpdate={handleFaviconUpdate}
                 />
               )}
 

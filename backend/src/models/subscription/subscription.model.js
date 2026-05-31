@@ -85,11 +85,12 @@ const SubscriptionSchema = new Schema({
     enum: ['free_trial', 'paid'],
     default: 'paid',
   },
-  // Duration in days (internal calculation: monthly = 28 days, yearly = 336 days)
+  // Duration in days (monthly = 28 days, yearly = 336 days)
   // For free_trial plan, this is the trial duration (14 days)
+  // Note: Free trial plans should always have durationDays.monthly = 14 and yearly = 14
   durationDays: {
-    monthly: { type: Number, default: 28 },  // 28 days for monthly
-    yearly: { type: Number, default: 336 },  // 336 days (12 × 28) for yearly
+    monthly: { type: Number, default: 28 },
+    yearly: { type: Number, default: 336 },
   },
   isPopular: {
     type: Boolean,
@@ -113,6 +114,14 @@ const SubscriptionSchema = new Schema({
 SubscriptionSchema.index({ name: 1 });
 SubscriptionSchema.index({ isActive: 1, sortOrder: 1 });
 SubscriptionSchema.index({ planType: 1 });
+
+// Pre-save hook: ensure free trial plans always have 14-day duration
+SubscriptionSchema.pre('save', function (next) {
+  if (this.planType === 'free_trial') {
+    this.durationDays = { monthly: 14, yearly: 14 };
+  }
+  next();
+});
 
 // Virtual for formatted price
 SubscriptionSchema.virtual('formattedPrice').get(function () {

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiDollarSign,
   FiChevronLeft,
   FiChevronRight,
+  FiX,
+  FiSearch,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -14,6 +16,7 @@ import {
   Badge,
   Spinner,
 } from '../components/ui'
+import { formatDate, formatDateTime } from '../utils/dateFormat'
 
 export default function PaymentHistory() {
   const { api } = useAuth()
@@ -24,29 +27,31 @@ export default function PaymentHistory() {
     page: 1,
     limit: 20,
     total: 0,
-    totalPages: 0,
   })
   const today = new Date().toISOString().split('T')[0];
-
+  const fetchIdRef = useRef(0)
+  const searchTimeoutRef = useRef(null)
 
   // Filters
   const [filters, setFilters] = useState({
-    status: '',
-    companyId: '',
-    startDate: '',
-    endDate: '',
-  })
-  const [activeFilters, setActiveFilters] = useState({
+    search: '',
     status: '',
     companyId: '',
     startDate: '',
     endDate: '',
   })
 
+  const filtersRef = useRef(filters)
+  filtersRef.current = filters
+
   useEffect(() => {
     fetchCompanies()
+  }, [])
+
+  // Single unified fetch effect — fires on page, limit, OR filter changes
+  useEffect(() => {
     fetchPaymentHistory()
-  }, [pagination.page, pagination.limit])
+  }, [pagination.page, pagination.limit, filters.search, filters.status, filters.companyId, filters.startDate, filters.endDate])
 
   const fetchCompanies = async () => {
     try {
@@ -57,75 +62,65 @@ export default function PaymentHistory() {
     }
   }
 
-  const fetchPaymentHistory = async (overrideFilters) => {
+  const fetchPaymentHistory = async () => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
-      const f = overrideFilters || activeFilters
+      const f = filtersRef.current
       const params = new URLSearchParams()
       params.append('page', pagination.page)
       params.append('limit', pagination.limit)
+      if (f.search) params.append('search', f.search)
       if (f.status) params.append('status', f.status)
       if (f.companyId) params.append('companyId', f.companyId)
       if (f.startDate) params.append('startDate', f.startDate)
       if (f.endDate) params.append('endDate', f.endDate)
 
       const response = await api.get(`/payments/history/all?${params.toString()}`)
+      if (fetchIdRef.current !== id) return
       setPayments(response.data.data.payments || [])
       setPagination(prev => ({
         ...prev,
         total: response.data.data.pagination?.total || 0,
-        totalPages: response.data.data.pagination?.totalPages || 0,
       }))
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       console.error('Error fetching payment history:', error)
       toast.error('Failed to load payment history')
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }))
+    setPagination(prev => ({ ...prev, page: 1 }))
   }
 
-  const applyFilters = () => {
-    setActiveFilters({ ...filters })
-    setPagination(prev => ({ ...prev, page: 1 }))
-    fetchPaymentHistory(filters)
+  // Debounced search — waits 400ms after user stops typing before triggering API
+  const handleSearchChange = (value) => {
+    setFilters(prev => ({ ...prev, search: value }))
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => {
+      setPagination(prev => ({ ...prev, page: 1 }))
+    }, 400)
   }
 
   const clearFilters = () => {
     const clearedFilters = {
+      search: '',
       status: '',
       companyId: '',
       startDate: '',
       endDate: '',
     }
     setFilters(clearedFilters)
-    setActiveFilters(clearedFilters)
     setPagination(prev => ({ ...prev, page: 1 }))
-    setTimeout(() => fetchPaymentHistory(clearedFilters), 100)
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
+  const hasActiveFilters = filters.search || filters.status || filters.companyId || filters.startDate || filters.endDate
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+  const totalPages = Math.max(1, Math.ceil(pagination.total / pagination.limit))
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -147,6 +142,8 @@ export default function PaymentHistory() {
     const endDate = new Date(paidDate.getTime() + payment.planDuration * 24 * 60 * 60 * 1000)
     return formatDate(endDate)
   }
+
+  const isDeletedEntity = (entity) => entity && entity._id === null && (entity.name === 'Deleted Company' || entity.name === 'Deleted User')
   const filterLabelStyle = {
   display: 'block',
   fontSize: '12px',
@@ -165,6 +162,7 @@ const filterInputStyle = {
   boxSizing: 'border-box',
   backgroundColor: '#ffffff',
   color: '#111827',
+  cursor: 'pointer',
 }
 
   return (
@@ -176,6 +174,21 @@ const filterInputStyle = {
 
       <Card style={{ marginBottom: '24px' }}>
   <CardBody>
+
+    {/* Search */}
+    <div style={{ marginBottom: '14px' }}>
+      <label style={filterLabelStyle}>Search</label>
+      <div style={{ position: 'relative' }}>
+        <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#9ca3af', pointerEvents: 'none' }} />
+        <input
+          type="text"
+          value={filters.search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder="Search by company, user, plan..."
+          style={{ ...filterInputStyle, paddingLeft: '32px', cursor: 'text' }}
+        />
+      </div>
+    </div>
 
     {/* Filters Grid */}
     <div style={{
@@ -253,42 +266,37 @@ const filterInputStyle = {
       gap: '10px',
       flexWrap: 'wrap',
     }}>
-      <button
-        onClick={applyFilters}
-        style={{
-          flex: '1 1 120px',
-          maxWidth: '180px',
-          padding: '8px 16px',
-          backgroundColor: '#2563eb',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '13px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Apply Filters
-      </button>
-      <button
-        onClick={clearFilters}
-        style={{
-          flex: '1 1 80px',
-          maxWidth: '120px',
-          padding: '8px 16px',
-          backgroundColor: 'white',
-          color: '#374151',
-          border: '1px solid #d1d5db',
-          borderRadius: '8px',
-          fontSize: '13px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Clear
-      </button>
+      {hasActiveFilters && (
+        <button
+          onClick={clearFilters}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 16px',
+            backgroundColor: 'white',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'color 0.2s, border-color 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#dc2626'
+            e.currentTarget.style.borderColor = '#fca5a5'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = '#6b7280'
+            e.currentTarget.style.borderColor = '#d1d5db'
+          }}
+        >
+          <FiX style={{ width: '14px', height: '14px' }} />
+          Clear
+        </button>
+      )}
     </div>
 
   </CardBody>
@@ -303,7 +311,6 @@ const filterInputStyle = {
             </div>
           ) : payments.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-              <FiDollarSign style={{ width: '48px', height: '48px', marginBottom: '12px', opacity: 0.5 }} />
               <p style={{ margin: 0, fontSize: '16px' }}>No payments found</p>
             </div>
           ) : (
@@ -331,16 +338,26 @@ const filterInputStyle = {
                           {formatDateTime(payment.paidAt || payment.createdAt)}
                         </td>
                         <td style={{ padding: '12px 16px', minWidth: '180px' }}>
-                          <div style={{ fontWeight: '500', color: '#111827', fontSize: '14px' }}>
-                            {payment.companyId?.name || '-'}
+                          <div style={{ fontWeight: '500', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {isDeletedEntity(payment.companyId) && (
+                              <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: '#fef2f2', border: '1px solid #fecaca', flexShrink: 0 }} title="Company has been deleted"></span>
+                            )}
+                            <span style={{ color: isDeletedEntity(payment.companyId) ? '#9ca3af' : '#111827', fontStyle: isDeletedEntity(payment.companyId) ? 'italic' : 'normal' }}>
+                              {payment.companyId?.name || '-'}
+                            </span>
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             {payment.companyId?.email || '-'}
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px', minWidth: '160px' }}>
-                          <div style={{ fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                            {payment.userId?.name || '-'}
+                          <div style={{ fontWeight: '500', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {isDeletedEntity(payment.userId) && (
+                              <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '50%', backgroundColor: '#fef2f2', border: '1px solid #fecaca', flexShrink: 0 }} title="User has been deleted"></span>
+                            )}
+                            <span style={{ color: isDeletedEntity(payment.userId) ? '#9ca3af' : '#374151', fontStyle: isDeletedEntity(payment.userId) ? 'italic' : 'normal' }}>
+                              {payment.userId?.name || '-'}
+                            </span>
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
                             {payment.userId?.email || '-'}
@@ -368,10 +385,36 @@ const filterInputStyle = {
               </div>
 
               {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                    Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} payments
+              {pagination.total > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+                      <select
+                        value={pagination.limit}
+                        onChange={(e) => setPagination(prev => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                        style={{
+                          padding: '4px 8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          color: '#374151',
+                          backgroundColor: '#ffffff',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          minWidth: '60px',
+                        }}
+                      >
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                    </div>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Showing {((pagination.page - 1) * pagination.limit) + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -391,18 +434,18 @@ const filterInputStyle = {
                       <FiChevronLeft style={{ width: '16px', height: '16px' }} />
                     </button>
                     <span style={{ padding: '8px 12px', fontSize: '14px', color: '#374151' }}>
-                      Page {pagination.page} of {pagination.totalPages}
+                      Page {pagination.page} of {totalPages}
                     </span>
                     <button
                       onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                      disabled={pagination.page >= pagination.totalPages}
+                      disabled={pagination.page >= totalPages}
                       style={{
                         padding: '8px 12px',
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         backgroundColor: 'white',
-                        cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
-                        opacity: pagination.page >= pagination.totalPages ? 0.5 : 1,
+                        cursor: pagination.page >= totalPages ? 'not-allowed' : 'pointer',
+                        opacity: pagination.page >= totalPages ? 0.5 : 1,
                         display: 'flex',
                         alignItems: 'center',
                       }}

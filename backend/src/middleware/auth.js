@@ -38,6 +38,15 @@ const authenticate = async (req, res, next) => {
       throw new UnauthorizedError('User account is deactivated.');
     }
 
+    // Check if user's company is active (skip for super_admin who has no company)
+    if (user.role !== 'super_admin' && user.companyId) {
+      const Company = require('../models/company/company.model');
+      const company = await Company.findById(user.companyId).select('isActive');
+      if (!company || !company.isActive) {
+        throw new UnauthorizedError('Company account has been deactivated. Please contact your administrator.');
+      }
+    }
+
     // Add user to request
     req.user = user;
     req.tokenId = decoded.tokenId;

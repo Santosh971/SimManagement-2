@@ -62,7 +62,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
   const fetchNotifications = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/notifications?limit=5')
+      const response = await api.get('/notifications?limit=5&isRead=false')
       setNotifications(response.data.data || [])
     } catch (error) {
       console.error('Failed to fetch notifications')
@@ -74,9 +74,8 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
   const markAsRead = async (id) => {
     try {
       await api.patch(`/notifications/${id}/read`)
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-      )
+      // Remove the read notification from the list since we only show unread
+      setNotifications((prev) => prev.filter((n) => n._id !== id))
       setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch (error) {
       console.error('Failed to mark as read')
@@ -86,7 +85,8 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
   const markAllAsRead = async () => {
     try {
       await api.post('/notifications/mark-all-read')
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+      // Clear the list since all are now read (we only show unread)
+      setNotifications([])
       setUnreadCount(0)
     } catch (error) {
       console.error('Failed to mark all as read')
@@ -161,6 +161,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
         {(user?.role === 'admin' || user?.role === 'super_admin') && (
           <a
             href="https://node.simtrackr.b100x.in/public/apk/simtrack.apk"
+            className="download-app-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -174,7 +175,6 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
               fontWeight: '500',
               transition: 'background-color 0.2s'
             }}
-            className="hover:bg-blue-700"
           >
             <FiDownload style={{ width: '16px', height: '16px' }} />
             <span className="hidden sm:inline">Download App</span>
@@ -192,7 +192,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
               cursor: 'pointer',
               position: 'relative'
             }}
-            onClick={() => setNotificationOpen(!notificationOpen)}
+            onClick={() => { setNotificationOpen(!notificationOpen); setDropdownOpen(false) }}
           >
             <FiBell style={{ width: '20px', height: '20px', color: '#475569' }} />
             {unreadCount > 0 && (
@@ -339,7 +339,6 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
                   })
                 ) : (
                   <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                    <FiBell style={{ width: '24px', height: '24px', marginBottom: '8px', color: '#94a3b8' }} />
                     <p style={{ margin: 0 }}>No notifications</p>
                   </div>
                 )}
@@ -358,6 +357,31 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
           )}
         </div>
 
+        {/* Role Info Badge */}
+        <div className="hidden md:flex" style={{
+          alignItems: 'center',
+          gap: '6px',
+          padding: '4px 10px',
+          borderRadius: '8px',
+          backgroundColor: roleBadge.bg,
+        }}>
+          <span style={{
+            fontSize: '14px',
+            lineHeight: 1,
+          }}>
+            {user?.role === 'super_admin' ? '🛡️' : user?.role === 'admin' ? '⚙️' : '👤'}
+          </span>
+          <span style={{
+            fontSize: '12px',
+            fontWeight: '600',
+            color: roleBadge.color,
+            letterSpacing: '0.025em',
+            whiteSpace: 'nowrap',
+          }}>
+            {user?.role === 'super_admin' ? 'Super Admin Panel' : user?.role === 'admin' ? 'Admin Panel' : 'User Panel'}
+          </span>
+        </div>
+
         {/* Profile */}
         <div style={{ position: 'relative' }}>
           <button
@@ -371,7 +395,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
               backgroundColor: 'transparent',
               cursor: 'pointer'
             }}
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => { setDropdownOpen(!dropdownOpen); setNotificationOpen(false) }}
           >
             <div style={{
               width: '32px',
@@ -449,7 +473,7 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
                 }}
               >
                 <FiLogOut style={{ width: '16px', height: '16px' }} />
-                Logout
+                Log Out
               </button>
             </div>
           )}
@@ -463,18 +487,24 @@ export default function Header({ sidebarOpen, onToggleSidebar }) {
         }
         .md\\:block { display: block; }
         .hidden { display: none; }
+        .md\\:flex { display: none; }
         @media (min-width: 768px) {
           .md\\:block { display: block; }
+          .md\\:flex { display: flex; }
         }
         @media (max-width: 768px) {
           .md\\:block { display: none; }
+          .md\\:flex { display: none; }
         }
         .sm\\:inline { display: none; }
         @media (min-width: 640px) {
           .sm\\:inline { display: inline; }
         }
         .hover\\:bg-blue-700:hover {
-          background-color: #1d4ed8;
+          background-color: #1d4ed8 !important;
+        }
+        .download-app-btn:hover {
+          background-color: #1d4ed8 !important;
         }
       `}</style>
     </header>

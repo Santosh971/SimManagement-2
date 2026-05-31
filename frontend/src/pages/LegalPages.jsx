@@ -15,6 +15,7 @@ import {
   Button,
   Spinner,
 } from '../components/ui'
+import { formatDateTimeFull } from '../utils/dateFormat'
 
 const LegalPages = () => {
   const { api } = useAuth()
@@ -272,13 +273,7 @@ const LegalPages = () => {
                   {/* Last Updated */}
                   {activePage.updatedAt && (
                     <p className="text-xs text-secondary-500">
-                      Last updated: {new Date(activePage.updatedAt).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      Last updated: {formatDateTimeFull(activePage.updatedAt)}
                     </p>
                   )}
 

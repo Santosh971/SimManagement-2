@@ -389,7 +389,8 @@ class DashboardService {
     // Recent Companies (last 30 days)
     const recentCompanies = await Company.find()
       .populate('subscriptionId', 'name price')
-      .select('name email isActive createdAt subscriptionEndDate')
+      .populate('createdBy', 'name email')
+      .select('name email isActive createdAt subscriptionEndDate createdBy')
       .sort({ createdAt: -1 })
       .limit(10);
 

@@ -223,7 +223,7 @@ LandingContentSchema.statics.getDefaultContent = function() {
       items: [
         { question: 'What is SIM Management SaaS?', answer: 'SIM Management SaaS is a cloud-based platform that helps businesses manage their SIM cards, track recharges, sync call logs, and monitor messaging app statuses all in one place.', order: 1 },
         { question: 'How does the mobile app work?', answer: 'Our mobile app (Android) automatically syncs call logs from registered devices to your dashboard. Simply install the app, verify your number via OTP, and grant call log permission.', order: 2 },
-        { question: 'Is my data secure?', answer: 'Absolutely. We use industry-standard encryption, JWT authentication, and role-based access control. Your data is stored securely in the cloud with regular backups.', order: 3 },
+        { question: 'Is my data secure?', answer: 'Absolutely, We use industry-standard encryption, JWT authentication, and role-based access control. Your data is stored securely in the cloud with regular backups.', order: 3 },
         { question: 'Can I track WhatsApp/Telegram status?', answer: 'Yes! Professional and Enterprise plans include WhatsApp and Telegram status tracking for your managed SIMs.', order: 4 },
         { question: 'What payment methods do you accept?', answer: 'We accept all major payment methods including Credit/Debit Cards, UPI, Net Banking, and Wallets through Razorpay.', order: 5 },
         { question: 'Is there a free trial?', answer: 'Yes! All plans come with a 14-day free trial. No credit card required to start.', order: 6 }

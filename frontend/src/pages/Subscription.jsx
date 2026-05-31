@@ -24,6 +24,7 @@ import {
   Spinner,
   Grid,
 } from '../components/ui'
+import { formatDate } from '../utils/dateFormat'
 
 const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID
 
@@ -265,11 +266,6 @@ export default function Subscription() {
       toast.error(error.message || 'Something went wrong')
       setPaymentLoading(false)
     }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
   const getStatusBadge = (status) => {
@@ -606,11 +602,10 @@ export default function Subscription() {
                 <tbody>
                   {paymentHistory.map((payment, index) => {
                     const validUntil = payment.paidAt
-                      ? new Date(new Date(payment.paidAt).getTime() + payment.planDuration * 86400000)
-                          .toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                      ? formatDate(new Date(new Date(payment.paidAt).getTime() + payment.planDuration * 86400000))
                       : '-'
                     const paidDate = (payment.paidAt || payment.createdAt)
-                      ? new Date(payment.paidAt || payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                      ? formatDate(payment.paidAt || payment.createdAt)
                       : '-'
 
                     return (
@@ -711,12 +706,21 @@ export default function Subscription() {
                       {cycle === 'monthly' ? 'Monthly' : (
                         <>
                           Yearly
-                          <span style={{
-                            backgroundColor: '#dcfce7', color: '#16a34a',
-                            padding: '2px 6px', borderRadius: '12px', fontSize: '11px',
-                          }}>
-                            Save 17%
-                          </span>
+                          {(() => {
+                            const monthlyPlan = plans.find(p => p.price?.monthly && p.price?.yearly)
+                            if (monthlyPlan) {
+                              const pct = Math.round((monthlyPlan.price.monthly * 12 - monthlyPlan.price.yearly) / (monthlyPlan.price.monthly * 12) * 100)
+                              return pct > 0 ? (
+                                <span style={{
+                                  backgroundColor: '#dcfce7', color: '#16a34a',
+                                  padding: '2px 6px', borderRadius: '12px', fontSize: '11px',
+                                }}>
+                                  Save {pct}%
+                                </span>
+                              ) : null
+                            }
+                            return null
+                          })()}
                         </>
                       )}
                     </button>

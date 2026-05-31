@@ -14,7 +14,9 @@ import {
   FiPackage,
   FiSmartphone,
   FiActivity,
+  FiBarChart2,
 } from 'react-icons/fi'
+import { FaBuilding } from 'react-icons/fa';
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -28,6 +30,7 @@ import {
   Spinner,
   Grid,
 } from '../components/ui'
+import { formatDate } from '../utils/dateFormat'
 
 const COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#8b5cf6', '#06b6d4']
 
@@ -51,15 +54,6 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   const formatCurrency = (amount) => {
@@ -92,14 +86,14 @@ export default function SuperAdminDashboard() {
       title: 'Total Companies',
       value: data?.platform?.totalCompanies || 0,
       subtitle: `${data?.platform?.activeCompanies || 0} active`,
-      icon: FiHome,
+      icon: FaBuilding,
       iconColor: '#2563eb',
       iconBg: '#eff6ff',
     },
     {
       title: 'Total Users',
       value: data?.users?.total || 0,
-      subtitle: `${data?.users?.admins || 0} admins, ${data?.users?.users || 0} users`,
+      subtitle: `${data?.users?.admins || 0} admins, ${data?.users?.users || 0} users, ${data?.users?.superAdmins || 0} super admins`,
       icon: FiUsers,
       iconColor: '#16a34a',
       iconBg: '#dcfce7',
@@ -116,7 +110,7 @@ export default function SuperAdminDashboard() {
       title: 'Monthly Revenue',
       value: formatCurrency(data?.revenue?.monthly),
       subtitle: `${data?.revenue?.monthlyCount || 0} transactions`,
-      icon: FiDollarSign,
+      icon: FiBarChart2,
       iconColor: '#f59e0b',
       iconBg: '#fffbeb',
     },
@@ -212,6 +206,15 @@ export default function SuperAdminDashboard() {
       ),
     },
     {
+      key: 'type',
+      header: 'Type',
+      render: (row) => (
+        <Badge variant={row.createdBy ? 'primary' : 'default'}>
+          {row.createdBy ? 'Admin' : 'Self'}
+        </Badge>
+      ),
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (row) => (
@@ -279,7 +282,7 @@ export default function SuperAdminDashboard() {
       </Grid>
 
       {/* Monthly Revenue Trend */}
-      {data?.monthlyTrend && data.monthlyTrend.length > 0 && (
+      {/* {data?.monthlyTrend && data.monthlyTrend.length > 0 && (
         <Card style={{ marginBottom: '24px' }}>
           <CardBody>
             <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
@@ -312,7 +315,7 @@ export default function SuperAdminDashboard() {
             </div>
           </CardBody>
         </Card>
-      )}
+      )} */}
 
       {/* Subscription Distribution & Expiring Soon */}
       <Grid cols={2} gap={16} style={{ marginBottom: '24px' }}>
@@ -380,7 +383,7 @@ export default function SuperAdminDashboard() {
         alignItems: 'center',
         gap: '7px',
       }}>
-        <FiClock style={{ color: '#f59e0b', width: '16px', height: '16px', flexShrink: 0 }} />
+       
         Expiring Subscriptions
       </h3>
       <Badge variant="warning">
@@ -479,45 +482,7 @@ export default function SuperAdminDashboard() {
         </CardBody>
       </Card>
 
-      {/* Activity Summary */}
-      <Grid cols={4} gap={16}>
-        <Card>
-          <CardBody style={{ textAlign: 'center' }}>
-            <FiUsers style={{ width: '32px', height: '32px', color: '#2563eb', marginBottom: '8px' }} />
-            <p style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              {data?.platform?.totalCompanies || 0}
-            </p>
-            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total Companies</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody style={{ textAlign: 'center' }}>
-            <FiSmartphone style={{ width: '32px', height: '32px', color: '#16a34a', marginBottom: '8px' }} />
-            <p style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              {data?.sims?.total?.toLocaleString() || 0}
-            </p>
-            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Total SIMs</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody style={{ textAlign: 'center' }}>
-            <FiDollarSign style={{ width: '32px', height: '32px', color: '#f59e0b', marginBottom: '8px' }} />
-            <p style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              {formatCurrency(data?.revenue?.yearly)}
-            </p>
-            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Yearly Revenue</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody style={{ textAlign: 'center' }}>
-            <FiPackage style={{ width: '32px', height: '32px', color: '#8b5cf6', marginBottom: '8px' }} />
-            <p style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              {data?.revenue?.yearlyCount || 0}
-            </p>
-            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Yearly Transactions</p>
-          </CardBody>
-        </Card>
-      </Grid>
+
     </PageContainer>
   )
 }

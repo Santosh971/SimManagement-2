@@ -57,12 +57,12 @@ class PaymentController {
    */
   async createOrderForRegistration(req, res, next) {
     try {
-      const { subscriptionId, billingCycle, name, email, password, companyName, phone } = req.body;
+      const { subscriptionId, billingCycle, name, email, password, companyName, phone, address } = req.body;
 
       const result = await paymentService.createOrderForRegistration(
         subscriptionId,
         billingCycle,
-        { name, email, password, companyName, phone }
+        { name, email, password, companyName, phone, address }
       );
 
       // Audit log: PAYMENT_INITIATE (registration)
@@ -71,7 +71,7 @@ class PaymentController {
           action: 'PAYMENT_INITIATE',
           module: 'PAYMENT',
           description: `Payment order created for new registration: ${companyName}`,
-          role: 'public',
+          role: 'anonymous',
           metadata: {
             orderId: result.order?.id || result.orderId,
             subscriptionId,
@@ -98,7 +98,7 @@ class PaymentController {
    */
   async freeTrialRegister(req, res, next) {
     try {
-      const { subscriptionId, name, email, password, companyName, phone } = req.body;
+      const { subscriptionId, name, email, password, companyName, phone, address } = req.body;
 
       const result = await paymentService.freeTrialRegister({
         subscriptionId,
@@ -107,6 +107,7 @@ class PaymentController {
         password,
         companyName,
         phone,
+        address,
       });
 
       // Audit log: REGISTRATION (free trial)
@@ -115,7 +116,7 @@ class PaymentController {
           action: 'REGISTRATION',
           module: 'AUTH',
           description: `Free trial registration completed for ${companyName}`,
-          role: 'public',
+          role: 'anonymous',
           companyId: result.company?._id,
           metadata: {
             email,
@@ -127,6 +128,26 @@ class PaymentController {
         });
       } catch (auditError) {
         logger.error('[AUDIT LOG] Failed to log REGISTRATION', { error: auditError.message });
+      }
+
+      // Audit log: USER_REGISTER (free trial)
+      try {
+        await auditLogService.logAction({
+          action: 'USER_REGISTER',
+          module: 'AUTH',
+          description: `User registered via free trial: ${email}`,
+          performedBy: result.user?._id || null,
+          role: result.user?.role || 'admin',
+          companyId: result.company?._id,
+          metadata: {
+            email,
+            companyName,
+            planType: 'free_trial',
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log USER_REGISTER', { error: auditError.message });
       }
 
       return successResponse(res, result, 'Registration successful! Your 14-day free trial has started.', 201);
@@ -159,7 +180,7 @@ class PaymentController {
           action: 'PAYMENT_SUCCESS',
           module: 'PAYMENT',
           description: `Payment verified and registration completed for ${result.company?.name || 'new company'}`,
-          role: 'public',
+          role: 'anonymous',
           companyId: result.company?._id,
           metadata: {
             orderId: razorpay_order_id,
@@ -172,6 +193,26 @@ class PaymentController {
         logger.error('[AUDIT LOG] Failed to log PAYMENT_SUCCESS', { error: auditError.message });
       }
 
+      // Audit log: USER_REGISTER (paid registration)
+      try {
+        await auditLogService.logAction({
+          action: 'USER_REGISTER',
+          module: 'AUTH',
+          description: `Paid registration completed for ${result.company?.name || 'new company'}`,
+          performedBy: result.user?._id || null,
+          role: result.user?.role || 'admin',
+          companyId: result.company?._id,
+          metadata: {
+            email: result.user?.email,
+            companyName: result.company?.name,
+            paymentMethod: 'razorpay',
+          },
+          req,
+        });
+      } catch (auditError) {
+        logger.error('[AUDIT LOG] Failed to log USER_REGISTER', { error: auditError.message });
+      }
+
       return successResponse(res, result, 'Registration completed successfully', 201);
     } catch (error) {
       // Audit log: PAYMENT_FAILED
@@ -180,7 +221,7 @@ class PaymentController {
           action: 'PAYMENT_FAILED',
           module: 'PAYMENT',
           description: `Payment verification failed: ${error.message}`,
-          role: 'public',
+          role: 'anonymous',
           metadata: {
             orderId: req.body.razorpay_order_id,
             error: error.message,
@@ -314,7 +355,7 @@ class PaymentController {
    */
   async getAllHistory(req, res, next) {
     try {
-      const { companyId, status, planId, startDate, endDate, page = 1, limit = 20 } = req.query;
+      const { companyId, status, planId, startDate, endDate, search, page = 1, limit = 20 } = req.query;
 
       const result = await paymentService.getAllPaymentHistory({
         companyId,
@@ -322,6 +363,7 @@ class PaymentController {
         planId,
         startDate,
         endDate,
+        search,
         page: parseInt(page),
         limit: parseInt(limit),
       });
@@ -349,7 +391,7 @@ class PaymentController {
           action: isSuccess ? 'PAYMENT_SUCCESS' : 'PAYMENT_FAILED',
           module: 'PAYMENT',
           description: `Webhook received: ${webhookEvent}`,
-          role: 'webhook',
+          role: 'system',
           companyId: result?.companyId,
           metadata: {
             event: webhookEvent,

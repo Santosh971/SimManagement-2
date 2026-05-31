@@ -45,9 +45,10 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !isAuthRoute) {
+      const message = error.response?.data?.message || 'Session expired. Please log in again.'
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      window.location.href = '/login'
+      window.location.href = `/login?reason=${encodeURIComponent(message)}`
     }
 
     // Handle 403 Feature Not Available - show upgrade prompt (only once)

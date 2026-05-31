@@ -1,6 +1,6 @@
 
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiPlus,
@@ -28,6 +28,7 @@ import {
   Table,
   Modal,
 } from '../components/ui'
+import { formatDate } from '../utils/dateFormat'
 
 const paymentMethodLabels = { cash: 'Cash', upi: 'UPI', card: 'Card', netbanking: 'Net Banking', wallet: 'Wallet', other: 'Other' }
 const paymentMethodColors = { cash: '#f0fdf4', upi: '#eff6ff', card: '#fdf4ff', netbanking: '#fff7ed', wallet: '#fefce8', other: '#f9fafb' }
@@ -573,6 +574,7 @@ export default function Recharges() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [activeDateRange, setActiveDateRange] = useState({ start: '', end: '' })
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const fetchIdRef = useRef(0)
   const [showModal, setShowModal] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [stats, setStats] = useState(null)
@@ -586,7 +588,7 @@ export default function Recharges() {
     fetchSims()
     fetchUpcoming()
     fetchOverdue()
-  }, [pagination.page])
+  }, [pagination.page, pagination.limit])
 
   useEffect(() => {
     if (pagination.page === 1) {
@@ -606,6 +608,7 @@ export default function Recharges() {
   }
 
   const fetchRecharges = async (dates) => {
+    const id = ++fetchIdRef.current
     try {
       setLoading(true)
       const filterDates = dates || activeDateRange
@@ -617,13 +620,15 @@ export default function Recharges() {
       })
 
       const response = await api.get(`/recharges?${params}`)
+      if (fetchIdRef.current !== id) return
       setRecharges(response.data.data || [])
       setPagination((prev) => ({ ...prev, total: response.data.pagination?.total || 0 }))
     } catch (error) {
+      if (fetchIdRef.current !== id) return
       toast.error('Failed to fetch recharges')
       setRecharges([])
     } finally {
-      setLoading(false)
+      if (fetchIdRef.current === id) setLoading(false)
     }
   }
 
@@ -651,21 +656,6 @@ export default function Recharges() {
       setOverdueRecharges(response.data.data || [])
     } catch (error) {
       console.error('Failed to fetch overdue')
-    }
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!searchQuery.trim() && !dateRange.start && !dateRange.end) {
-      toast.error('Please select at least one filter')
-      return
-    }
-    const dates = { start: dateRange.start, end: dateRange.end }
-    setActiveDateRange(dates)
-    if (pagination.page === 1) {
-      fetchRecharges(dates)
-    } else {
-      setPagination((prev) => ({ ...prev, page: 1 }))
     }
   }
 
@@ -715,15 +705,6 @@ export default function Recharges() {
     } else {
       return { status: 'active', label: `${diffDays} day${diffDays !== 1 ? 's' : ''} left`, color: '#16a34a' }
     }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
   }
 
   const filteredRecharges = searchQuery.trim()
@@ -979,7 +960,7 @@ const today = new Date().toISOString().split('T')[0];
       {/* Filters */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 sm:gap-3 items-center">
+          <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
               <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#9ca3af' }} />
               <input
@@ -994,7 +975,11 @@ const today = new Date().toISOString().split('T')[0];
               type="date"
               value={dateRange.start}
               max={dateRange.end || today}
-              onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value
+                setDateRange((prev) => ({ ...prev, start: val }))
+                setActiveDateRange((prev) => ({ ...prev, start: val }))
+              }}
               onKeyDown={(e) => e.preventDefault()}
               className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
             />
@@ -1003,13 +988,16 @@ const today = new Date().toISOString().split('T')[0];
               value={dateRange.end}
               min={dateRange.start || undefined}
               max={today}
-              onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+              onChange={(e) => {
+                const val = e.target.value
+                setDateRange((prev) => ({ ...prev, end: val }))
+                setActiveDateRange((prev) => ({ ...prev, end: val }))
+              }}
               onKeyDown={(e) => e.preventDefault()}
               className="flex-1 min-w-[130px] text-sm px-3 py-2 border border-gray-300 rounded-lg outline-none cursor-pointer"
             />
-            <Button type="submit" className="whitespace-nowrap">Filter</Button>
             <Button variant="secondary" type="button" onClick={() => { setDateRange({ start: '', end: '' }); setActiveDateRange({ start: '', end: '' }); setSearchQuery('') }}>Clear</Button>
-          </form>
+          </div>
         </CardBody>
       </Card>
 
@@ -1052,14 +1040,45 @@ const today = new Date().toISOString().split('T')[0];
       </div>
 
       {/* Pagination */}
-      {pagination.total > pagination.limit && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={Math.ceil(pagination.total / pagination.limit)}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-        />
+      {pagination.total > 0 && (
+        <div className="px-3 sm:px-4 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: parseInt(e.target.value), page: 1 }))}
+                style={{
+                  padding: '4px 8px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: '#374151',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  minWidth: '60px',
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <div className="flex justify-center sm:justify-end min-w-max">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={Math.ceil(pagination.total / pagination.limit)}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal */}

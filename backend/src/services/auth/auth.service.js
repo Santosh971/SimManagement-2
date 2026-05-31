@@ -78,6 +78,15 @@ class AuthService {
       throw new UnauthorizedError('Account is deactivated. Please contact administrator.');
     }
 
+    // Check if user's company is active (skip for super_admin who has no company)
+    if (user.role !== 'super_admin' && user.companyId) {
+      const Company = require('../../models/company/company.model');
+      const company = await Company.findById(user.companyId).select('isActive');
+      if (!company || !company.isActive) {
+        throw new UnauthorizedError('Company account has been deactivated. Please contact your administrator.');
+      }
+    }
+
     // Verify password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
@@ -115,6 +124,20 @@ class AuthService {
     const user = await User.findById(decoded.id);
     if (!user || user.refreshToken !== refreshToken) {
       throw new UnauthorizedError('Invalid refresh token');
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is deactivated. Please contact administrator.');
+    }
+
+    // Check if user's company is active (skip for super_admin who has no company)
+    if (user.role !== 'super_admin' && user.companyId) {
+      const Company = require('../../models/company/company.model');
+      const company = await Company.findById(user.companyId).select('isActive');
+      if (!company || !company.isActive) {
+        throw new UnauthorizedError('Company account has been deactivated. Please contact your administrator.');
+      }
     }
 
     // Generate new tokens

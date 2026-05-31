@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FiArrowLeft } from 'react-icons/fi'
 import { Spinner } from '../components/ui'
+import { formatDate } from '../utils/dateFormat'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -139,11 +140,7 @@ export default function LegalPage({ slug }) {
             fontSize: '13px',
             color: '#94a3b8',
           }}>
-            Last updated: {new Date(page.updatedAt).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-            })}
+            Last updated: {formatDate(page.updatedAt)}
           </p>
         )}
       </div>

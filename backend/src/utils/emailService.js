@@ -633,7 +633,7 @@ class EmailService {
       ${paragraph(`Your account has been successfully created for <strong>${company.name}</strong>. You're all set to start managing your SIM cards and services.`)}
       ${infoCard([
       ['Email ID', user.email],
-      ['Role', user.role || 'User'],
+      ['Role', (user.role || 'User').charAt(0).toUpperCase() + (user.role || 'User').slice(1)],
       ['Company', company.name],
     ])}
       ${tempPassword ? passwordBox(tempPassword) : ''}

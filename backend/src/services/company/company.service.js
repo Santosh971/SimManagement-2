@@ -31,10 +31,19 @@ class CompanyService {
   async createCompany(data, createdBy, billingCycle = 'monthly') {
     const { name, email, phone, address, subscriptionId } = data;
 
+    // Check if company with same name already exists (case-insensitive)
+    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existingNameCompany = await Company.findOne({
+      name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, 'i') }
+    });
+    if (existingNameCompany) {
+      throw new ConflictError('A company with this name already exists. Please choose a different name.');
+    }
+
     // [GLOBAL UNIQUE EMAIL] Check if company email exists in companies
     const existingCompany = await Company.findOne({ email: email.toLowerCase() });
     if (existingCompany) {
-      throw new ConflictError('Company with this email already exists');
+      throw new ConflictError('Company with this email id already exists');
     }
 
     // [GLOBAL UNIQUE EMAIL] Check if email exists in users table
@@ -57,10 +66,11 @@ class CompanyService {
     let isTrial = false;
 
     if (subscription.planType === 'free_trial') {
-      // Free trial plan - 14 days
+      // Free trial plan - use duration from subscription plan (default 14 days)
       isTrial = true;
+      const trialDuration = subscription.durationDays?.monthly || 14;
       trialEndsAt = new Date();
-      trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 days trial
+      trialEndsAt.setDate(trialEndsAt.getDate() + trialDuration);
       subscriptionEndDate = new Date(trialEndsAt); // End date same as trial end
     } else {
       // Paid plan - calculate duration based on billing cycle
@@ -142,7 +152,22 @@ class CompanyService {
 
     const total = await Company.countDocuments(filter);
 
-    return { data: companies, total, page: parseInt(page), limit: parseInt(limit) };
+    // Attach admin count to each company
+    const companyIds = companies.map(c => c._id);
+    const adminCounts = await User.aggregate([
+      { $match: { companyId: { $in: companyIds }, role: 'admin' } },
+      { $group: { _id: '$companyId', count: { $sum: 1 } } }
+    ]);
+    const adminCountMap = {};
+    adminCounts.forEach(item => { adminCountMap[item._id.toString()] = item.count; });
+
+    const companiesWithCount = companies.map(company => {
+      const obj = company.toObject ? company.toObject() : company;
+      obj.adminCount = adminCountMap[company._id.toString()] || 0;
+      return obj;
+    });
+
+    return { data: companiesWithCount, total, page: parseInt(page), limit: parseInt(limit) };
   }
 
   // Get simple list of companies for dropdowns
@@ -174,6 +199,18 @@ class CompanyService {
         updates[key] = updateData[key];
       }
     });
+
+    // Check if name is being updated and if it's already used by another company
+    if (updates.name) {
+      const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingNameCompany = await Company.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(updates.name.trim())}$`, 'i') },
+        _id: { $ne: companyId }
+      });
+      if (existingNameCompany) {
+        throw new ConflictError('A company with this name already exists. Please choose a different name.');
+      }
+    }
 
     // Check if email is being updated and if it's already used by another company
     if (updates.email) {
@@ -315,10 +352,10 @@ class CompanyService {
 
     // Helper to calculate plan duration
     const getPlanDuration = (plan, cycle) => {
-      if (plan.planType === 'free_trial') return 14;
+      if (plan.planType === 'free_trial') return plan.durationDays?.monthly || 14;
       return cycle === 'yearly'
-        ? (plan.durationDays?.yearly || 365)
-        : (plan.durationDays?.monthly || 30);
+        ? (plan.durationDays?.yearly || 336)
+        : (plan.durationDays?.monthly || 28);
     };
 
     // Determine change type and calculate dates
@@ -898,6 +935,18 @@ class CompanyService {
         updates[key] = updateData[key];
       }
     });
+
+    // Check if name is being updated and if it's already used by another company
+    if (updates.name) {
+      const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingNameCompany = await Company.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(updates.name.trim())}$`, 'i') },
+        _id: { $ne: companyId }
+      });
+      if (existingNameCompany) {
+        throw new ConflictError('A company with this name already exists. Please choose a different name.');
+      }
+    }
 
     // If phone is being updated, normalize it
     if (updates.phone) {

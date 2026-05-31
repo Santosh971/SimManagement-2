@@ -24,6 +24,7 @@ import {
   Spinner,
   Grid,
 } from '../components/ui'
+import { formatDate } from '../utils/dateFormat'
 import SuperAdminDashboard from './SuperAdminDashboard'
 
 const COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#8b5cf6', '#06b6d4']
@@ -81,15 +82,6 @@ export default function Dashboard() {
     }
     fetchCallStats()
   }, [callPeriod])
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
 
   const getDaysUntil = (dateString) => {
     if (!dateString) return null

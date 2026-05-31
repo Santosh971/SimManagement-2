@@ -121,6 +121,7 @@ const CompanySchema = new Schema({
 
 // Indexes
 CompanySchema.index({ email: 1 });
+CompanySchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
 CompanySchema.index({ isActive: 1 });
 CompanySchema.index({ subscriptionEndDate: 1 });
 

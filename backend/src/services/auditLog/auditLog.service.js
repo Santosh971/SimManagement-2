@@ -108,7 +108,7 @@ class AuditLogService {
       } else if (user.role === 'admin' || user.role === 'company_admin') {
         // Admin and Company Admin see ONLY their company's logs
         // They should NOT see:
-        // - Super admin logs (companyId: null)
+        // - Super admin logs (companyId: null, unless AUTH module)
         // - Other companies' logs
 
         // IMPORTANT: If admin has no company, return empty results
@@ -124,10 +124,22 @@ class AuditLogService {
         }
 
         // [AUDIT LOG FIX] - Convert companyId to ObjectId for proper comparison
-        // This ensures string companyIds are properly compared with ObjectId in database
-        filters.companyId = user.companyId instanceof mongoose.Types.ObjectId
+        const userCompanyId = user.companyId instanceof mongoose.Types.ObjectId
           ? user.companyId
           : new mongoose.Types.ObjectId(user.companyId);
+
+        // For AUTH module, also include anonymous logs (companyId: null)
+        // since forgot-password, OTP, and other auth actions are logged
+        // before the user is authenticated and have no companyId
+        if (filters.module && filters.module.toUpperCase() === 'AUTH') {
+          filters.$or = [
+            { companyId: userCompanyId },
+            { companyId: null },
+          ];
+          delete filters.companyId;
+        } else {
+          filters.companyId = userCompanyId;
+        }
       } else {
         // Regular user sees only their own logs
         filters.performedBy = user._id;
@@ -253,7 +265,7 @@ class AuditLogService {
    */
   getModuleActions(module) {
     const moduleActions = {
-      AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED', 'REGISTRATION'],
+      AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_RESEND', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED', 'REGISTRATION'],
       SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT', 'SIM_MESSAGING_UPDATE'],
       RECHARGE: ['RECHARGE_ADD', 'RECHARGE_UPDATE', 'RECHARGE_DELETE', 'RECHARGE_EXPIRE', 'RECHARGE_REMINDER_SENT'],
       USER: ['USER_CREATE', 'USER_UPDATE', 'USER_DELETE', 'USER_PASSWORD_RESET', 'USER_STATUS_CHANGE'],
@@ -263,7 +275,7 @@ class AuditLogService {
       PAYMENT: ['PAYMENT_INITIATE', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUND'],
       CALL_LOG: ['CALL_LOG_SYNC', 'CALL_LOG_EXPORT', 'CALL_LOG_FLAG'],
       NOTIFICATION: ['NOTIFICATION_CREATE', 'NOTIFICATION_READ', 'NOTIFICATION_DELETE', 'NOTIFICATION_BULK_READ'],
-      DASHBOARD: ['DASHBOARD_VIEW'],
+    
       SETTINGS: ['SETTINGS_UPDATE', 'PREFERENCES_UPDATE', 'CONTENT_UPDATE', 'CONTENT_CREATE'],
       TELEGRAM: ['TELEGRAM_MESSAGE_SEND', 'TELEGRAM_MESSAGE_SEND_BULK', 'TELEGRAM_LINK_SEND', 'TELEGRAM_LINK_SEND_BULK', 'TELEGRAM_LINK_GENERATED', 'TELEGRAM_SIM_LINK_INITIATED', 'TELEGRAM_SIM_UNLINK', 'TELEGRAM_PHONE_VERIFICATION_FAILED', 'TELEGRAM_PHONE_VERIFIED', 'TELEGRAM_SIM_ACTIVE', 'TELEGRAM_SIM_INACTIVE'],
       WHATSAPP: ['WHATSAPP_MESSAGE_SEND', 'WHATSAPP_MESSAGE_SEND_BULK', 'WHATSAPP_WEBHOOK_REPLY', 'WHATSAPP_SIM_ACTIVE', 'WHATSAPP_SIM_INACTIVE'],
@@ -280,7 +292,7 @@ class AuditLogService {
    * @returns {Array<string>} - List of modules
    */
   getAllModules() {
-    return ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'DASHBOARD', 'SETTINGS', 'WHATSAPP', 'TELEGRAM', 'WIFI', 'CALL_AUTOMATION', 'SMS'];
+    return ['AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY', 'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'SETTINGS', 'WHATSAPP', 'TELEGRAM', 'WIFI', 'CALL_AUTOMATION', 'SMS'];
   }
 }
 

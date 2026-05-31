@@ -3,6 +3,54 @@ const auditLogService = require('../../services/auditLog/auditLog.service');
 const { successResponse, paginatedResponse } = require('../../utils/response');
 
 class CompanyController {
+  /**
+   * Check if a company name is available
+   * GET /api/companies/check-name?name=CompanyName&excludeId=xxx
+   */
+  async checkCompanyName(req, res, next) {
+    try {
+      const { name } = req.query;
+      if (!name || !name.trim()) {
+        return successResponse(res, { available: false, message: 'Company name is required' });
+      }
+
+      const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingCompany = await require('../../models/company/company.model').findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, 'i') }
+      });
+
+      return successResponse(res, {
+        available: !existingCompany,
+        message: existingCompany ? 'A company with this name already exists' : 'Company name is available',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Check if an admin email is already registered
+   * GET /api/companies/check-admin-email?email=user@example.com
+   */
+  async checkAdminEmail(req, res, next) {
+    try {
+      const { email } = req.query;
+      if (!email || !email.trim()) {
+        return successResponse(res, { exists: false, message: 'Email is required' });
+      }
+
+      const User = require('../../models/user/user.model');
+      const existingUser = await User.findOne({ email: email.trim().toLowerCase() });
+
+      return successResponse(res, {
+        exists: !!existingUser,
+        message: existingUser ? 'This email is already registered' : 'Email is available',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async create(req, res, next) {
     try {
       const company = await companyService.createCompany(req.body, req.user.id);

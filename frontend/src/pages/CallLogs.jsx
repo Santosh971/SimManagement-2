@@ -1,7 +1,7 @@
 
 
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiPhone,
@@ -30,6 +30,7 @@ import {
   Button,
   Spinner,
 } from '../components/ui'
+import { formatDate, formatTime } from '../utils/dateFormat'
 
 const STYLES = `
   /* ── Table ── */
@@ -101,8 +102,9 @@ export default function CallLogs() {
   const [stats, setStats] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
   const [initialLoad, setInitialLoad] = useState(true)
+  const fetchIdRef = useRef(0)
 
-  useEffect(() => { fetchCallLogs(); fetchStats(); fetchSims() }, [pagination.page])
+  useEffect(() => { fetchCallLogs(); fetchStats(); fetchSims() }, [pagination.page, pagination.limit])
 
   useEffect(() => {
     fetchStats()
@@ -131,7 +133,7 @@ export default function CallLogs() {
     }, 20000) // 20 seconds
 
     return () => clearInterval(interval)
-  }, [autoRefresh, pagination.page, callType, simId, phoneNumber, activeDateRange.start, activeDateRange.end, uniqueOnly])
+  }, [autoRefresh, pagination.page, pagination.limit, callType, simId, phoneNumber, activeDateRange.start, activeDateRange.end, uniqueOnly])
 
   const fetchSims = async () => {
     try {
@@ -141,6 +143,7 @@ export default function CallLogs() {
   }
 
   const fetchCallLogs = async (silent = false, dates) => {
+    const id = ++fetchIdRef.current
     try {
       if (!silent) {
         setLoading(true)
@@ -156,10 +159,12 @@ export default function CallLogs() {
         ...(uniqueOnly && { uniqueOnly: 'true' }),
       })
       const r = await api.get(`/call-logs?${params}`)
+      if (fetchIdRef.current !== id) return
       setCallLogs(r.data.data || [])
       setPagination(p => ({ ...p, total: r.data.pagination?.total || 0 }))
       setInitialLoad(false)
     } catch {
+      if (fetchIdRef.current !== id) return
       // Only show toast error for manual refresh, not polling
       if (!silent) {
         toast.error('Failed to fetch call logs')
@@ -167,7 +172,7 @@ export default function CallLogs() {
       setCallLogs([])
     }
     finally {
-      if (!silent) {
+      if (!silent && fetchIdRef.current === id) {
         setLoading(false)
       }
     }
@@ -188,14 +193,6 @@ export default function CallLogs() {
   }
 
   
-  const handleSearch = (e) => {
-    e.preventDefault()
-    const dates = { start: dateRange.start, end: dateRange.end }
-    setActiveDateRange(dates)
-    if (pagination.page === 1) fetchCallLogs(false, dates)
-    else setPagination(p => ({ ...p, page: 1 }))
-  }
-
   const handleClearFilters = () => {
     setPhoneSearch('')
     setPhoneNumber('')
@@ -244,15 +241,6 @@ export default function CallLogs() {
     if (h > 0) return `${h}h ${m}m ${sec}s`
     if (m > 0) return `${m}m ${sec}s`
     return `${sec}s`
-  }
-
-  const formatDT = (ts) => {
-    if (!ts) return { date: '-', time: '-' }
-    const d = new Date(ts)
-    return {
-      date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
-    }
   }
 
   const totalPages = Math.ceil(pagination.total / pagination.limit)
@@ -328,7 +316,7 @@ export default function CallLogs() {
       {/* ── Filters ── */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
-          <form onSubmit={handleSearch}>
+          <form onSubmit={(e) => e.preventDefault()}>
             <div className="cl-filters">
               {/* Phone search spans 2 cols on wider, 1 on narrow */}
               <div className="cl-search-wrap">
@@ -372,13 +360,13 @@ export default function CallLogs() {
                 />
                 Unique Numbers
               </label>
-{/* 
+{/*
          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' , marginLeft :'-15px'}}>
               <span style={{ fontSize: '14px', color: '#6b7280' }}>From:</span>
               <input
                 type="date"
                 value={dateRange.start}
-                max={today} // ✅ restrict future dates
+                max={today}
                 onKeyDown={(e) => e.preventDefault()}
                 onChange={(e) =>
                   setDateRange(p => ({ ...p, start: e.target.value }))
@@ -403,9 +391,11 @@ export default function CallLogs() {
     value={dateRange.start}
     max={dateRange.end || today}
     onKeyDown={(e) => e.preventDefault()}
-    onChange={(e) =>
-      setDateRange((p) => ({ ...p, start: e.target.value }))
-    }
+    onChange={(e) => {
+      const val = e.target.value
+      setDateRange((p) => ({ ...p, start: val }))
+      setActiveDateRange((p) => ({ ...p, start: val }))
+    }}
     style={{ ...inputBase, cursor: 'pointer' }}
   />
 </div>
@@ -417,7 +407,11 @@ export default function CallLogs() {
                 min={dateRange.start || undefined}
                 max={today}
                 onKeyDown={(e) => e.preventDefault()}
-                onChange={(e) => setDateRange(p => ({ ...p, end: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setDateRange(p => ({ ...p, end: val }))
+                  setActiveDateRange(p => ({ ...p, end: val }))
+                }}
                 style={{ ...inputBase, cursor: 'pointer' }}
               />
               </div>
@@ -493,7 +487,8 @@ export default function CallLogs() {
                     {callLogs.map((log, index) => {
                       const Icon = getIcon(log.callType)
                       const color = getColor(log.callType)
-                      const dt = formatDT(log.timestamp)
+                      const dateStr = formatDate(log.timestamp)
+                      const timeStr = formatTime(log.timestamp)
                       return (
                         <tr key={log._id}>
                           {/* S.No. */}
@@ -541,8 +536,8 @@ export default function CallLogs() {
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                               <FiClock style={{ width: '13px', height: '13px', color: '#9ca3af', marginTop: '2px', flexShrink: 0 }} />
                               <div>
-                                <div style={{ fontSize: '13px', color: '#111827', whiteSpace: 'nowrap' }}>{dt.date}</div>
-                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', whiteSpace: 'nowrap' }}>{dt.time}</div>
+                                <div style={{ fontSize: '13px', color: '#111827', whiteSpace: 'nowrap' }}>{dateStr}</div>
+                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', whiteSpace: 'nowrap' }}>{timeStr}</div>
                               </div>
                             </div>
                           </td>
@@ -571,7 +566,8 @@ export default function CallLogs() {
                 {callLogs.map((log) => {
                   const Icon = getIcon(log.callType)
                   const color = getColor(log.callType)
-                  const dt = formatDT(log.timestamp)
+                  const dateStr = formatDate(log.timestamp)
+                  const timeStr = formatTime(log.timestamp)
                   return (
                     <div key={log._id} style={{
                       padding: '12px 14px',
@@ -616,10 +612,10 @@ export default function CallLogs() {
                         {/* Right: Date stacked above Time */}
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ fontSize: '12px', fontWeight: '500', color: '#111827', whiteSpace: 'nowrap' }}>
-                            {dt.date}
+                            {dateStr}
                           </div>
                           <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', whiteSpace: 'nowrap' }}>
-                            {dt.time}
+                            {timeStr}
                           </div>
                         </div>
                       </div>
@@ -723,22 +719,52 @@ export default function CallLogs() {
               boxSizing: 'border-box',
             }}>
 
-              {/* Info text */}
+              {/* Rows per page + Info text */}
               <div style={{
-                fontSize: '12px',
-                color: '#6b7280',
-                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
                 flexShrink: 1,
                 minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                flexWrap: 'wrap',
               }}>
-                Showing{' '}
-                <strong style={{ color: '#374151' }}>{(pagination.page - 1) * pagination.limit + 1}</strong>
-                {' – '}
-                <strong style={{ color: '#374151' }}>{Math.min(pagination.page * pagination.limit, pagination.total)}</strong>
-                {' of '}
-                <strong style={{ color: '#374151' }}>{pagination.total}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Rows per page:</span>
+                  <select
+                    value={pagination.limit}
+                    onChange={(e) => setPagination(p => ({ ...p, limit: parseInt(e.target.value), page: 1 }))}
+                    style={{
+                      padding: '4px 8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      minWidth: '60px',
+                    }}
+                  >
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  Showing{' '}
+                  <strong style={{ color: '#374151' }}>{(pagination.page - 1) * pagination.limit + 1}</strong>
+                  {' – '}
+                  <strong style={{ color: '#374151' }}>{Math.min(pagination.page * pagination.limit, pagination.total)}</strong>
+                  {' of '}
+                  <strong style={{ color: '#374151' }}>{pagination.total}</strong>
+                </div>
               </div>
 
               {/* Prev + page indicator + Next */}
