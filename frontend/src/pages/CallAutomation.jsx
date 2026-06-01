@@ -64,6 +64,23 @@ function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
     }
   }
 
+  if (callers.length === 0) {
+    return (
+      <div style={{
+        padding: '16px',
+        backgroundColor: '#fef3c7',
+        border: '1px solid #fde68a',
+        borderRadius: '6px',
+        textAlign: 'center',
+      }}>
+        <FiAlertCircle style={{ color: '#d97706', marginBottom: '4px' }} />
+        <p style={{ fontSize: '12px', color: '#92400e', margin: '4px 0 0 0' }}>
+          No caller SIMs. Mark SIMs as "Admin Caller" in SIMs page.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* Search */}
@@ -84,6 +101,11 @@ function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
           backgroundColor: disabled ? '#f3f4f6' : '#fff',
         }}
       />
+
+      {/* Selected count */}
+      <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
+        {selectedCallers.length} of {callers.length} caller{callers.length !== 1 ? 's' : ''} selected
+      </div>
 
       {/* Caller list */}
       <div style={{
@@ -129,7 +151,7 @@ function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
                     {sim.mobileNumber}
                   </div>
                   <div style={{ fontSize: '10px', color: '#6b7280' }}>
-                    {sim.operator}
+                    {sim.operator} • {sim.assignedTo?.name || 'Unassigned'}
                   </div>
                 </div>
               </div>
@@ -137,7 +159,7 @@ function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
           })
         ) : (
           <div style={{ padding: '12px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>
-            {search ? 'No callers match' : 'No callers available'}
+            {search ? 'No callers match your search' : 'No callers available'}
           </div>
         )}
       </div>
@@ -145,30 +167,171 @@ function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
   )
 }
 
-// Target selector dropdown
-function TargetSelector({ targets, selectedTargetId, onChange, disabled }) {
-  return (
-    <select
-      value={selectedTargetId || ''}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      style={{
-        width: '100%',
-        padding: '10px 12px',
-        border: '1px solid #d1d5db',
+// Target selector with multi-select support
+function TargetSelector({ targets, selectedTargetIds, onChange, disabled }) {
+  const [search, setSearch] = useState('')
+
+  const filteredTargets = targets.filter(sim => {
+    if (!search) return true
+    const searchLower = search.toLowerCase()
+    return (
+      sim.mobileNumber?.toLowerCase().includes(searchLower) ||
+      sim.operator?.toLowerCase().includes(searchLower) ||
+      sim.assignedTo?.name?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  const toggleTarget = (simId) => {
+    if (disabled) return
+    if (selectedTargetIds.includes(simId)) {
+      onChange(selectedTargetIds.filter(id => id !== simId))
+    } else {
+      onChange([...selectedTargetIds, simId])
+    }
+  }
+
+  const selectAll = () => {
+    if (disabled) return
+    onChange(filteredTargets.map(t => t._id))
+  }
+
+  const clearAll = () => {
+    if (disabled) return
+    onChange([])
+  }
+
+  if (targets.length === 0) {
+    return (
+      <div style={{
+        padding: '16px',
+        backgroundColor: '#f3f4f6',
+        border: '1px solid #e5e7eb',
         borderRadius: '6px',
-        fontSize: '13px',
-        outline: 'none',
-        backgroundColor: disabled ? '#f3f4f6' : '#fff',
-      }}
-    >
-      <option value="">Select a target SIM...</option>
-      {targets.map((sim) => (
-        <option key={sim._id} value={sim._id}>
-          {sim.mobileNumber} ({sim.operator}) - {sim.assignedTo?.name || 'Unassigned'}
-        </option>
-      ))}
-    </select>
+        textAlign: 'center',
+      }}>
+        <FiSmartphone style={{ color: '#9ca3af', marginBottom: '4px' }} />
+        <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+          No target SIMs available.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Search */}
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search target SIMs..."
+        disabled={disabled}
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          border: '1px solid #d1d5db',
+          borderRadius: '6px',
+          fontSize: '12px',
+          marginBottom: '8px',
+          outline: 'none',
+          backgroundColor: disabled ? '#f3f4f6' : '#fff',
+        }}
+      />
+
+      {/* Selection info and quick actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <div style={{ fontSize: '11px', color: '#6b7280' }}>
+          {selectedTargetIds.length} of {targets.length} target{targets.length !== 1 ? 's' : ''} selected
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={selectAll}
+            disabled={disabled}
+            style={{
+              fontSize: '10px',
+              padding: '2px 6px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px',
+              backgroundColor: disabled ? '#f3f4f6' : '#fff',
+              cursor: disabled ? 'default' : 'pointer',
+            }}
+          >
+            Select All
+          </button>
+          <button
+            onClick={clearAll}
+            disabled={disabled}
+            style={{
+              fontSize: '10px',
+              padding: '2px 6px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px',
+              backgroundColor: disabled ? '#f3f4f6' : '#fff',
+              cursor: disabled ? 'default' : 'pointer',
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Target list with checkboxes */}
+      <div style={{
+        border: '1px solid #e5e7eb',
+        borderRadius: '6px',
+        maxHeight: '200px',
+        overflow: 'auto',
+        backgroundColor: '#fff',
+      }}>
+        {filteredTargets.length > 0 ? (
+          filteredTargets.map((sim) => {
+            const isSelected = selectedTargetIds.includes(sim._id)
+            return (
+              <div
+                key={sim._id}
+                onClick={() => toggleTarget(sim._id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 10px',
+                  borderBottom: '1px solid #f3f4f6',
+                  cursor: disabled ? 'default' : 'pointer',
+                  backgroundColor: isSelected ? '#f0fdf4' : '#fff',
+                }}
+              >
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '3px',
+                  border: `2px solid ${isSelected ? '#16a34a' : '#d1d5db'}`,
+                  backgroundColor: isSelected ? '#16a34a' : '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: '8px',
+                }}>
+                  {isSelected && (
+                    <FiCheck style={{ width: '10px', height: '10px', color: '#fff' }} />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '500', fontSize: '12px' }}>
+                    {sim.mobileNumber}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                    {sim.operator} • {sim.assignedTo?.name || 'Unassigned'}
+                  </div>
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <div style={{ padding: '12px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>
+            {search ? 'No targets match your search' : 'No targets available'}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -342,7 +505,7 @@ export default function CallAutomation() {
 
   // Add target modal state
   const [showAddTarget, setShowAddTarget] = useState(false)
-  const [newTargetId, setNewTargetId] = useState('')
+  const [newTargetIds, setNewTargetIds] = useState([])
   const [newCallerIds, setNewCallerIds] = useState([])
 
   // Compute available targets (not yet in mappings)
@@ -362,7 +525,7 @@ export default function CallAutomation() {
       const [simsRes, configRes] = await Promise.all([
         api.get('/call-automation/eligible-sims').catch(err => {
           console.error('Failed to fetch eligible SIMs:', err)
-          return { data: { data: { callers: [], potentialTargets: [], all: [] } } }
+          return { data: { data: [] } }
         }),
         api.get('/call-automation/config').catch(err => {
           console.error('Failed to fetch config:', err)
@@ -372,15 +535,67 @@ export default function CallAutomation() {
 
       const simsData = simsRes.data.data || {}
 
+      console.log('[CALL AUTOMATION] Sims data received:', simsData)
+
       // Handle both old and new API response formats
-      if (simsData.callers) {
-        setCallers(simsData.callers || [])
-        setPotentialTargets(simsData.potentialTargets || simsData.all || [])
+      if (simsData.callers && Array.isArray(simsData.callers)) {
+        // New format: { callers: [...], potentialTargets: [...], all: [...] }
+        const callerSimsFromApi = simsData.callers || []
+        const allSims = simsData.all || simsData.potentialTargets || []
+
+        // Backend returns:
+        // - callers: SIMs with isAdminCaller = true (can make calls)
+        // - potentialTargets: ALL SIMs (can receive calls)
+        // - all: ALL SIMs
+
+        // For the UI, we need:
+        // - Callers dropdown: SIMs marked as isAdminCaller = true
+        // - Targets dropdown: ALL SIMs (but a SIM can't be both caller AND target)
+
+        // Get all caller IDs for filtering
+        const callerIds = callerSimsFromApi.map(s => s._id)
+
+        // Callers = SIMs with isAdminCaller = true
+        // Targets = ALL SIMs that are NOT callers (to enforce mutual exclusivity)
+        const targetSims = allSims.filter(s => !callerIds.includes(s._id))
+
+        console.log('[CALL AUTOMATION] Total SIMs:', allSims.length)
+        console.log('[CALL AUTOMATION] Callers (isAdminCaller=true):', callerSimsFromApi.length)
+        console.log('[CALL AUTOMATION] Targets (non-callers):', targetSims.length)
+
+        setCallers(callerSimsFromApi)
+        setPotentialTargets(targetSims)
       } else if (Array.isArray(simsRes.data.data)) {
         // Old format: returns flat array of sims
         const allSims = simsRes.data.data
-        setCallers(allSims.filter(s => s.isAdminCaller === true))
-        setPotentialTargets(allSims)
+        console.log('[CALL AUTOMATION] Using old format - total sims:', allSims.length)
+
+        // Log sample SIM to debug the isAdminCaller field
+        if (allSims.length > 0) {
+          console.log('[CALL AUTOMATION] Sample SIM data:', {
+            mobileNumber: allSims[0].mobileNumber,
+            isAdminCaller: allSims[0].isAdminCaller,
+            hasIsAdminCaller: 'isAdminCaller' in allSims[0]
+          })
+        }
+
+        // Based on original logic:
+        // - Callers: SIMs with isAdminCaller = true
+        // - Targets: ALL SIMs that are NOT callers (enforce mutual exclusivity)
+        const callerSims = allSims.filter(s => s.isAdminCaller === true)
+        const callerIds = callerSims.map(s => s._id)
+        const targetSims = allSims.filter(s => !callerIds.includes(s._id))
+
+        console.log('[CALL AUTOMATION] Callers (isAdminCaller===true):', callerSims.length)
+        console.log('[CALL AUTOMATION] Targets (non-callers):', targetSims.length)
+
+        setCallers(callerSims)
+        setPotentialTargets(targetSims)
+      } else {
+        // Fallback: empty arrays
+        console.log('[CALL AUTOMATION] Unknown format, using empty arrays')
+        setCallers([])
+        setPotentialTargets([])
       }
 
       if (configRes.data.data) {
@@ -423,9 +638,9 @@ export default function CallAutomation() {
     }
   }
 
-  const handleAddTarget = () => {
-    if (!newTargetId) {
-      toast.error('Please select a target SIM')
+  const handleAddTargets = (keepOpen = false) => {
+    if (newTargetIds.length === 0) {
+      toast.error('Please select at least one target SIM')
       return
     }
     if (newCallerIds.length === 0) {
@@ -433,32 +648,51 @@ export default function CallAutomation() {
       return
     }
 
-    // Check if target already exists
-    if (usedTargetIds.includes(newTargetId)) {
-      toast.error('This target SIM is already added')
+    // Check for overlap - targets cannot be in callers
+    const overlapping = newTargetIds.filter(id => newCallerIds.includes(id))
+    if (overlapping.length > 0) {
+      toast.error('Target SIMs cannot also be callers')
       return
     }
 
-    // Check overlap - target cannot be in callers
-    if (newCallerIds.includes(newTargetId)) {
-      toast.error('Target SIM cannot also be a caller')
+    // Check if any targets already exist
+    const existingTargets = newTargetIds.filter(id => usedTargetIds.includes(id))
+    if (existingTargets.length > 0) {
+      toast.error('Some target SIMs are already added')
       return
     }
+
+    // Add all selected targets with the same callers
+    const newMappings = newTargetIds.map(targetId => ({
+      targetSimId: targetId,
+      callerSimIds: [...newCallerIds],
+      callDuration: callDuration
+    }))
 
     setTargetCallerMappings([
       ...targetCallerMappings,
-      {
-        targetSimId: newTargetId,
-        callerSimIds: newCallerIds,
-        callDuration: callDuration
-      }
+      ...newMappings
     ])
 
-    // Reset form
-    setNewTargetId('')
-    setNewCallerIds([])
-    setShowAddTarget(false)
-    toast.success('Target SIM added')
+    if (keepOpen) {
+      // Reset targets but keep callers selected for convenience
+      setNewTargetIds([])
+      toast.success(`${newTargetIds.length} target${newTargetIds.length > 1 ? 's' : ''} added successfully`)
+    } else {
+      // Close form and reset everything
+      setShowAddTarget(false)
+      setNewTargetIds([])
+      setNewCallerIds([])
+      toast.success(`${newTargetIds.length} target${newTargetIds.length > 1 ? 's' : ''} added successfully`)
+    }
+  }
+
+  const handleAddTargetAndClose = () => {
+    handleAddTargets(false)
+  }
+
+  const handleAddTargetAndContinue = () => {
+    handleAddTargets(true)
   }
 
   const handleRemoveTarget = (targetSimId) => {
@@ -653,10 +887,13 @@ export default function CallAutomation() {
           <div style={{ display: 'flex', gap: '12px' }}>
             <FiInfo style={{ width: '20px', height: '20px', color: '#2563eb', flexShrink: 0 }} />
             <div style={{ fontSize: '13px', color: '#1e40af' }}>
-              <strong>How it works:</strong> Each target SIM can have its own set of caller SIMs.
-              When a caller SIM makes a call, it will call only the targets it's assigned to.
-              <br /><br />
-              <strong>Example:</strong> Caller A can call Target 1 and Target 2, while Caller B can call only Target 3.
+              <strong>How it works:</strong>
+              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+                <li><strong>Caller SIMs</strong> = SIMs marked as "Admin Caller" in SIMs page → Can only MAKE calls</li>
+                <li><strong>Target SIMs</strong> = All other SIMs → Can only RECEIVE calls</li>
+                <li>Each Target can have multiple Callers assigned to it</li>
+                <li>A SIM cannot be both Caller and Target at the same time</li>
+              </ul>
             </div>
           </div>
         </CardBody>
@@ -670,10 +907,18 @@ export default function CallAutomation() {
           border: '1px solid #fde68a'
         }}>
           <CardBody>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FiAlertCircle style={{ width: '20px', height: '20px', color: '#d97706' }} />
-              <div style={{ fontSize: '13px', color: '#92400e' }}>
-                <strong>No Caller SIMs available.</strong> Go to the SIMs page and mark some SIMs as "Admin Caller SIM" to enable them as callers.
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <FiAlertCircle style={{ width: '20px', height: '20px', color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
+                  No Caller SIMs Available
+                </div>
+                <div style={{ fontSize: '13px', color: '#78350f', marginBottom: '12px' }}>
+                  Caller SIMs are marked as "Admin Caller" in the SIMs page. These SIMs will make outgoing calls.
+                </div>
+                <div style={{ fontSize: '12px', color: '#92400e', backgroundColor: '#fffbeb', padding: '8px 12px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                  <strong>How to fix:</strong> Go to <strong>SIMs</strong> page → Select a SIM → Edit → Enable <strong>"Is Admin Caller"</strong> → Save
+                </div>
               </div>
             </div>
           </CardBody>
@@ -687,9 +932,16 @@ export default function CallAutomation() {
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
                 Target SIMs & Their Callers
+                {targetCallerMappings.length > 0 && (
+                  <Badge variant="primary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                    {targetCallerMappings.length} target{targetCallerMappings.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
               </h3>
               <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                Configure which caller SIMs will call each target SIM
+                {targetCallerMappings.length === 0
+                  ? 'Add target SIMs and assign caller SIMs to each'
+                  : 'Click on a target to expand and manage its callers'}
               </p>
             </div>
             {potentialTargets.length > 0 && (
@@ -714,7 +966,7 @@ export default function CallAutomation() {
             }}>
               <CardBody style={{ padding: '16px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
-                  Add New Target
+                  Add Target SIMs
                 </h4>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -726,12 +978,12 @@ export default function CallAutomation() {
                       fontSize: '12px',
                       color: '#374151'
                     }}>
-                      Select Target SIM
+                      Select Target SIMs (can select multiple)
                     </label>
                     <TargetSelector
                       targets={availableTargets}
-                      selectedTargetId={newTargetId}
-                      onChange={setNewTargetId}
+                      selectedTargetIds={newTargetIds}
+                      onChange={setNewTargetIds}
                       disabled={!isActive}
                     />
                   </div>
@@ -743,24 +995,62 @@ export default function CallAutomation() {
                       fontSize: '12px',
                       color: '#374151'
                     }}>
-                      Select Callers for this Target
+                      Select Callers for All Selected Targets
                     </label>
-                    <CallerSelector
-                      callers={callers}
-                      selectedCallers={newCallerIds}
-                      onChange={setNewCallerIds}
-                      disabled={!isActive}
-                    />
+                    {callers.length === 0 ? (
+                      <div style={{
+                        padding: '20px',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        borderRadius: '6px',
+                        textAlign: 'center',
+                      }}>
+                        <FiAlertCircle style={{ color: '#d97706', marginBottom: '8px' }} />
+                        <p style={{ fontSize: '12px', color: '#92400e', margin: 0 }}>
+                          No caller SIMs available.
+                        </p>
+                        <p style={{ fontSize: '11px', color: '#78350f', margin: '4px 0 0 0' }}>
+                          Go to SIMs page and mark some SIMs as "Admin Caller SIM".
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <CallerSelector
+                          callers={callers}
+                          selectedCallers={newCallerIds}
+                          onChange={setNewCallerIds}
+                          disabled={!isActive}
+                        />
+                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                          {callers.length} caller SIM{callers.length !== 1 ? 's' : ''} available • {newCallerIds.length} selected
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {/* Selection summary */}
+                {newTargetIds.length > 0 && (
+                  <div style={{
+                    marginBottom: '12px',
+                    padding: '8px 12px',
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#166534'
+                  }}>
+                    <FiCheck style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                    {newTargetIds.length} target{newTargetIds.length > 1 ? 's' : ''} selected • Will be called by {newCallerIds.length || 0} caller{newCallerIds.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => {
                       setShowAddTarget(false)
-                      setNewTargetId('')
+                      setNewTargetIds([])
                       setNewCallerIds([])
                     }}
                   >
@@ -768,11 +1058,21 @@ export default function CallAutomation() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleAddTarget}
-                    disabled={!newTargetId || newCallerIds.length === 0}
+                    onClick={handleAddTargetAndClose}
+                    disabled={newTargetIds.length === 0 || newCallerIds.length === 0 || callers.length === 0}
                   >
-                    Add Target
+                    Add Targets ({newTargetIds.length})
                   </Button>
+                  {availableTargets.length > newTargetIds.length && newTargetIds.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleAddTargetAndContinue}
+                      disabled={newTargetIds.length === 0 || newCallerIds.length === 0 || callers.length === 0}
+                    >
+                      Add & Continue
+                    </Button>
+                  )}
                 </div>
               </CardBody>
             </Card>
@@ -807,8 +1107,10 @@ export default function CallAutomation() {
               </h4>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
                 {callers.length === 0
-                  ? 'Mark some SIMs as "Admin Caller SIM" in the SIMs page first, then add targets here.'
-                  : 'Click "Add Target" above to add target SIMs and assign caller SIMs to them'}
+                  ? 'First, mark some SIMs as "Admin Caller" in the SIMs page. These will be your Caller SIMs.'
+                  : potentialTargets.length === 0
+                    ? 'All SIMs are marked as Callers. You need non-Admin SIMs to be targets.'
+                    : 'Click "Add Target" above to add target SIMs and assign caller SIMs to them'}
               </p>
               {potentialTargets.length > 0 && callers.length > 0 && (
                 <Button
@@ -822,7 +1124,7 @@ export default function CallAutomation() {
             </div>
           )}
 
-          {potentialTargets.length === 0 && targetCallerMappings.length === 0 && (
+          {potentialTargets.length === 0 && callers.length > 0 && targetCallerMappings.length === 0 && (
             <div style={{
               padding: '16px',
               backgroundColor: '#fef3c7',
@@ -831,7 +1133,7 @@ export default function CallAutomation() {
               color: '#92400e',
             }}>
               <FiAlertCircle style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-              No active SIMs available. Please add SIMs in the SIMs page first.
+              All your SIMs are marked as "Admin Caller". Target SIMs should be regular SIMs (not marked as Admin Caller).
             </div>
           )}
         </CardBody>
