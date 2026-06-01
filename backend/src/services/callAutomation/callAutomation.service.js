@@ -413,24 +413,46 @@ class CallAutomationService {
       role,
       isCaller,
       isTarget,
+      callerTargetsCount: callerTargets.length,
     });
 
     // If caller, get target phone numbers
     let targets = [];
     if (role === 'CALLER' && callerTargets.length > 0) {
       const targetIds = callerTargets.map(t => (t.targetSimId._id || t.targetSimId));
+      logger.info('[CALL AUTOMATION] Fetching mobile numbers for target IDs:', {
+        targetIds: targetIds.map(id => id.toString()),
+      });
+
       const targetSims = await Sim.find({
         _id: { $in: targetIds },
       }).select('mobileNumber');
 
+      logger.info('[CALL AUTOMATION] Found target SIMs:', {
+        foundCount: targetSims.length,
+        mobileNumbers: targetSims.map(s => s.mobileNumber),
+      });
+
       targets = callerTargets.map(t => {
         const targetId = (t.targetSimId._id || t.targetSimId).toString();
         const targetSim = targetSims.find(s => s._id.toString() === targetId);
-        return {
+        const result = {
           mobileNumber: targetSim?.mobileNumber,
           callDuration: t.callDuration
         };
-      }).filter(t => t.mobileNumber);
+        logger.info('[CALL AUTOMATION] Mapping target:', {
+          targetId,
+          mobileNumber: targetSim?.mobileNumber,
+          callDuration: t.callDuration,
+        });
+        return result;
+      }).filter(t => {
+        const hasNumber = !!t.mobileNumber;
+        if (!hasNumber) {
+          logger.warn('[CALL AUTOMATION] Filtered out target without mobileNumber');
+        }
+        return hasNumber;
+      });
     }
 
     const result = {
@@ -450,6 +472,7 @@ class CallAutomationService {
       simNumber,
       role,
       targetsCount: targets.length,
+      targets: targets.map(t => ({ mobileNumber: t.mobileNumber, callDuration: t.callDuration })),
       isActive: result.isActive,
     });
 
