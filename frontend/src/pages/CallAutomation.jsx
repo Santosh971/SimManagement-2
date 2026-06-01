@@ -4,6 +4,9 @@
  * Admin page for configuring automated SIM call verification.
  * UPDATED: Now supports per-target caller assignment where each target SIM
  * can have its own set of caller SIMs.
+ *
+ * BACKWARD COMPATIBLE: Works with both old format (callerSimIds/targetSimIds)
+ * and new format (targetCallerMappings) from the backend.
  */
 
 import { useState, useEffect } from 'react'
@@ -324,6 +327,7 @@ export default function CallAutomation() {
   const { api, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
   const [callers, setCallers] = useState([]) // SIMs marked as isAdminCaller
   const [potentialTargets, setPotentialTargets] = useState([]) // All active SIMs
   const [config, setConfig] = useState(null)
@@ -352,27 +356,53 @@ export default function CallAutomation() {
   const fetchData = async () => {
     try {
       setLoading(true)
+      setError(null)
 
       // Fetch eligible SIMs and existing config in parallel
       const [simsRes, configRes] = await Promise.all([
-        api.get('/call-automation/eligible-sims'),
-        api.get('/call-automation/config')
+        api.get('/call-automation/eligible-sims').catch(err => {
+          console.error('Failed to fetch eligible SIMs:', err)
+          return { data: { data: { callers: [], potentialTargets: [], all: [] } } }
+        }),
+        api.get('/call-automation/config').catch(err => {
+          console.error('Failed to fetch config:', err)
+          return { data: { data: null } }
+        })
       ])
 
       const simsData = simsRes.data.data || {}
-      setCallers(simsData.callers || [])
-      setPotentialTargets(simsData.potentialTargets || simsData.all || [])
+
+      // Handle both old and new API response formats
+      if (simsData.callers) {
+        setCallers(simsData.callers || [])
+        setPotentialTargets(simsData.potentialTargets || simsData.all || [])
+      } else if (Array.isArray(simsRes.data.data)) {
+        // Old format: returns flat array of sims
+        const allSims = simsRes.data.data
+        setCallers(allSims.filter(s => s.isAdminCaller === true))
+        setPotentialTargets(allSims)
+      }
 
       if (configRes.data.data) {
         const existingConfig = configRes.data.data
         setConfig(existingConfig)
 
-        // Load new format mappings
+        // Handle new format (targetCallerMappings)
         if (existingConfig.targetCallerMappings && existingConfig.targetCallerMappings.length > 0) {
           const mappings = existingConfig.targetCallerMappings.map(m => ({
-            targetSimId: m.targetSimId._id || m.targetSimId,
+            targetSimId: m.targetSimId?._id || m.targetSimId,
             callerSimIds: (m.callerSimIds || []).map(c => c._id || c),
             callDuration: m.callDuration || existingConfig.callDuration || 10
+          }))
+          setTargetCallerMappings(mappings)
+        }
+        // Handle old format (callerSimIds + targetSimIds) - convert to new format
+        else if (existingConfig.callerSimIds?.length > 0 && existingConfig.targetSimIds?.length > 0) {
+          const oldCallers = existingConfig.callerSimIds.map(c => c._id || c)
+          const mappings = existingConfig.targetSimIds.map(t => ({
+            targetSimId: t._id || t,
+            callerSimIds: oldCallers,
+            callDuration: existingConfig.callDuration || 10
           }))
           setTargetCallerMappings(mappings)
         }
@@ -383,9 +413,11 @@ export default function CallAutomation() {
         setScheduledDay(existingConfig.scheduledDay || 'monday')
         setIsActive(existingConfig.isActive ?? true)
       }
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-      toast.error(error.response?.data?.message || 'Failed to load configuration')
+    } catch (err) {
+      console.error('Failed to fetch data:', err)
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to load configuration'
+      setError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -485,9 +517,9 @@ export default function CallAutomation() {
       await api.post('/call-automation/config', data)
       toast.success('Configuration saved successfully')
       fetchData()
-    } catch (error) {
-      console.error('Failed to save:', error)
-      toast.error(error.response?.data?.message || 'Failed to save configuration')
+    } catch (err) {
+      console.error('Failed to save:', err)
+      toast.error(err.response?.data?.message || 'Failed to save configuration')
     } finally {
       setSaving(false)
     }
@@ -499,9 +531,9 @@ export default function CallAutomation() {
       await api.put('/call-automation/toggle', { isActive: newIsActive })
       setIsActive(newIsActive)
       toast.success(`Call automation ${newIsActive ? 'enabled' : 'disabled'}`)
-    } catch (error) {
-      console.error('Failed to toggle:', error)
-      toast.error(error.response?.data?.message || 'Failed to toggle')
+    } catch (err) {
+      console.error('Failed to toggle:', err)
+      toast.error(err.response?.data?.message || 'Failed to toggle')
     }
   }
 
@@ -525,6 +557,30 @@ export default function CallAutomation() {
     return (
       <PageContainer>
         <Spinner size="lg" />
+      </PageContainer>
+    )
+  }
+
+  // Show error state
+  if (error && !config) {
+    return (
+      <PageContainer>
+        <Card>
+          <CardBody>
+            <div style={{ padding: '48px', textAlign: 'center' }}>
+              <FiAlertCircle style={{ width: '48px', height: '48px', color: '#ef4444', marginBottom: '16px' }} />
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px', color: '#111827' }}>
+                Unable to Load Configuration
+              </h2>
+              <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+                {error}
+              </p>
+              <Button variant="secondary" icon={FiRefreshCw} onClick={fetchData}>
+                Try Again
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
       </PageContainer>
     )
   }
@@ -606,6 +662,24 @@ export default function CallAutomation() {
         </CardBody>
       </Card>
 
+      {/* Warning if no caller SIMs */}
+      {callers.length === 0 && (
+        <Card style={{
+          marginBottom: '24px',
+          backgroundColor: '#fef3c7',
+          border: '1px solid #fde68a'
+        }}>
+          <CardBody>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <FiAlertCircle style={{ width: '20px', height: '20px', color: '#d97706' }} />
+              <div style={{ fontSize: '13px', color: '#92400e' }}>
+                <strong>No Caller SIMs available.</strong> Go to the SIMs page and mark some SIMs as "Admin Caller SIM" to enable them as callers.
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Target-Caller Mappings */}
       <Card style={{ marginBottom: '24px' }}>
         <CardBody>
@@ -618,13 +692,13 @@ export default function CallAutomation() {
                 Configure which caller SIMs will call each target SIM
               </p>
             </div>
-            {availableTargets.length > 0 && (
+            {potentialTargets.length > 0 && (
               <Button
                 variant="secondary"
                 size="sm"
                 icon={FiPlus}
                 onClick={() => setShowAddTarget(!showAddTarget)}
-                disabled={!isActive}
+                disabled={!isActive || callers.length === 0}
               >
                 Add Target
               </Button>
@@ -732,9 +806,11 @@ export default function CallAutomation() {
                 No Target SIMs Configured
               </h4>
               <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
-                Click "Add Target" above to add target SIMs and assign caller SIMs to them
+                {callers.length === 0
+                  ? 'Mark some SIMs as "Admin Caller SIM" in the SIMs page first, then add targets here.'
+                  : 'Click "Add Target" above to add target SIMs and assign caller SIMs to them'}
               </p>
-              {availableTargets.length > 0 && (
+              {potentialTargets.length > 0 && callers.length > 0 && (
                 <Button
                   variant="secondary"
                   icon={FiPlus}
@@ -746,7 +822,7 @@ export default function CallAutomation() {
             </div>
           )}
 
-          {availableTargets.length === 0 && targetCallerMappings.length === 0 && (
+          {potentialTargets.length === 0 && targetCallerMappings.length === 0 && (
             <div style={{
               padding: '16px',
               backgroundColor: '#fef3c7',

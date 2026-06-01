@@ -9,6 +9,9 @@
  *
  * UPDATED: Now supports per-target caller assignment where each target SIM
  * can have its own set of caller SIMs.
+ *
+ * BACKWARD COMPATIBLE: Works with both old format (callerSimIds/targetSimIds)
+ * and new format (targetCallerMappings).
  */
 
 const mongoose = require('mongoose');
@@ -51,8 +54,8 @@ const CallAutomationConfigSchema = new Schema({
   // Each target has its own list of caller SIMs
   targetCallerMappings: [TargetCallerMappingSchema],
 
-  // DEPRECATED: Keeping for backward compatibility and migration
-  // These will be migrated to targetCallerMappings on first save
+  // OLD FORMAT (kept for backward compatibility)
+  // These will be migrated to targetCallerMappings on first load
   callerSimIds: [{
     type: Schema.Types.ObjectId,
     ref: 'Sim',
@@ -165,31 +168,50 @@ CallAutomationConfigSchema.index({ 'targetCallerMappings.callerSimIds': 1 });
 
 // Virtual to get all unique caller SIM IDs
 CallAutomationConfigSchema.virtual('allCallerSimIds').get(function() {
-  if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
-    const callerIds = new Set();
-    this.targetCallerMappings.forEach(mapping => {
-      mapping.callerSimIds.forEach(id => callerIds.add(id.toString()));
-    });
-    return Array.from(callerIds).map(id => new mongoose.Types.ObjectId(id));
+  try {
+    if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
+      const callerIds = new Set();
+      this.targetCallerMappings.forEach(mapping => {
+        if (mapping.callerSimIds && Array.isArray(mapping.callerSimIds)) {
+          mapping.callerSimIds.forEach(id => {
+            if (id) callerIds.add(id.toString());
+          });
+        }
+      });
+      return Array.from(callerIds).map(id => new mongoose.Types.ObjectId(id));
+    }
+    return this.callerSimIds || [];
+  } catch (e) {
+    return this.callerSimIds || [];
   }
-  return this.callerSimIds || [];
 });
 
 // Virtual to get all unique target SIM IDs
 CallAutomationConfigSchema.virtual('allTargetSimIds').get(function() {
-  if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
-    return this.targetCallerMappings.map(m => m.targetSimId);
+  try {
+    if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
+      return this.targetCallerMappings.map(m => m.targetSimId).filter(id => id);
+    }
+    return this.targetSimIds || [];
+  } catch (e) {
+    return this.targetSimIds || [];
   }
-  return this.targetSimIds || [];
 });
 
 // Static method to find config by company
-CallAutomationConfigSchema.statics.findByCompany = function (companyId) {
-  return this.findOne({ companyId, isActive: true })
-    .populate('targetCallerMappings.targetSimId', 'mobileNumber operator status')
-    .populate('targetCallerMappings.callerSimIds', 'mobileNumber operator status')
-    .populate('callerSimIds', 'mobileNumber operator status')
-    .populate('targetSimIds', 'mobileNumber operator status');
+CallAutomationConfigSchema.statics.findByCompany = async function (companyId) {
+  try {
+    const config = await this.findOne({ companyId, isActive: true })
+      .populate('targetCallerMappings.targetSimId', 'mobileNumber operator status assignedTo')
+      .populate('targetCallerMappings.callerSimIds', 'mobileNumber operator status assignedTo')
+      .populate('callerSimIds', 'mobileNumber operator status')
+      .populate('targetSimIds', 'mobileNumber operator status');
+    return config;
+  } catch (error) {
+    // If populate fails, try without populate
+    console.error('[CALL AUTOMATION] Populate failed, returning without populate:', error.message);
+    return await this.findOne({ companyId, isActive: true });
+  }
 };
 
 // Static method to check if SIM is a caller
@@ -199,7 +221,7 @@ CallAutomationConfigSchema.statics.isCaller = async function (simId, companyId) 
     isActive: true,
     $or: [
       { 'targetCallerMappings.callerSimIds': simId },
-      { callerSimIds: simId } // Backward compatibility
+      { callerSimIds: simId }
     ]
   });
   return config !== null;
@@ -212,7 +234,7 @@ CallAutomationConfigSchema.statics.isTarget = async function (simId, companyId) 
     isActive: true,
     $or: [
       { 'targetCallerMappings.targetSimId': simId },
-      { targetSimIds: simId } // Backward compatibility
+      { targetSimIds: simId }
     ]
   });
   return config !== null;
@@ -220,32 +242,43 @@ CallAutomationConfigSchema.statics.isTarget = async function (simId, companyId) 
 
 // Instance method to get caller SIMs for a specific target
 CallAutomationConfigSchema.methods.getCallersForTarget = function (targetSimId) {
-  const mapping = this.targetCallerMappings?.find(
-    m => m.targetSimId?.toString() === targetSimId?.toString()
-  );
-  return mapping?.callerSimIds || [];
+  try {
+    const mapping = this.targetCallerMappings?.find(
+      m => (m.targetSimId?._id || m.targetSimId)?.toString() === targetSimId?.toString()
+    );
+    return mapping?.callerSimIds || [];
+  } catch (e) {
+    return [];
+  }
 };
 
 // Instance method to get targets for a specific caller
 CallAutomationConfigSchema.methods.getTargetsForCaller = function (callerSimId) {
-  const targets = [];
-  this.targetCallerMappings?.forEach(mapping => {
-    if (mapping.callerSimIds?.some(id => id?.toString() === callerSimId?.toString())) {
-      targets.push({
-        targetSimId: mapping.targetSimId,
-        callDuration: mapping.callDuration || this.callDuration
-      });
-    }
-  });
-  return targets;
+  try {
+    const targets = [];
+    this.targetCallerMappings?.forEach(mapping => {
+      if (mapping.callerSimIds?.some(id => (id._id || id)?.toString() === callerSimId?.toString())) {
+        targets.push({
+          targetSimId: mapping.targetSimId,
+          callDuration: mapping.callDuration || this.callDuration
+        });
+      }
+    });
+    return targets;
+  } catch (e) {
+    return [];
+  }
 };
 
 // Instance method to get next target (round-robin)
 CallAutomationConfigSchema.methods.getNextTargetIndex = function () {
-  const targetCount = this.targetCallerMappings?.length || this.targetSimIds?.length || 0;
-  if (targetCount === 0) return 0;
-  const nextIndex = (this.lastTargetIndex + 1) % targetCount;
-  return nextIndex;
+  try {
+    const targetCount = this.targetCallerMappings?.length || this.targetSimIds?.length || 0;
+    if (targetCount === 0) return 0;
+    return (this.lastTargetIndex + 1) % targetCount;
+  } catch (e) {
+    return 0;
+  }
 };
 
 // Instance method to calculate next run time based on frequency and scheduled time
@@ -255,15 +288,11 @@ CallAutomationConfigSchema.methods.calculateNextRunTime = function () {
 
   switch (this.frequency) {
     case 'hourly':
-      // For hourly, just run every hour from now
       return new Date(now.getTime() + 60 * 60 * 1000);
 
     case 'daily': {
-      // Run at the scheduled time today or tomorrow
       const todayScheduled = new Date(now);
       todayScheduled.setHours(hours, minutes, 0, 0);
-
-      // If the scheduled time has already passed today, schedule for tomorrow
       if (todayScheduled <= now) {
         todayScheduled.setDate(todayScheduled.getDate() + 1);
       }
@@ -274,19 +303,15 @@ CallAutomationConfigSchema.methods.calculateNextRunTime = function () {
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const targetDay = dayNames.indexOf(this.scheduledDay || 'monday');
       const currentDay = now.getDay();
-
-      // Calculate days until next scheduled day
       let daysUntil = targetDay - currentDay;
-      if (daysUntil < 0) daysUntil += 7; // Next week
+      if (daysUntil < 0) daysUntil += 7;
       if (daysUntil === 0) {
-        // Same day - check if time has passed
         const todayScheduled = new Date(now);
         todayScheduled.setHours(hours, minutes, 0, 0);
         if (todayScheduled <= now) {
-          daysUntil = 7; // Next week
+          daysUntil = 7;
         }
       }
-
       const nextRun = new Date(now);
       nextRun.setDate(nextRun.getDate() + daysUntil);
       nextRun.setHours(hours, minutes, 0, 0);
@@ -300,34 +325,41 @@ CallAutomationConfigSchema.methods.calculateNextRunTime = function () {
 
 // Instance method to migrate old format to new format
 CallAutomationConfigSchema.methods.migrateToNewFormat = function () {
-  // Skip if already migrated or no old data
-  if (this.migrated || !this.callerSimIds?.length || !this.targetSimIds?.length) {
+  try {
+    if (this.migrated) return false;
+    if (!this.callerSimIds?.length && !this.targetSimIds?.length) return false;
+
+    // Create mappings: each target gets all callers
+    this.targetCallerMappings = this.targetSimIds.map(targetId => ({
+      targetSimId: targetId,
+      callerSimIds: [...this.callerSimIds],
+      callDuration: this.callDuration
+    }));
+
+    this.migrated = true;
+    return true;
+  } catch (e) {
+    console.error('[CALL AUTOMATION] Migration error:', e.message);
     return false;
   }
-
-  // Create mappings: each target gets all callers
-  this.targetCallerMappings = this.targetSimIds.map(targetId => ({
-    targetSimId: targetId,
-    callerSimIds: [...this.callerSimIds],
-    callDuration: this.callDuration
-  }));
-
-  this.migrated = true;
-  return true;
 };
 
-// Pre-save hook to ensure at least one mapping exists
+// Pre-save hook to ensure data integrity
 CallAutomationConfigSchema.pre('save', function(next) {
-  // If using new format, ensure mappings exist
-  if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
-    // Validate that each mapping has at least one caller
-    for (const mapping of this.targetCallerMappings) {
-      if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
-        return next(new Error('Each target must have at least one caller SIM'));
+  try {
+    // If using new format, ensure mappings exist
+    if (this.targetCallerMappings && this.targetCallerMappings.length > 0) {
+      for (const mapping of this.targetCallerMappings) {
+        if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
+          // Remove empty mappings instead of throwing error
+          this.targetCallerMappings = this.targetCallerMappings.filter(m => m !== mapping);
+        }
       }
     }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 });
 
 module.exports = mongoose.model('CallAutomationConfig', CallAutomationConfigSchema);
