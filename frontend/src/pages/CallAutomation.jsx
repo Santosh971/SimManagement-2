@@ -2,7 +2,8 @@
  * Call Automation Configuration Page
  *
  * Admin page for configuring automated SIM call verification.
- * Allows selection of caller SIMs, target SIMs, call duration, and frequency.
+ * UPDATED: Now supports per-target caller assignment where each target SIM
+ * can have its own set of caller SIMs.
  */
 
 import { useState, useEffect } from 'react'
@@ -20,8 +21,12 @@ import {
   FiAlertCircle,
   FiInfo,
   FiSmartphone,
+  FiPlus,
+  FiTrash2,
+  FiChevronDown,
+  FiChevronUp,
+  FiSettings,
 } from 'react-icons/fi'
-import {  FiSettings } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
   PageContainer,
@@ -33,11 +38,11 @@ import {
   Spinner,
 } from '../components/ui'
 
-// Multi-select SIM component
-function SimMultiSelect({ label, sims, selected, onChange, placeholder, disabled }) {
+// Caller SIM selector component for a target
+function CallerSelector({ callers, selectedCallers, onChange, disabled }) {
   const [search, setSearch] = useState('')
 
-  const filteredSims = sims.filter(sim => {
+  const filteredCallers = callers.filter(sim => {
     if (!search) return true
     const searchLower = search.toLowerCase()
     return (
@@ -47,148 +52,270 @@ function SimMultiSelect({ label, sims, selected, onChange, placeholder, disabled
     )
   })
 
-  const toggleSim = (simId) => {
+  const toggleCaller = (simId) => {
     if (disabled) return
-    if (selected.includes(simId)) {
-      onChange(selected.filter(id => id !== simId))
+    if (selectedCallers.includes(simId)) {
+      onChange(selectedCallers.filter(id => id !== simId))
     } else {
-      onChange([...selected, simId])
+      onChange([...selectedCallers, simId])
     }
   }
 
-  const selectAll = () => {
-    if (disabled) return
-    onChange(filteredSims.map(s => s._id))
-  }
-
-  const clearAll = () => {
-    if (disabled) return
-    onChange([])
-  }
-
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{
-        display: 'block',
-        marginBottom: '8px',
-        fontWeight: '600',
-        fontSize: '14px',
-        color: '#374151'
-      }}>
-        {label}
-      </label>
+    <div>
+      {/* Search */}
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search caller SIMs..."
+        disabled={disabled}
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          border: '1px solid #d1d5db',
+          borderRadius: '6px',
+          fontSize: '12px',
+          marginBottom: '8px',
+          outline: 'none',
+          backgroundColor: disabled ? '#f3f4f6' : '#fff',
+        }}
+      />
 
-      {/* Search and actions */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '6px',
-            fontSize: '13px',
-            outline: 'none',
-            backgroundColor: disabled ? '#f3f4f6' : '#fff',
-          }}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={selectAll}
-          disabled={disabled}
-        >
-          Select All
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={clearAll}
-          disabled={disabled}
-        >
-          Clear
-        </Button>
-      </div>
-
-      {/* Selected count */}
-      <div style={{
-        fontSize: '12px',
-        color: '#6b7280',
-        marginBottom: '8px'
-      }}>
-        {selected.length} SIM{selected.length !== 1 ? 's' : ''} selected
-      </div>
-
-      {/* SIM list */}
+      {/* Caller list */}
       <div style={{
         border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        maxHeight: '200px',
+        borderRadius: '6px',
+        maxHeight: '150px',
         overflow: 'auto',
         backgroundColor: '#fff',
       }}>
-        {filteredSims.length > 0 ? (
-          filteredSims.map((sim) => {
-            const isSelected = selected.includes(sim._id)
+        {filteredCallers.length > 0 ? (
+          filteredCallers.map((sim) => {
+            const isSelected = selectedCallers.includes(sim._id)
             return (
               <div
                 key={sim._id}
-                onClick={() => toggleSim(sim._id)}
+                onClick={() => toggleCaller(sim._id)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
+                  padding: '8px 10px',
                   borderBottom: '1px solid #f3f4f6',
                   cursor: disabled ? 'default' : 'pointer',
                   backgroundColor: isSelected ? '#eff6ff' : '#fff',
-                  transition: 'background-color 0.1s',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '4px',
-                    border: `2px solid ${isSelected ? '#2563eb' : '#d1d5db'}`,
-                    backgroundColor: isSelected ? '#2563eb' : '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    {isSelected && (
-                      <FiCheck style={{ width: '12px', height: '12px', color: '#fff' }} />
-                    )}
+                <div style={{
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '3px',
+                  border: `2px solid ${isSelected ? '#2563eb' : '#d1d5db'}`,
+                  backgroundColor: isSelected ? '#2563eb' : '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: '8px',
+                }}>
+                  {isSelected && (
+                    <FiCheck style={{ width: '10px', height: '10px', color: '#fff' }} />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '500', fontSize: '12px' }}>
+                    {sim.mobileNumber}
                   </div>
-                  <div>
-                    <div style={{ fontWeight: '500', fontSize: '13px' }}>
-                      {sim.mobileNumber}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                      {sim.operator} • {sim.assignedTo?.name || 'Unassigned'}
-                    </div>
+                  <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                    {sim.operator}
                   </div>
                 </div>
-                <Badge
-                  variant={sim.status === 'active' ? 'success' : 'default'}
-                  style={{ fontSize: '10px' }}
-                >
-                  {sim.status}
-                </Badge>
               </div>
             )
           })
         ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
-            {search ? 'No SIMs match your search' : 'No active SIMs available'}
+          <div style={{ padding: '12px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>
+            {search ? 'No callers match' : 'No callers available'}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+// Target selector dropdown
+function TargetSelector({ targets, selectedTargetId, onChange, disabled }) {
+  return (
+    <select
+      value={selectedTargetId || ''}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      style={{
+        width: '100%',
+        padding: '10px 12px',
+        border: '1px solid #d1d5db',
+        borderRadius: '6px',
+        fontSize: '13px',
+        outline: 'none',
+        backgroundColor: disabled ? '#f3f4f6' : '#fff',
+      }}
+    >
+      <option value="">Select a target SIM...</option>
+      {targets.map((sim) => (
+        <option key={sim._id} value={sim._id}>
+          {sim.mobileNumber} ({sim.operator}) - {sim.assignedTo?.name || 'Unassigned'}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+// Target-Caller Mapping Card
+function TargetMappingCard({ mapping, callers, allTargets, onRemove, onUpdateCallers, onUpdateDuration, disabled, globalDuration }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const target = allTargets.find(t => t._id === mapping.targetSimId)
+
+  if (!target) return null
+
+  const selectedCallers = mapping.callerSimIds || []
+
+  return (
+    <Card style={{
+      marginBottom: '16px',
+      border: '1px solid #e5e7eb',
+      boxShadow: 'none',
+    }}>
+      <CardBody style={{ padding: '16px' }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: isExpanded ? '16px' : 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              backgroundColor: '#dcfce7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <FiPhoneIncoming style={{ color: '#16a34a' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: '600', fontSize: '14px', color: '#111827' }}>
+                {target.mobileNumber}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                {target.operator} • {target.assignedTo?.name || 'Unassigned'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Badge variant="success" style={{ fontSize: '11px' }}>
+              {selectedCallers.length} caller{selectedCallers.length !== 1 ? 's' : ''}
+            </Badge>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              disabled={disabled}
+              style={{
+                padding: '4px 8px',
+                border: 'none',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '4px',
+                cursor: disabled ? 'default' : 'pointer',
+              }}
+            >
+              {isExpanded ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+            </button>
+            <button
+              onClick={() => onRemove(mapping.targetSimId)}
+              disabled={disabled}
+              style={{
+                padding: '4px 8px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                borderRadius: '4px',
+                cursor: disabled ? 'default' : 'pointer',
+                color: '#dc2626',
+              }}
+            >
+              <FiTrash2 size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Expanded content */}
+        {isExpanded && (
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '6px',
+                fontWeight: '600',
+                fontSize: '12px',
+                color: '#374151'
+              }}>
+                Caller SIMs (will call this target)
+              </label>
+              <CallerSelector
+                callers={callers}
+                selectedCallers={selectedCallers}
+                onChange={(ids) => onUpdateCallers(mapping.targetSimId, ids)}
+                disabled={disabled}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '4px',
+                  fontWeight: '600',
+                  fontSize: '12px',
+                  color: '#374151'
+                }}>
+                  Call Duration (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={mapping.callDuration || globalDuration}
+                  onChange={(e) => onUpdateDuration(mapping.targetSimId, parseInt(e.target.value) || globalDuration)}
+                  min={10}
+                  max={60}
+                  disabled={disabled}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    outline: 'none',
+                    backgroundColor: disabled ? '#f3f4f6' : '#fff',
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                Global: {globalDuration}s
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed caller preview */}
+        {!isExpanded && selectedCallers.length > 0 && (
+          <div style={{ marginTop: '8px', fontSize: '11px', color: '#6b7280' }}>
+            Called by: {callers
+              .filter(c => selectedCallers.includes(c._id))
+              .map(c => c.mobileNumber)
+              .join(', ')}
+          </div>
+        )}
+      </CardBody>
+    </Card>
   )
 }
 
@@ -197,23 +324,26 @@ export default function CallAutomation() {
   const { api, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [sims, setSims] = useState([])
+  const [callers, setCallers] = useState([]) // SIMs marked as isAdminCaller
+  const [potentialTargets, setPotentialTargets] = useState([]) // All active SIMs
   const [config, setConfig] = useState(null)
 
   // Form state
-  const [callerSimIds, setCallerSimIds] = useState([])
-  const [targetSimIds, setTargetSimIds] = useState([])
+  const [targetCallerMappings, setTargetCallerMappings] = useState([])
   const [callDuration, setCallDuration] = useState(10)
-  const [callDurationError, setCallDurationError] = useState('')
   const [frequency, setFrequency] = useState('daily')
-  const [scheduledTime, setScheduledTime] = useState('09:00') // Time in HH:MM format
-  const [scheduledDay, setScheduledDay] = useState('monday') // Day of week for weekly
+  const [scheduledTime, setScheduledTime] = useState('09:00')
+  const [scheduledDay, setScheduledDay] = useState('monday')
   const [isActive, setIsActive] = useState(true)
 
-  // Computed: Caller SIMs only show SIMs marked as admin caller, exclude SIMs selected as target
-  const callerSims = sims.filter(sim => sim.isAdminCaller && !targetSimIds.includes(sim._id))
-  // Target SIMs show all active SIMs except those selected as caller
-  const targetSims = sims.filter(sim => !callerSimIds.includes(sim._id))
+  // Add target modal state
+  const [showAddTarget, setShowAddTarget] = useState(false)
+  const [newTargetId, setNewTargetId] = useState('')
+  const [newCallerIds, setNewCallerIds] = useState([])
+
+  // Compute available targets (not yet in mappings)
+  const usedTargetIds = targetCallerMappings.map(m => m.targetSimId)
+  const availableTargets = potentialTargets.filter(t => !usedTargetIds.includes(t._id))
 
   useEffect(() => {
     fetchData()
@@ -229,17 +359,24 @@ export default function CallAutomation() {
         api.get('/call-automation/config')
       ])
 
-      setSims(simsRes.data.data || [])
+      const simsData = simsRes.data.data || {}
+      setCallers(simsData.callers || [])
+      setPotentialTargets(simsData.potentialTargets || simsData.all || [])
 
       if (configRes.data.data) {
         const existingConfig = configRes.data.data
         setConfig(existingConfig)
-        const loadedCallers = existingConfig.callerSimIds?.map(s => s._id || s) || []
-        const loadedTargets = existingConfig.targetSimIds?.map(s => s._id || s) || []
-        // Remove any SIM from targets that is also in callers (defensive cleanup)
-        const cleanedTargets = loadedTargets.filter(id => !loadedCallers.includes(id))
-        setCallerSimIds(loadedCallers)
-        setTargetSimIds(cleanedTargets)
+
+        // Load new format mappings
+        if (existingConfig.targetCallerMappings && existingConfig.targetCallerMappings.length > 0) {
+          const mappings = existingConfig.targetCallerMappings.map(m => ({
+            targetSimId: m.targetSimId._id || m.targetSimId,
+            callerSimIds: (m.callerSimIds || []).map(c => c._id || c),
+            callDuration: m.callDuration || existingConfig.callDuration || 10
+          }))
+          setTargetCallerMappings(mappings)
+        }
+
         setCallDuration(existingConfig.callDuration || 10)
         setFrequency(existingConfig.frequency || 'daily')
         setScheduledTime(existingConfig.scheduledTime || '09:00')
@@ -254,40 +391,90 @@ export default function CallAutomation() {
     }
   }
 
-  const handleSave = async () => {
-    // Validation
-    if (callerSimIds.length === 0) {
+  const handleAddTarget = () => {
+    if (!newTargetId) {
+      toast.error('Please select a target SIM')
+      return
+    }
+    if (newCallerIds.length === 0) {
       toast.error('Please select at least one caller SIM')
       return
     }
 
-    if (targetSimIds.length === 0) {
-      toast.error('Please select at least one target SIM')
+    // Check if target already exists
+    if (usedTargetIds.includes(newTargetId)) {
+      toast.error('This target SIM is already added')
       return
     }
 
-    if (!callDuration || callDuration < 10 || callDuration > 60) {
-      toast.error('Call duration must be between 10 and 60 seconds')
+    // Check overlap - target cannot be in callers
+    if (newCallerIds.includes(newTargetId)) {
+      toast.error('Target SIM cannot also be a caller')
       return
     }
 
-    // Check for overlap between caller and target SIMs
-    const overlap = callerSimIds.filter(id => targetSimIds.includes(id))
-    if (overlap.length > 0) {
-      const overlappingNumbers = sims
-        .filter(sim => overlap.includes(sim._id))
-        .map(sim => sim.mobileNumber)
-        .join(', ')
-      toast.error(`A SIM cannot be both Caller and Target. Remove from one list: ${overlappingNumbers}`)
+    setTargetCallerMappings([
+      ...targetCallerMappings,
+      {
+        targetSimId: newTargetId,
+        callerSimIds: newCallerIds,
+        callDuration: callDuration
+      }
+    ])
+
+    // Reset form
+    setNewTargetId('')
+    setNewCallerIds([])
+    setShowAddTarget(false)
+    toast.success('Target SIM added')
+  }
+
+  const handleRemoveTarget = (targetSimId) => {
+    setTargetCallerMappings(targetCallerMappings.filter(m => m.targetSimId !== targetSimId))
+  }
+
+  const handleUpdateCallers = (targetSimId, callerIds) => {
+    setTargetCallerMappings(targetCallerMappings.map(m =>
+      m.targetSimId === targetSimId ? { ...m, callerSimIds: callerIds } : m
+    ))
+  }
+
+  const handleUpdateDuration = (targetSimId, duration) => {
+    const validDuration = Math.min(60, Math.max(10, duration))
+    setTargetCallerMappings(targetCallerMappings.map(m =>
+      m.targetSimId === targetSimId ? { ...m, callDuration: validDuration } : m
+    ))
+  }
+
+  const handleSave = async () => {
+    // Validation
+    if (targetCallerMappings.length === 0) {
+      toast.error('Please add at least one target SIM')
       return
+    }
+
+    // Validate each mapping
+    for (const mapping of targetCallerMappings) {
+      if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
+        const target = potentialTargets.find(t => t._id === mapping.targetSimId)
+        toast.error(`Target ${target?.mobileNumber || mapping.targetSimId} needs at least one caller SIM`)
+        return
+      }
+    }
+
+    // Check for overlap
+    for (const mapping of targetCallerMappings) {
+      if (mapping.callerSimIds.includes(mapping.targetSimId)) {
+        toast.error('A SIM cannot be both caller and target')
+        return
+      }
     }
 
     setSaving(true)
 
     try {
       const data = {
-        callerSimIds,
-        targetSimIds,
+        targetCallerMappings,
         callDuration: parseInt(callDuration),
         frequency,
         scheduledTime,
@@ -346,7 +533,7 @@ export default function CallAutomation() {
     <PageContainer>
       <PageHeader
         title="Call Automation"
-        description="Configure automated SIM call verification to keep SIMs active"
+        description="Configure automated SIM call verification with per-target caller assignment"
         icon={FiPhone}
         action={
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -388,11 +575,7 @@ export default function CallAutomation() {
                 </div>
                 <div style={{ fontSize: '13px', color: '#6b7280' }}>
                   {isActive
-                    ? frequency === 'hourly'
-                      ? `Calls every hour with ${callDuration}s duration`
-                      : frequency === 'daily'
-                        ? `Calls daily at ${scheduledTime} with ${callDuration}s duration`
-                        : `Calls every ${scheduledDay} at ${scheduledTime} with ${callDuration}s duration`
+                    ? `${targetCallerMappings.length} target SIMs configured • ${frequency === 'hourly' ? 'Every hour' : frequency === 'daily' ? `Daily at ${scheduledTime}` : `Every ${scheduledDay} at ${scheduledTime}`}`
                     : 'Enable to start automated calls'}
                 </div>
               </div>
@@ -414,69 +597,178 @@ export default function CallAutomation() {
           <div style={{ display: 'flex', gap: '12px' }}>
             <FiInfo style={{ width: '20px', height: '20px', color: '#2563eb', flexShrink: 0 }} />
             <div style={{ fontSize: '13px', color: '#1e40af' }}>
-              <strong>How it works:</strong> Caller SIMs will make outgoing calls to Target SIMs at the configured frequency.
-              This keeps your SIMs active and prevents deactivation due to inactivity.
+              <strong>How it works:</strong> Each target SIM can have its own set of caller SIMs.
+              When a caller SIM makes a call, it will call only the targets it's assigned to.
               <br /><br />
-              <strong>Note:</strong> This feature is for enterprise use only. Ensure you have proper permissions before enabling automated calls.
+              <strong>Example:</strong> Caller A can call Target 1 and Target 2, while Caller B can call only Target 3.
             </div>
           </div>
         </CardBody>
       </Card>
 
-      {/* Configuration Form */}
+      {/* Target-Caller Mappings */}
+      <Card style={{ marginBottom: '24px' }}>
+        <CardBody>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+                Target SIMs & Their Callers
+              </h3>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                Configure which caller SIMs will call each target SIM
+              </p>
+            </div>
+            {availableTargets.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FiPlus}
+                onClick={() => setShowAddTarget(!showAddTarget)}
+                disabled={!isActive}
+              >
+                Add Target
+              </Button>
+            )}
+          </div>
+
+          {/* Add Target Form */}
+          {showAddTarget && (
+            <Card style={{
+              marginBottom: '20px',
+              backgroundColor: '#f9fafb',
+              border: '2px dashed #d1d5db',
+            }}>
+              <CardBody style={{ padding: '16px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
+                  Add New Target
+                </h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '6px',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      color: '#374151'
+                    }}>
+                      Select Target SIM
+                    </label>
+                    <TargetSelector
+                      targets={availableTargets}
+                      selectedTargetId={newTargetId}
+                      onChange={setNewTargetId}
+                      disabled={!isActive}
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '6px',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      color: '#374151'
+                    }}>
+                      Select Callers for this Target
+                    </label>
+                    <CallerSelector
+                      callers={callers}
+                      selectedCallers={newCallerIds}
+                      onChange={setNewCallerIds}
+                      disabled={!isActive}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddTarget(false)
+                      setNewTargetId('')
+                      setNewCallerIds([])
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddTarget}
+                    disabled={!newTargetId || newCallerIds.length === 0}
+                  >
+                    Add Target
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Existing Mappings */}
+          {targetCallerMappings.length > 0 ? (
+            targetCallerMappings.map((mapping) => (
+              <TargetMappingCard
+                key={mapping.targetSimId}
+                mapping={mapping}
+                callers={callers}
+                allTargets={potentialTargets}
+                onRemove={handleRemoveTarget}
+                onUpdateCallers={handleUpdateCallers}
+                onUpdateDuration={handleUpdateDuration}
+                disabled={!isActive}
+                globalDuration={callDuration}
+              />
+            ))
+          ) : (
+            <div style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              backgroundColor: '#f9fafb',
+              borderRadius: '8px',
+              border: '2px dashed #e5e7eb',
+            }}>
+              <FiPhoneIncoming style={{ width: '48px', height: '48px', color: '#9ca3af', marginBottom: '16px' }} />
+              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                No Target SIMs Configured
+              </h4>
+              <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
+                Click "Add Target" above to add target SIMs and assign caller SIMs to them
+              </p>
+              {availableTargets.length > 0 && (
+                <Button
+                  variant="secondary"
+                  icon={FiPlus}
+                  onClick={() => setShowAddTarget(true)}
+                >
+                  Add First Target
+                </Button>
+              )}
+            </div>
+          )}
+
+          {availableTargets.length === 0 && targetCallerMappings.length === 0 && (
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '6px',
+              fontSize: '13px',
+              color: '#92400e',
+            }}>
+              <FiAlertCircle style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              No active SIMs available. Please add SIMs in the SIMs page first.
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Global Settings */}
       <Card>
         <CardBody>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FiPhoneOutgoing style={{ color: '#2563eb' }} />
-            Caller SIMs (will make outgoing calls)
+          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>
+            Global Settings
           </h3>
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: 0, marginBottom: '12px' }}>
-            Only SIMs marked as "Admin Caller SIM" in the SIMs page will appear here.
-          </p>
 
-          <SimMultiSelect
-            label=""
-            sims={callerSims}
-            selected={callerSimIds}
-            onChange={setCallerSimIds}
-            placeholder="Search caller SIMs..."
-            disabled={!isActive}
-          />
-
-          <div style={{
-            marginTop: '12px',
-            padding: '8px 12px',
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fde68a',
-            borderRadius: '6px',
-            fontSize: '12px',
-            color: '#92400e',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-            <FiAlertCircle style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-            A SIM selected as a Caller cannot also be a Target, and vice versa.
-          </div>
-
-          <div style={{ marginTop: '32px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FiPhoneIncoming style={{ color: '#16a34a' }} />
-              Target SIMs – receive incoming calls
-            </h3>
-
-            <SimMultiSelect
-              label=""
-              sims={targetSims}
-              selected={targetSimIds}
-              onChange={setTargetSimIds}
-              placeholder="Search target SIMs..."
-              disabled={!isActive}
-            />
-          </div>
-
-          {/* Call Settings */}
-          <div style={{ marginTop: '32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             <div>
               <label style={{
                 display: 'block',
@@ -485,40 +777,15 @@ export default function CallAutomation() {
                 fontSize: '14px',
                 color: '#374151'
               }}>
-                Call Duration (seconds)
+                Default Call Duration (seconds)
               </label>
               <input
                 type="number"
                 value={callDuration}
                 onChange={(e) => {
-                  const raw = e.target.value
-                  if (raw === '') {
-                    setCallDuration('')
-                    setCallDurationError('Call duration is required')
-                    return
-                  }
-                  const val = parseInt(raw, 10)
-                  if (isNaN(val)) return
-                  if (val < 10) {
-                    setCallDuration(10)
-                    setCallDurationError('Minimum duration is 10 seconds')
-                  } else if (val > 60) {
-                    setCallDuration(60)
-                    setCallDurationError('Maximum duration is 60 seconds')
-                  } else {
+                  const val = parseInt(e.target.value, 10)
+                  if (!isNaN(val) && val >= 10 && val <= 60) {
                     setCallDuration(val)
-                    setCallDurationError('')
-                  }
-                }}
-                onBlur={() => {
-                  if (callDuration === '' || callDuration < 10) {
-                    setCallDuration(10)
-                    setCallDurationError('')
-                  } else if (callDuration > 60) {
-                    setCallDuration(60)
-                    setCallDurationError('')
-                  } else {
-                    setCallDurationError('')
                   }
                 }}
                 min={10}
@@ -527,15 +794,15 @@ export default function CallAutomation() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  border: callDurationError ? '1px solid #ef4444' : '1px solid #d1d5db',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
                   backgroundColor: isActive ? '#fff' : '#f3f4f6',
                 }}
               />
-              <div style={{ fontSize: '12px', color: callDurationError ? '#ef4444' : '#6b7280', marginTop: '4px' }}>
-                {callDurationError || 'Min: 10 seconds, Max: 60 seconds'}
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Default duration (10-60 seconds). Can be overridden per target.
               </div>
             </div>
 
@@ -598,7 +865,7 @@ export default function CallAutomation() {
                 }}
               />
               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                {frequency === 'hourly' ? 'Not applicable for hourly frequency' : 'Time at which calls will be made each day'}
+                {frequency === 'hourly' ? 'Not applicable for hourly frequency' : 'Time for calls'}
               </div>
             </div>
 
@@ -635,9 +902,6 @@ export default function CallAutomation() {
                   <option value="friday">Friday</option>
                   <option value="saturday">Saturday</option>
                 </select>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  Day when weekly calls will be made
-                </div>
               </div>
             )}
 
@@ -666,25 +930,28 @@ export default function CallAutomation() {
             </div>
           </div>
 
+          {/* Warning about SIM overlap */}
+          <div style={{
+            marginTop: '20px',
+            padding: '12px 16px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#92400e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <FiAlertCircle style={{ flexShrink: 0 }} />
+            A SIM cannot be both a Caller and a Target at the same time.
+          </div>
+
           {/* Save Button */}
-          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (config) {
-                  const loadedCallers = config.callerSimIds?.map(s => s._id || s) || []
-                  const loadedTargets = config.targetSimIds?.map(s => s._id || s) || []
-                  // Remove any SIM from targets that is also in callers (defensive)
-                  const cleanedTargets = loadedTargets.filter(id => !loadedCallers.includes(id))
-                  setCallerSimIds(loadedCallers)
-                  setTargetSimIds(cleanedTargets)
-                  setCallDuration(config.callDuration || 10)
-                  setFrequency(config.frequency || 'daily')
-                  setScheduledTime(config.scheduledTime || '09:00')
-                  setScheduledDay(config.scheduledDay || 'monday')
-                  setIsActive(config.isActive ?? true)
-                }
-              }}
+              onClick={() => fetchData()}
             >
               Reset
             </Button>
@@ -692,134 +959,33 @@ export default function CallAutomation() {
               icon={FiSave}
               onClick={handleSave}
               loading={saving}
-              disabled={!isActive && callerSimIds.length === 0}
+              disabled={!isActive && targetCallerMappings.length === 0}
             >
               Save Configuration
             </Button>
           </div>
 
-    {/* ── Mobile App Sync Note ── */}
-    <div style={{
-      marginTop: '20px',
-      padding: '14px 16px',
-      backgroundColor: '#fffbeb',
-      border: '1px solid #fde68a',
-      borderLeft: '4px solid #f59e0b',
-      borderRadius: '8px',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '12px',
-    }}>
-      {/* Warning icon */}
-      <div style={{ flexShrink: 0, marginTop: '1px' }}>
-        <FiInfo style={{ width: '18px', height: '18px', color: '#d97706' }} />
-      </div>
-
-      <div style={{ minWidth: 0 }}>
-        <p style={{
-          fontSize: '13px',
-          fontWeight: '600',
-          color: '#92400e',
-          margin: '0 0 6px 0',
-        }}>
-          Important: Sync Required on Mobile App
-        </p>
-        <p style={{
-          fontSize: '13px',
-          color: '#78350f',
-          margin: '0 0 10px 0',
-          lineHeight: '1.6',
-        }}>
-          After saving or scheduling the automation, you must refresh the schedule on the mobile app for changes to take effect.
-        </p>
-
-        {/* Steps */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: '6px',
-        }}>
-          {/* Step 1 */}
+          {/* Mobile App Sync Note */}
           <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            backgroundColor: '#fef3c7',
+            marginTop: '24px',
+            padding: '14px 16px',
+            backgroundColor: '#fffbeb',
             border: '1px solid #fde68a',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: '500',
-            color: '#92400e',
-            whiteSpace: 'nowrap',
+            borderLeft: '4px solid #f59e0b',
+            borderRadius: '8px',
           }}>
-            <FiSmartphone style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-            "More" Tab
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <FiInfo style={{ width: '18px', height: '18px', color: '#d97706', flexShrink: 0, marginTop: '1px' }} />
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', margin: '0 0 6px 0' }}>
+                  Important: Sync Required on Mobile App
+                </p>
+                <p style={{ fontSize: '12px', color: '#78350f', margin: 0, lineHeight: '1.6' }}>
+                  After saving, open the mobile app → More → Settings → Call Automation → Tap "Refresh" for changes to take effect.
+                </p>
+              </div>
+            </div>
           </div>
-
-          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
-
-          {/* Step 2 */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fde68a',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: '500',
-            color: '#92400e',
-            whiteSpace: 'nowrap',
-          }}>
-            <FiSettings style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-            "Settings"
-          </div>
-
-          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
-
-          {/* Step 3 */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fde68a',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: '500',
-            color: '#92400e',
-            whiteSpace: 'nowrap',
-          }}>
-            "Call Automation" section
-          </div>
-
-          <span style={{ color: '#d97706', fontSize: '13px', fontWeight: '600' }}>→</span>
-
-          {/* Step 4 */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            backgroundColor: '#d97706',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: '600',
-            color: '#fff',
-            whiteSpace: 'nowrap',
-          }}>
-            <FiRefreshCw style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-            Tap "Refresh"
-          </div>
-        </div>
-      </div>
-    </div>
-
-
         </CardBody>
       </Card>
     </PageContainer>

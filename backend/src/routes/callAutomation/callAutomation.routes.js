@@ -2,6 +2,7 @@
  * Call Automation Routes
  *
  * API routes for call automation configuration management.
+ * UPDATED: Now supports per-target caller assignment.
  */
 
 const express = require('express');
@@ -16,16 +17,28 @@ const { validate } = require('../../middleware/validate');
 // VALIDATION RULES
 // =============================================
 
+// Updated validation for new format with targetCallerMappings
 const saveConfigValidation = [
-  body('callerSimIds')
+  body('targetCallerMappings')
     .isArray({ min: 1 })
-    .withMessage('At least one caller SIM is required'),
-  body('targetSimIds')
+    .withMessage('At least one target-caller mapping is required'),
+  body('targetCallerMappings.*.targetSimId')
+    .isMongoId()
+    .withMessage('Each mapping must have a valid target SIM ID'),
+  body('targetCallerMappings.*.callerSimIds')
     .isArray({ min: 1 })
-    .withMessage('At least one target SIM is required'),
-  body('callDuration')
+    .withMessage('Each target must have at least one caller SIM'),
+  body('targetCallerMappings.*.callerSimIds.*')
+    .isMongoId()
+    .withMessage('Each caller SIM ID must be a valid MongoDB ID'),
+  body('targetCallerMappings.*.callDuration')
+    .optional()
     .isInt({ min: 10, max: 60 })
-    .withMessage('Call duration must be between 10 and 60 seconds'),
+    .withMessage('Per-target call duration must be between 10 and 60 seconds'),
+  body('callDuration')
+    .optional()
+    .isInt({ min: 10, max: 60 })
+    .withMessage('Global call duration must be between 10 and 60 seconds'),
   body('frequency')
     .optional()
     .isIn(['hourly', 'daily', 'weekly'])
@@ -42,11 +55,13 @@ const saveConfigValidation = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean'),
-  body('callerSimIds').custom((callerSimIds, { req }) => {
-    const targetSimIds = req.body.targetSimIds || [];
-    const overlap = callerSimIds.filter(id => targetSimIds.includes(id));
+  // Custom validation: no overlap between callers and targets
+  body('targetCallerMappings').custom((mappings) => {
+    const allTargetIds = mappings.map(m => m.targetSimId);
+    const allCallerIds = mappings.flatMap(m => m.callerSimIds);
+    const overlap = allTargetIds.filter(id => allCallerIds.includes(id));
     if (overlap.length > 0) {
-      throw new Error('Caller SIMs and Target SIMs cannot overlap. A SIM cannot be both a caller and a target.');
+      throw new Error('A SIM cannot be both a caller and a target');
     }
     return true;
   }),
@@ -56,6 +71,28 @@ const toggleValidation = [
   body('isActive')
     .isBoolean()
     .withMessage('isActive must be a boolean'),
+];
+
+const addMappingValidation = [
+  body('targetSimId')
+    .isMongoId()
+    .withMessage('Target SIM ID must be a valid MongoDB ID'),
+  body('callerSimIds')
+    .isArray({ min: 1 })
+    .withMessage('At least one caller SIM is required'),
+  body('callerSimIds.*')
+    .isMongoId()
+    .withMessage('Each caller SIM ID must be a valid MongoDB ID'),
+  body('callDuration')
+    .optional()
+    .isInt({ min: 10, max: 60 })
+    .withMessage('Call duration must be between 10 and 60 seconds'),
+];
+
+const removeMappingValidation = [
+  param('targetSimId')
+    .isMongoId()
+    .withMessage('Target SIM ID must be a valid MongoDB ID'),
 ];
 
 const deviceConfigValidation = [
@@ -109,6 +146,24 @@ router.get(
   '/eligible-sims',
   authorize('super_admin', 'admin'),
   callAutomationController.getEligibleSims
+);
+
+// Add a new target-caller mapping (admin only)
+router.post(
+  '/mapping',
+  authorize('super_admin', 'admin'),
+  addMappingValidation,
+  validate,
+  callAutomationController.addTargetMapping
+);
+
+// Remove a target-caller mapping (admin only)
+router.delete(
+  '/mapping/:targetSimId',
+  authorize('super_admin', 'admin'),
+  removeMappingValidation,
+  validate,
+  callAutomationController.removeTargetMapping
 );
 
 // =============================================

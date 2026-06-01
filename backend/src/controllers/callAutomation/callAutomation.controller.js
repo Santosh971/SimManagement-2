@@ -2,6 +2,7 @@
  * Call Automation Controller
  *
  * Handles HTTP requests for call automation configuration.
+ * UPDATED: Now supports per-target caller assignment.
  */
 
 const callAutomationService = require('../../services/callAutomation/callAutomation.service');
@@ -17,7 +18,9 @@ class CallAutomationController {
   async saveConfig(req, res, next) {
     try {
       logger.info('[CALL AUTOMATION CONTROLLER] saveConfig request body:', {
-        body: req.body,
+        mappingsCount: req.body.targetCallerMappings?.length || 0,
+        frequency: req.body.frequency,
+        isActive: req.body.isActive,
       });
 
       const config = await callAutomationService.saveConfig(req.body, req.user);
@@ -26,15 +29,14 @@ class CallAutomationController {
       await auditLogService.logAction({
         action: 'CALL_AUTOMATION_CONFIG_SAVE',
         module: 'CALL_AUTOMATION',
-        description: `Saved call automation configuration`,
+        description: `Saved call automation configuration with ${config.targetCallerMappings.length} target-caller mappings`,
         performedBy: req.user._id,
         role: req.user.role,
         companyId: config.companyId,
         entityId: config._id,
         entityType: 'CallAutomationConfig',
         metadata: {
-          callerCount: config.callerSimIds.length,
-          targetCount: config.targetSimIds.length,
+          mappingsCount: config.targetCallerMappings.length,
           callDuration: config.callDuration,
           frequency: config.frequency,
           scheduledTime: config.scheduledTime,
@@ -173,6 +175,81 @@ class CallAutomationController {
       });
     } catch (error) {
       logger.error('[CALL AUTOMATION CONTROLLER] Update last run error', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * Add a new target-caller mapping
+   * POST /api/call-automation/mapping
+   */
+  async addTargetMapping(req, res, next) {
+    try {
+      const { targetSimId, callerSimIds, callDuration } = req.body;
+
+      logger.info('[CALL AUTOMATION CONTROLLER] Add target mapping request:', {
+        targetSimId,
+        callersCount: callerSimIds?.length || 0,
+      });
+
+      const config = await callAutomationService.addTargetMapping(req.user, {
+        targetSimId,
+        callerSimIds,
+        callDuration
+      });
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'CALL_AUTOMATION_MAPPING_ADD',
+        module: 'CALL_AUTOMATION',
+        description: `Added target-caller mapping`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: config.companyId,
+        entityId: config._id,
+        entityType: 'CallAutomationConfig',
+        metadata: { targetSimId, callersCount: callerSimIds?.length },
+        req,
+      });
+
+      return successResponse(res, config, 'Target mapping added successfully');
+    } catch (error) {
+      logger.error('[CALL AUTOMATION CONTROLLER] Add mapping error', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * Remove a target-caller mapping
+   * DELETE /api/call-automation/mapping/:targetSimId
+   */
+  async removeTargetMapping(req, res, next) {
+    try {
+      const { targetSimId } = req.params;
+
+      logger.info('[CALL AUTOMATION CONTROLLER] Remove target mapping request:', {
+        targetSimId,
+      });
+
+      const config = await callAutomationService.removeTargetMapping(req.user, targetSimId);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'CALL_AUTOMATION_MAPPING_REMOVE',
+        module: 'CALL_AUTOMATION',
+        description: `Removed target-caller mapping`,
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: config.companyId,
+        entityId: config._id,
+        entityType: 'CallAutomationConfig',
+        metadata: { targetSimId },
+        req,
+      });
+
+      return successResponse(res, config, 'Target mapping removed successfully');
+    } catch (error) {
+      logger.error('[CALL AUTOMATION CONTROLLER] Remove mapping error', { error: error.message });
       next(error);
     }
   }

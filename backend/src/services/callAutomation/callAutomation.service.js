@@ -3,6 +3,9 @@
  *
  * Business logic for automated SIM call verification system.
  * Handles configuration management, role determination, and target rotation.
+ *
+ * UPDATED: Now supports per-target caller assignment where each target SIM
+ * can have its own set of caller SIMs.
  */
 
 const CallAutomationConfig = require('../../models/callAutomation/callAutomation.model');
@@ -19,7 +22,7 @@ class CallAutomationService {
    * @returns {Object} Saved configuration
    */
   async saveConfig(data, user) {
-    const { callerSimIds, targetSimIds, callDuration, frequency, scheduledTime, scheduledDay, isActive } = data;
+    const { targetCallerMappings, callDuration, frequency, scheduledTime, scheduledDay, isActive } = data;
 
     // Determine company ID
     const companyId = user.role === 'super_admin' ? data.companyId : user.companyId;
@@ -28,19 +31,32 @@ class CallAutomationService {
       throw new ForbiddenError('Company ID is required');
     }
 
-    // Validate caller SIMs
-    if (!callerSimIds || callerSimIds.length === 0) {
-      throw new ValidationError('At least one caller SIM is required');
+    // Validate targetCallerMappings
+    if (!targetCallerMappings || targetCallerMappings.length === 0) {
+      throw new ValidationError('At least one target-caller mapping is required');
     }
 
-    // Validate target SIMs
-    if (!targetSimIds || targetSimIds.length === 0) {
-      throw new ValidationError('At least one target SIM is required');
+    // Validate each mapping
+    for (const mapping of targetCallerMappings) {
+      if (!mapping.targetSimId) {
+        throw new ValidationError('Each mapping must have a target SIM');
+      }
+      if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
+        throw new ValidationError('Each target must have at least one caller SIM');
+      }
     }
 
     // Validate call duration
-    if (callDuration < 10 || callDuration > 60) {
+    const globalDuration = callDuration || 10;
+    if (globalDuration < 10 || globalDuration > 60) {
       throw new ValidationError('Call duration must be between 10 and 60 seconds');
+    }
+
+    // Validate per-target durations
+    for (const mapping of targetCallerMappings) {
+      if (mapping.callDuration && (mapping.callDuration < 10 || mapping.callDuration > 60)) {
+        throw new ValidationError('Per-target call duration must be between 10 and 60 seconds');
+      }
     }
 
     // Validate scheduled time format
@@ -48,42 +64,29 @@ class CallAutomationService {
       throw new ValidationError('Scheduled time must be in HH:MM format');
     }
 
-    // Verify all SIMs belong to the company
-    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
-    const callerSimDocs = await Sim.find({
-      _id: { $in: callerSimIds },
+    // Collect all unique SIM IDs
+    const allTargetIds = [...new Set(targetCallerMappings.map(m => m.targetSimId.toString()))];
+    const allCallerIds = [...new Set(
+      targetCallerMappings.flatMap(m => m.callerSimIds.map(id => id.toString()))
+    )];
+
+    // Check for overlap between callers and targets
+    const overlap = allTargetIds.filter(id => allCallerIds.includes(id));
+    if (overlap.length > 0) {
+      throw new ValidationError('A SIM cannot be both a caller and a target');
+    }
+
+    // Verify all SIMs belong to the company and are active
+    const allSimIds = [...new Set([...allTargetIds, ...allCallerIds])];
+    const sims = await Sim.find({
+      _id: { $in: allSimIds },
       companyId,
     });
 
-    if (callerSimDocs.length !== callerSimIds.length) {
-      throw new ValidationError('One or more caller SIMs not found or not active');
-    }
-
-    const targetSimDocs = await Sim.find({
-      _id: { $in: targetSimIds },
-      companyId,
-    });
-
-    if (targetSimDocs.length !== targetSimIds.length) {
-      throw new ValidationError('One or more target SIMs not found or not active');
-    }
-
-    // Check for overlap between caller and target SIMs
-    const overlapIds = callerSimIds.filter(id =>
-      targetSimIds.some(targetId => targetId.toString() === id.toString())
-    );
-
-    if (overlapIds.length > 0) {
-      const allSimDocs = [...callerSimDocs, ...targetSimDocs];
-      const overlappingNumbers = [...new Set(overlapIds.map(id => id.toString()))]
-        .map(idStr => {
-          const sim = allSimDocs.find(s => s._id.toString() === idStr);
-          return sim ? sim.mobileNumber : idStr;
-        })
-        .join(', ');
-      throw new ValidationError(
-        `A SIM cannot be both Caller and Target. Remove from one list: ${overlappingNumbers}`
-      );
+    if (sims.length !== allSimIds.length) {
+      const foundIds = sims.map(s => s._id.toString());
+      const missingIds = allSimIds.filter(id => !foundIds.includes(id));
+      throw new ValidationError(`Some SIMs not found or don't belong to this company: ${missingIds.join(', ')}`);
     }
 
     // Check for existing config
@@ -91,37 +94,53 @@ class CallAutomationService {
 
     logger.info('[CALL AUTOMATION] saveConfig called with:', {
       companyId,
+      mappingsCount: targetCallerMappings.length,
       frequency,
       scheduledTime,
       scheduledDay,
-      callDuration,
+      callDuration: globalDuration,
       isActive,
       existingConfig: config ? config._id : 'new',
     });
 
     if (config) {
       // Update existing config
-      config.callerSimIds = callerSimIds;
-      config.targetSimIds = targetSimIds;
-      config.callDuration = callDuration;
+      config.targetCallerMappings = targetCallerMappings.map(mapping => ({
+        targetSimId: mapping.targetSimId,
+        callerSimIds: mapping.callerSimIds,
+        callDuration: mapping.callDuration || globalDuration,
+      }));
+
+      // Clear old format data
+      config.callerSimIds = [];
+      config.targetSimIds = [];
+
+      config.callDuration = globalDuration;
       config.frequency = frequency || 'daily';
       config.scheduledTime = scheduledTime || '09:00';
       config.scheduledDay = scheduledDay || 'monday';
       config.isActive = isActive !== undefined ? isActive : true;
       config.updatedBy = user._id;
+      config.migrated = true;
       config.nextRunAt = config.calculateNextRunTime();
     } else {
       // Create new config
       config = new CallAutomationConfig({
         companyId,
-        callerSimIds,
-        targetSimIds,
-        callDuration,
+        targetCallerMappings: targetCallerMappings.map(mapping => ({
+          targetSimId: mapping.targetSimId,
+          callerSimIds: mapping.callerSimIds,
+          callDuration: mapping.callDuration || globalDuration,
+        })),
+        callerSimIds: [], // Empty, using new format
+        targetSimIds: [], // Empty, using new format
+        callDuration: globalDuration,
         frequency: frequency || 'daily',
         scheduledTime: scheduledTime || '09:00',
         scheduledDay: scheduledDay || 'monday',
         isActive: isActive !== undefined ? isActive : true,
         createdBy: user._id,
+        migrated: true,
         nextRunAt: new Date(Date.now() + 60 * 1000), // First run in 1 minute
       });
     }
@@ -131,25 +150,25 @@ class CallAutomationService {
     logger.info('[CALL AUTOMATION] Config saved successfully:', {
       configId: config._id,
       companyId,
+      mappingsCount: config.targetCallerMappings.length,
       frequency: config.frequency,
       scheduledTime: config.scheduledTime,
-      scheduledDay: config.scheduledDay,
-      callDuration: config.callDuration,
       isActive: config.isActive,
-      nextRunAt: config.nextRunAt,
     });
 
     // Populate for response
-    await config.populate('callerSimIds', 'mobileNumber operator status');
-    await config.populate('targetSimIds', 'mobileNumber operator status');
+    await this.populateConfig(config);
 
-    logger.info('[CALL AUTOMATION] Config saved', {
-      companyId,
-      callerCount: callerSimIds.length,
-      targetCount: targetSimIds.length,
-      isActive: config.isActive
-    });
+    return config;
+  }
 
+  /**
+   * Populate config with SIM details
+   * @param {Object} config - Config document
+   */
+  async populateConfig(config) {
+    await config.populate('targetCallerMappings.targetSimId', 'mobileNumber operator status assignedTo');
+    await config.populate('targetCallerMappings.callerSimIds', 'mobileNumber operator status assignedTo');
     return config;
   }
 
@@ -166,16 +185,26 @@ class CallAutomationService {
       throw new ForbiddenError('Company ID is required');
     }
 
-    const config = await CallAutomationConfig.findByCompany(targetCompanyId);
+    let config = await CallAutomationConfig.findByCompany(targetCompanyId);
 
     if (config) {
+      // Check if migration is needed
+      if (!config.migrated && config.callerSimIds?.length > 0 && config.targetSimIds?.length > 0) {
+        logger.info('[CALL AUTOMATION] Migrating old config format to new format', {
+          configId: config._id,
+          companyId: targetCompanyId
+        });
+        config.migrateToNewFormat();
+        await config.save();
+        config = await CallAutomationConfig.findByCompany(targetCompanyId);
+      }
+
       logger.info('[CALL AUTOMATION] getConfig returning:', {
         configId: config._id,
         companyId: config.companyId,
+        mappingsCount: config.targetCallerMappings?.length || 0,
         frequency: config.frequency,
         scheduledTime: config.scheduledTime,
-        scheduledDay: config.scheduledDay,
-        callDuration: config.callDuration,
         isActive: config.isActive,
       });
     } else {
@@ -260,15 +289,7 @@ class CallAutomationService {
     const config = await CallAutomationConfig.findOne({
       companyId: configCompanyId,
       isActive: true
-    }).populate('targetSimIds', 'mobileNumber');
-
-    logger.info('[CALL AUTOMATION] Config found:', config ? {
-      configId: config._id,
-      companyId: config.companyId,
-      isActive: config.isActive,
-      callerSimIds: config.callerSimIds,
-      targetSimIds: config.targetSimIds?.map(t => t._id || t),
-    } : 'No config found');
+    });
 
     if (!config) {
       logger.info('[CALL AUTOMATION] No active config for company:', configCompanyId);
@@ -285,17 +306,53 @@ class CallAutomationService {
       };
     }
 
-    // Determine role
+    // Migrate if needed
+    if (!config.migrated && config.callerSimIds?.length > 0 && config.targetSimIds?.length > 0) {
+      config.migrateToNewFormat();
+      await config.save();
+    }
+
+    // Determine role based on new mapping structure
     const simIdStr = sim._id.toString();
-    const isCaller = config.callerSimIds.some(id => id.toString() === simIdStr);
-    const isTarget = config.targetSimIds.some(id => id.toString() === simIdStr);
+
+    // Check if this SIM is a caller (appears in any callerSimIds)
+    let isCaller = false;
+    let callerTargets = [];
+
+    if (config.targetCallerMappings && config.targetCallerMappings.length > 0) {
+      for (const mapping of config.targetCallerMappings) {
+        const isCallerForThisTarget = mapping.callerSimIds.some(
+          id => (id._id || id).toString() === simIdStr
+        );
+        if (isCallerForThisTarget) {
+          isCaller = true;
+          callerTargets.push({
+            targetSimId: mapping.targetSimId,
+            callDuration: mapping.callDuration || config.callDuration
+          });
+        }
+      }
+    } else {
+      // Fallback to old format
+      isCaller = config.callerSimIds?.some(id => id.toString() === simIdStr);
+    }
+
+    // Check if this SIM is a target
+    let isTarget = false;
+    if (config.targetCallerMappings && config.targetCallerMappings.length > 0) {
+      isTarget = config.targetCallerMappings.some(
+        m => (m.targetSimId._id || m.targetSimId).toString() === simIdStr
+      );
+    } else {
+      // Fallback to old format
+      isTarget = config.targetSimIds?.some(id => id.toString() === simIdStr);
+    }
 
     let role = 'NONE';
     if (isCaller && isTarget) {
-      logger.warn('[CALL AUTOMATION] SIM is in both caller and target lists (data integrity issue):', {
+      logger.warn('[CALL AUTOMATION] SIM is in both caller and target lists:', {
         simNumber,
         simId: simIdStr,
-        companyId: config.companyId?.toString(),
       });
       role = 'CALLER'; // Caller takes precedence
     } else if (isCaller) {
@@ -309,15 +366,25 @@ class CallAutomationService {
       role,
       isCaller,
       isTarget,
-      simIdStr,
-      callerSimIds: config.callerSimIds.map(id => id.toString()),
-      targetSimIds: config.targetSimIds.map(id => id.toString()),
     });
 
-    // If caller, get target phone numbers with rotation
+    // If caller, get target phone numbers
     let targets = [];
-    if (role === 'CALLER') {
-      targets = await this.getTargetsWithRotation(config, sim._id);
+    if (role === 'CALLER' && callerTargets.length > 0) {
+      const targetIds = callerTargets.map(t => t.targetSimId._id || t.targetSimId);
+      const targetSims = await Sim.find({
+        _id: { $in: targetIds },
+      }).select('mobileNumber');
+
+      // Map targets with their call durations
+      targets = callerTargets.map(t => {
+        const targetId = (t.targetSimId._id || t.targetSimId).toString();
+        const targetSim = targetSims.find(s => s._id.toString() === targetId);
+        return {
+          mobileNumber: targetSim?.mobileNumber,
+          callDuration: t.callDuration
+        };
+      }).filter(t => t.mobileNumber);
     }
 
     const result = {
@@ -336,12 +403,8 @@ class CallAutomationService {
     logger.info('[CALL AUTOMATION] Returning device config:', {
       simNumber,
       role,
-      frequency: result.frequency,
-      scheduledTime: result.scheduledTime,
-      scheduledDay: result.scheduledDay,
+      targetsCount: targets.length,
       isActive: result.isActive,
-      isCaller,
-      isTarget,
     });
 
     return result;
@@ -351,25 +414,31 @@ class CallAutomationService {
    * Get target phone numbers with round-robin rotation
    * @param {Object} config - Call automation config
    * @param {String} callerSimId - The caller SIM ID
-   * @returns {Array} Array of target phone numbers
+   * @returns {Array} Array of target phone numbers with call durations
    */
   async getTargetsWithRotation(config, callerSimId) {
-    // Get all target phone numbers
-    const targetSimIds = config.targetSimIds.map(id =>
-      id._id ? id._id.toString() : id.toString()
-    );
+    // Get targets for this specific caller
+    const callerTargets = config.getTargetsForCaller(callerSimId);
 
-    // Fetch target SIMs to get phone numbers
-    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+    if (!callerTargets || callerTargets.length === 0) {
+      return [];
+    }
+
+    // Fetch target SIM details
+    const targetIds = callerTargets.map(t => t.targetSimId._id || t.targetSimId);
     const targets = await Sim.find({
-      _id: { $in: targetSimIds },
+      _id: { $in: targetIds },
     }).select('mobileNumber');
 
-    // Sort by _id for consistent ordering
-    targets.sort((a, b) => a._id.toString().localeCompare(b._id.toString()));
-
-    // Return phone numbers
-    return targets.map(t => t.mobileNumber);
+    // Return phone numbers with call durations
+    return callerTargets.map(t => {
+      const targetId = (t.targetSimId._id || t.targetSimId).toString();
+      const targetSim = targets.find(s => s._id.toString() === targetId);
+      return {
+        mobileNumber: targetSim?.mobileNumber,
+        callDuration: t.callDuration
+      };
+    }).filter(t => t.mobileNumber);
   }
 
   /**
@@ -420,7 +489,7 @@ class CallAutomationService {
   /**
    * Get eligible SIMs for selection (active SIMs)
    * @param {Object} user - User making the request
-   * @returns {Array} Array of eligible SIMs
+   * @returns {Object} Object with callers array and potentialTargets array
    */
   async getEligibleSims(user) {
     const companyId = user.role === 'super_admin' ? user.queryCompanyId : user.companyId;
@@ -429,7 +498,7 @@ class CallAutomationService {
       throw new ForbiddenError('Company ID is required');
     }
 
-    // [HARD DELETE] Removed isActive: true filter - SIMs are now hard deleted
+    // Get all active SIMs
     const sims = await Sim.find({
       companyId,
       status: 'active'
@@ -437,7 +506,15 @@ class CallAutomationService {
       .populate('assignedTo', 'name email')
       .sort({ mobileNumber: 1 });
 
-    return sims;
+    // Separate into callers (isAdminCaller = true) and potential targets (all active SIMs)
+    const callers = sims.filter(sim => sim.isAdminCaller === true);
+    const potentialTargets = sims; // All active SIMs can be targets
+
+    return {
+      callers,
+      potentialTargets,
+      all: sims
+    };
   }
 
   /**
@@ -473,6 +550,107 @@ class CallAutomationService {
     logger.info('[CALL AUTOMATION] Active status toggled', {
       companyId,
       isActive
+    });
+
+    return config;
+  }
+
+  /**
+   * Delete a target-caller mapping
+   * @param {Object} user - User making the request
+   * @param {String} targetSimId - Target SIM ID to remove
+   * @returns {Object} Updated configuration
+   */
+  async removeTargetMapping(user, targetSimId) {
+    const companyId = user.role === 'super_admin' ? user.queryCompanyId : user.companyId;
+
+    if (!companyId) {
+      throw new ForbiddenError('Company ID is required');
+    }
+
+    const config = await CallAutomationConfig.findOne({ companyId });
+
+    if (!config) {
+      throw new NotFoundError('Call automation configuration not found');
+    }
+
+    // Remove the mapping
+    config.targetCallerMappings = config.targetCallerMappings.filter(
+      m => (m.targetSimId._id || m.targetSimId).toString() !== targetSimId
+    );
+
+    if (config.targetCallerMappings.length === 0) {
+      throw new ValidationError('Cannot remove the last target. At least one target is required.');
+    }
+
+    config.updatedBy = user._id;
+    await config.save();
+
+    await this.populateConfig(config);
+
+    logger.info('[CALL AUTOMATION] Target mapping removed', {
+      companyId,
+      targetSimId,
+      remainingMappings: config.targetCallerMappings.length
+    });
+
+    return config;
+  }
+
+  /**
+   * Add a new target-caller mapping
+   * @param {Object} user - User making the request
+   * @param {Object} mapping - Mapping with targetSimId and callerSimIds
+   * @returns {Object} Updated configuration
+   */
+  async addTargetMapping(user, mapping) {
+    const companyId = user.role === 'super_admin' ? user.queryCompanyId : user.companyId;
+
+    if (!companyId) {
+      throw new ForbiddenError('Company ID is required');
+    }
+
+    const config = await CallAutomationConfig.findOne({ companyId });
+
+    if (!config) {
+      throw new NotFoundError('Call automation configuration not found. Please create one first.');
+    }
+
+    // Validate mapping
+    if (!mapping.targetSimId) {
+      throw new ValidationError('Target SIM ID is required');
+    }
+    if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
+      throw new ValidationError('At least one caller SIM is required');
+    }
+
+    // Check if target already exists
+    const existingIndex = config.targetCallerMappings.findIndex(
+      m => (m.targetSimId._id || m.targetSimId).toString() === mapping.targetSimId
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing mapping
+      config.targetCallerMappings[existingIndex].callerSimIds = mapping.callerSimIds;
+      config.targetCallerMappings[existingIndex].callDuration = mapping.callDuration || config.callDuration;
+    } else {
+      // Add new mapping
+      config.targetCallerMappings.push({
+        targetSimId: mapping.targetSimId,
+        callerSimIds: mapping.callerSimIds,
+        callDuration: mapping.callDuration || config.callDuration
+      });
+    }
+
+    config.updatedBy = user._id;
+    await config.save();
+
+    await this.populateConfig(config);
+
+    logger.info('[CALL AUTOMATION] Target mapping added/updated', {
+      companyId,
+      targetSimId: mapping.targetSimId,
+      callersCount: mapping.callerSimIds.length
     });
 
     return config;
