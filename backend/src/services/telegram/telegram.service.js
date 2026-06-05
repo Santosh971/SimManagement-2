@@ -8,12 +8,30 @@ const auditLogService = require('../auditLog/auditLog.service');
 
 // Telegram Bot Token from environment
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_API_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+// Debug: Log token status on service initialization
+console.log('[Telegram Service] ========================================');
+console.log('[Telegram Service] TELEGRAM_BOT_TOKEN status:', TELEGRAM_BOT_TOKEN ? 'SET (' + TELEGRAM_BOT_TOKEN.substring(0, 10) + '...)' : 'NOT SET or EMPTY');
+console.log('[Telegram Service] TELEGRAM_BOT_TOKEN length:', TELEGRAM_BOT_TOKEN ? TELEGRAM_BOT_TOKEN.length : 0);
+console.log('[Telegram Service] ========================================');
+
+// Validate token and construct API base
+const TELEGRAM_API_BASE = TELEGRAM_BOT_TOKEN
+  ? `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
+  : null;
+
+console.log('[Telegram Service] TELEGRAM_API_BASE:', TELEGRAM_API_BASE ? 'SET (https://api.telegram.org/bot...)' : 'NOT SET');
 
 class TelegramService {
   constructor() {
     // Check if bot token is configured
     this.isConfigured = !!TELEGRAM_BOT_TOKEN;
+
+    console.log('[Telegram Service] ========================================');
+    console.log('[Telegram Service] Service initialization...');
+    console.log('[Telegram Service] TELEGRAM_BOT_TOKEN:', TELEGRAM_BOT_TOKEN ? 'SET (length: ' + TELEGRAM_BOT_TOKEN.length + ')' : 'NOT SET or EMPTY');
+    console.log('[Telegram Service] this.isConfigured:', this.isConfigured);
+    console.log('[Telegram Service] ========================================');
 
     if (this.isConfigured) {
       logger.info('[Telegram] Bot token configured, service ready');
@@ -29,8 +47,22 @@ class TelegramService {
    * @returns {Object} - Result with success status and message ID
    */
   async sendTelegramMessage(chatId, message) {
+    console.log('[Telegram] ========== SEND MESSAGE START ==========');
+
+    // Check token status
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error('[Telegram] ERROR: TELEGRAM_BOT_TOKEN is NOT SET or EMPTY');
+      console.error('[Telegram] Cannot send message - missing bot token');
+      return {
+        success: false,
+        error: 'Telegram bot token not configured',
+        errorCode: 'TOKEN_MISSING',
+      };
+    }
+
     // If not configured, simulate success (for development)
     if (!this.isConfigured) {
+      console.warn('[Telegram] WARNING: Bot token not configured, simulating success');
       logger.info(`[Telegram SIMULATION] Would send to chat ${chatId}: ${message.substring(0, 50)}...`);
       return {
         success: true,
@@ -39,16 +71,33 @@ class TelegramService {
       };
     }
 
+    console.log('[Telegram] Sending message to chatId:', chatId);
+    console.log('[Telegram] Message length:', message.length);
+    console.log('[Telegram] Bot token (first 10 chars):', TELEGRAM_BOT_TOKEN ? TELEGRAM_BOT_TOKEN.substring(0, 10) + '...' : 'NOT SET');
+
     try {
-      const response = await axios.post(`${TELEGRAM_API_BASE}/sendMessage`, {
+      const apiUrl = `${TELEGRAM_API_BASE}/sendMessage`;
+      console.log('[Telegram] API URL:', apiUrl.replace(TELEGRAM_BOT_TOKEN, 'TOKEN_HIDDEN'));
+
+      const requestBody = {
         chat_id: chatId,
         text: message,
         parse_mode: 'HTML',
-      });
+      };
+
+      console.log('[Telegram] Request body:', JSON.stringify({ chat_id: chatId, text_length: message.length, parse_mode: 'HTML' }));
+
+      const response = await axios.post(apiUrl, requestBody);
+
+      console.log('[Telegram] API Response status:', response.status);
+      console.log('[Telegram] API Response data:', JSON.stringify(response.data));
+      console.log('[Telegram] SUCCESS: Message sent to chat', chatId, '- messageId:', response.data.result.message_id);
 
       logger.info(`[Telegram] Message sent to chat ${chatId}`, {
         messageId: response.data.result.message_id,
       });
+
+      console.log('[Telegram] ========== SEND MESSAGE END (SUCCESS) ==========');
 
       return {
         success: true,
@@ -56,14 +105,33 @@ class TelegramService {
         status: 'sent',
       };
     } catch (error) {
+      console.error('[Telegram] ========== SEND MESSAGE ERROR ==========');
+      console.error('[Telegram] Error sending message to chat:', chatId);
+      console.error('[Telegram] Error name:', error.name);
+      console.error('[Telegram] Error message:', error.message);
+
+      if (error.response) {
+        console.error('[Telegram] Error response status:', error.response.status);
+        console.error('[Telegram] Error response data:', JSON.stringify(error.response.data));
+        console.error('[Telegram] Error description:', error.response.data?.description);
+        console.error('[Telegram] Error code:', error.response.data?.error_code);
+      } else if (error.request) {
+        console.error('[Telegram] No response received - request made but no response');
+        console.error('[Telegram] Request details:', error.config?.url);
+      } else {
+        console.error('[Telegram] Error setting up request:', error.message);
+      }
+
+      console.error('[Telegram] ========== SEND MESSAGE END (ERROR) ==========');
+
       logger.error(`[Telegram] Failed to send message to chat ${chatId}`, {
         error: error.response?.data || error.message,
       });
 
       return {
         success: false,
-        error: error.response?.data?.description || error.message,
-        errorCode: error.response?.data?.error_code,
+        error: error.response?.data?.description || error.message || 'Unknown Telegram API error',
+        errorCode: error.response?.data?.error_code || 'UNKNOWN',
       };
     }
   }
@@ -123,8 +191,19 @@ class TelegramService {
    * @returns {Object} - Results with sent/failed counts
    */
   async sendToSIMs(data, user) {
+    console.log('[Telegram] ========== BULK SEND START ==========');
+
     const { simIds = [], message, updateSimStatus = false } = data;
     const companyId = user.companyId;
+
+    console.log('[Telegram] Bulk send request received');
+    console.log('[Telegram] - simIds count:', simIds.length);
+    console.log('[Telegram] - message length:', message?.length || 0);
+    console.log('[Telegram] - updateSimStatus:', updateSimStatus);
+    console.log('[Telegram] - companyId:', companyId);
+    console.log('[Telegram] - Bot token configured:', !!TELEGRAM_BOT_TOKEN);
+    console.log('[Telegram] - Bot token length:', TELEGRAM_BOT_TOKEN ? TELEGRAM_BOT_TOKEN.length : 0);
+
     const results = {
       sent: 0,
       failed: 0,
@@ -138,6 +217,7 @@ class TelegramService {
     const batchId = `TG_BATCH_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     if (simIds.length === 0) {
+      console.error('[Telegram] ERROR: No SIMs provided');
       throw new AppError('No SIMs provided', 400);
     }
 
@@ -147,12 +227,17 @@ class TelegramService {
       companyId,
     }).populate('assignedTo', 'name email');
 
+    console.log('[Telegram] Found', sims.length, 'SIMs from database');
+
     results.total = sims.length;
 
     for (const sim of sims) {
+      console.log('[Telegram] Processing SIM:', sim.mobileNumber, 'chatId:', sim.telegramChatId || 'NOT LINKED');
+
       try {
         // Skip if no telegramChatId linked
         if (!sim.telegramChatId) {
+          console.warn('[Telegram] SKIPPING SIM', sim.mobileNumber, '- No telegramChatId linked');
           results.skipped++;
           results.messages.push({
             simId: sim._id,
@@ -164,7 +249,9 @@ class TelegramService {
         }
 
         // Send Telegram message
+        console.log('[Telegram] Sending to SIM', sim.mobileNumber, '- chatId:', sim.telegramChatId);
         const sendResult = await this.sendTelegramMessage(sim.telegramChatId, message);
+        console.log('[Telegram] Send result for', sim.mobileNumber, ':', JSON.stringify(sendResult));
 
         // Save message record
         const messageRecord = new TelegramMessage({
@@ -182,6 +269,7 @@ class TelegramService {
         });
 
         await messageRecord.save();
+        console.log('[Telegram] Message record saved:', messageRecord._id);
 
         results.messages.push({
           simId: sim._id,
@@ -193,15 +281,19 @@ class TelegramService {
 
         if (sendResult.success) {
           results.sent++;
+          console.log('[Telegram] SUCCESS: Message sent to', sim.mobileNumber);
         } else {
           results.failed++;
+          const errorMsg = sendResult.error || 'Unknown error';
+          console.error('[Telegram] FAILED: Message to', sim.mobileNumber, '- Error:', errorMsg);
           results.errors.push({
             simId: sim._id,
             mobileNumber: sim.mobileNumber,
-            error: sendResult.error,
+            error: errorMsg,
           });
         }
       } catch (error) {
+        console.error('[Telegram] EXCEPTION processing SIM', sim.mobileNumber, ':', error.message);
         logger.error(`[Telegram] Error processing SIM ${sim.mobileNumber}`, {
           error: error.message,
         });
@@ -213,6 +305,14 @@ class TelegramService {
         });
       }
     }
+
+    console.log('[Telegram] ========== BULK SEND SUMMARY ==========');
+    console.log('[Telegram] Total:', results.total);
+    console.log('[Telegram] Sent:', results.sent);
+    console.log('[Telegram] Failed:', results.failed);
+    console.log('[Telegram] Skipped:', results.skipped);
+    console.log('[Telegram] Errors:', JSON.stringify(results.errors));
+    console.log('[Telegram] ========== BULK SEND END ==========');
 
     return results;
   }
@@ -1129,7 +1229,7 @@ class TelegramService {
    * @returns {string} - Deep link URL
    */
   generateDeepLink(simId) {
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'SimTrackBot';
+    const botUsername =  'SimTrack1bot';
     return `https://t.me/${botUsername}?start=SIM_${simId}`;
   }
 

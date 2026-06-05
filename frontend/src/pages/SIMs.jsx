@@ -88,6 +88,8 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     mobileNumber: '',
     operator: 'Jio',
     circle: '',
+    simType: 'prepaid',
+    imei: '',
     status: 'active',
     notes: '',
     assignedTo: '',
@@ -95,6 +97,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   })
 
   const statuses = ['active', 'inactive']
+  const simTypes = ['prepaid', 'postpaid']
   const requiredAsterisk = <span style={{ color: '#dc2626' }}>*</span>
 
   const validate = () => {
@@ -116,6 +119,33 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
     }
     if (!hideCircleField && !showCircleInput && !formData.circle) {
       newErrors.circle = 'Circle is required'
+    }
+    // IMEI validation - optional but if provided, must be valid
+    if (formData.imei && formData.imei.trim()) {
+      const imeiClean = formData.imei.replace(/[\s-]/g, '') // Remove spaces and hyphens
+      if (!/^\d{15}$/.test(imeiClean)) {
+        if (imeiClean.length < 15) {
+          newErrors.imei = `IMEI must be 15 digits (entered: ${imeiClean.length} digits)`
+        } else if (imeiClean.length > 15) {
+          newErrors.imei = `IMEI must be 15 digits (entered: ${imeiClean.length} digits)`
+        } else {
+          newErrors.imei = 'IMEI must contain only digits'
+        }
+      } else {
+        // Luhn algorithm validation for IMEI
+        let sum = 0
+        for (let i = 0; i < 15; i++) {
+          let digit = parseInt(imeiClean[i], 10)
+          if (i % 2 === 1) {
+            digit *= 2
+            if (digit > 9) digit -= 9
+          }
+          sum += digit
+        }
+        if (sum % 10 !== 0) {
+          newErrors.imei = 'Invalid IMEI number (failed checksum validation)'
+        }
+      }
     }
     if (!formData.assignedTo) {
       newErrors.assignedTo = 'Please select a user'
@@ -453,6 +483,8 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         mobileNumber: mobileNum,
         operator: sim.operator || '',
         circle: sim.circle || '',
+        simType: sim.simType || 'prepaid',
+        imei: sim.imei || '',
         status: sim.status || 'active',
         notes: sim.notes || '',
         assignedTo: sim.assignedTo?._id || '',
@@ -466,6 +498,8 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         mobileNumber: '',
         operator: Array.isArray(defaultConfig.operators) ? defaultConfig.operators[0] : '',
         circle: '',
+        simType: 'prepaid',
+        imei: '',
         status: 'active',
         notes: '',
         assignedTo: '',
@@ -719,6 +753,102 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* SIM Type Row */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+              SIM Type {requiredAsterisk}
+            </label>
+            <select
+              name="simType"
+              value={formData.simType}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            >
+              {simTypes.map((type) => (
+                <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* IMEI Field */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+              IMEI Number
+              <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: '4px' }}>(optional)</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                name="imei"
+                value={formData.imei}
+                onChange={(e) => {
+                  // Allow only digits - limit to 15 digits max
+                  const value = e.target.value
+                  const digitsOnly = value.replace(/\D/g, '').substring(0, 15)
+                  setFormData(prev => ({ ...prev, imei: digitsOnly }))
+                  clearFieldError('imei')
+                }}
+                onBlur={() => {
+                  // Validate on blur
+                  if (formData.imei && formData.imei.trim()) {
+                    const imeiClean = formData.imei.replace(/\D/g, '')
+                    if (imeiClean.length > 0 && imeiClean.length !== 15) {
+                      setErrors(prev => ({
+                        ...prev,
+                        imei: `IMEI must be exactly 15 digits (entered: ${imeiClean.length} digits)`
+                      }))
+                    }
+                  }
+                }}
+                placeholder="Enter 15-digit IMEI (e.g., 123456789012345)"
+                maxLength={15}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  paddingRight: formData.imei ? '50px' : '14px',
+                  border: `1px solid ${errors.imei ? '#dc2626' : '#d1d5db'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  fontFamily: formData.imei ? 'monospace' : 'inherit',
+                  transition: 'border-color 0.2s',
+                }}
+              />
+              {/* Character count indicator */}
+              {formData.imei && (
+                <span style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: '11px',
+                  color: formData.imei.length === 15 ? '#16a34a' : '#6b7280',
+                  fontFamily: 'monospace',
+                }}>
+                  {formData.imei.length}/15
+                </span>
+              )}
+            </div>
+            {errors.imei && (
+              <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>
+                {errors.imei}
+              </p>
+            )}
+            <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', marginBottom: 0 }}>
+              IMEI must be exactly 15 digits. Dial *#06# on your phone to find it.
+            </p>
           </div>
 
           {/* [DYNAMIC CIRCLE] - Show dropdown, input, or hide based on country */}
@@ -1632,6 +1762,26 @@ export default function SIMs() {
       key: 'circle',
       header: 'Circle',
       render: (row) => row.circle || '-'
+    },
+    {
+      key: 'simType',
+      header: 'SIM Type',
+      render: (row) => (
+        <Badge variant={row.simType === 'prepaid' ? 'primary' : 'warning'}>
+          {row.simType ? row.simType.charAt(0).toUpperCase() + row.simType.slice(1) : 'Prepaid'}
+        </Badge>
+      )
+    },
+    {
+      key: 'imei',
+      header: 'IMEI',
+      render: (row) => row.imei ? (
+        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#374151' }}>
+          {row.imei}
+        </span>
+      ) : (
+        <span style={{ color: '#9ca3af', fontSize: '12px' }}>-</span>
+      )
     },
     {
       key: 'status',

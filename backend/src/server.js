@@ -81,7 +81,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     const allowedOrigins = [
-      'https://simtracker.b100x.in',
+      'https://simtrackr.b100x.in',
       'https://sim-management-rho.vercel.app',
       'http://localhost:3001',
       'http://localhost:3000',

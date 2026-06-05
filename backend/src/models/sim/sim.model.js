@@ -32,6 +32,18 @@ const SimSchema = new Schema({
     trim: true,
     default: '',
   },
+  simType: {
+    type: String,
+    enum: ['prepaid', 'postpaid'],
+    default: 'prepaid',
+  },
+  imei: {
+    type: String,
+    trim: true,
+    default: '',
+    maxlength: [17, 'IMEI cannot exceed 17 characters'],
+    match: [/^[0-9a-fA-F-]*$/, 'IMEI can only contain digits, letters A-F, and hyphens'],
+  },
   assignedTo: {
     type: Schema.Types.ObjectId,
     ref: 'User',

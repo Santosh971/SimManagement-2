@@ -118,24 +118,7 @@ function baseLayout({ headerBg, headerIcon, headerTitle, headerSubtitle, bodyCon
 
     <!-- Icon Container -->
 
-<div style="
-  margin: 0 auto 16px auto;
-  text-align: center;
-">
-  <img
-    src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg"
-    alt="Telegram"
-    width="50"
-    height="50"
-    style="
-      display: block;
-      margin: 0 auto;
-      border: 0;
-      outline: none;
-      text-decoration: none;
-    "
-  />
-</div>
+
 
     <!-- Title -->
     <h1 style="
@@ -636,15 +619,13 @@ class EmailService {
       ['Role', (user.role || 'User').charAt(0).toUpperCase() + (user.role || 'User').slice(1)],
       ['Company', company.name],
     ])}
-      ${tempPassword ? passwordBox(tempPassword) : ''}
-      ${tempPassword ? ctaButton('Log In Now', loginUrl, '#1A56DB') : ctaButton('Go to Login', loginUrl, '#1A56DB')}
-      ${divider()}
+     
       ${paragraph(`If you have any questions or need help getting set up, feel free to reach out to your administrator.`)}
     `;
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
-      headerIcon: '&#128272;',
+      // headerIcon: '&#128272;',
       headerTitle: 'Welcome to SIM Management',
       headerSubtitle: `Account created for ${company.name}`,
       bodyContent: body,
@@ -683,7 +664,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #065F46 100%)`,
-      headerIcon: '&#10003;',
+      // headerIcon: '&#10003;',
       headerTitle: 'Registration Successful',
       headerSubtitle: 'Your company is ready to go',
       bodyContent: body,
@@ -712,7 +693,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
-      headerIcon: '&#128241;',
+      // headerIcon: '&#128241;',
       headerTitle: 'SIM Card Assigned',
       headerSubtitle: sim.mobileNumber,
       bodyContent: body,
@@ -747,7 +728,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #D97706 0%, #B45309 100%)`,
-      headerIcon: '&#8635;',
+      // headerIcon: '&#8635;',
       headerTitle: 'Recharge Reminder',
       headerSubtitle: `Action required for ${sim.mobileNumber}`,
       bodyContent: body,
@@ -777,7 +758,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
-      headerIcon: '&#128274;',
+      // headerIcon: '&#128274;',
       headerTitle: 'Password Reset',
       headerSubtitle: 'Requested for your account',
       bodyContent: body,
@@ -808,7 +789,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
-      headerIcon: '&#128272;',
+      // headerIcon: '&#128272;',
       headerTitle: 'Password Reset Code',
       headerSubtitle: 'SIM Management Verification',
       bodyContent: body,
@@ -858,7 +839,7 @@ class EmailService {
       headerBg: isUrgent
         ? `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`
         : `linear-gradient(135deg, #D97706 0%, #B45309 100%)`,
-      headerIcon: '&#128197;',
+      // headerIcon: '&#128197;',
       headerTitle: 'Subscription Expiry Notice',
       headerSubtitle: `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`,
       bodyContent: body,
@@ -874,7 +855,7 @@ class EmailService {
 
     const body = `
       ${paragraph('You requested to log in to SIM Management using your Contact Number. Use the one-time password below to complete your login.')}
-      ${infoCard([['Contact Number', `+91 ${mobileNumber}`]])}
+      ${infoCard([['Contact Number : ', ` ${mobileNumber}`]])}
       ${otpBox(otp)}
       ${alertBox(`
         <ul style="margin: 6px 0 0; padding-left: 20px; line-height: 1.8;">
@@ -888,7 +869,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
-      headerIcon: '&#128241;',
+      // headerIcon: '&#128241;',
       headerTitle: 'One-Time Password',
       headerSubtitle: 'Login verification for SIM Management',
       bodyContent: body,
@@ -919,7 +900,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #6B7280 0%, #4B5563 100%)`,
-      headerIcon: '&#128241;',
+      // headerIcon: '&#128241;',
       headerTitle: 'SIM Card Unassigned',
       headerSubtitle: sim.mobileNumber,
       bodyContent: body,
@@ -950,7 +931,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #065F46 100%)`,
-      headerIcon: '&#10003;',
+      // headerIcon: '&#10003;',
       headerTitle: 'Subscription Renewed',
       headerSubtitle: 'Your subscription has been extended',
       bodyContent: body,
@@ -981,7 +962,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #D97706 0%, #B45309 100%)`,
-      headerIcon: '&#128197;',
+      // headerIcon: '&#128197;',
       headerTitle: 'Trial Period Extended',
       headerSubtitle: `${additionalDays} additional days added`,
       bodyContent: body,
@@ -1013,7 +994,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #16A34A 0%, #15803D 100%)`,
-      headerIcon: '&#9989;',
+      // headerIcon: '&#9989;',
       headerTitle: 'Subscription Activated',
       headerSubtitle: `Welcome to ${planName}`,
       bodyContent: body,
@@ -1044,7 +1025,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
-      headerIcon: '&#128274;',
+      // headerIcon: '&#128274;',
       headerTitle: 'Password Reset',
       headerSubtitle: 'Your password has been updated',
       bodyContent: body,
@@ -1072,7 +1053,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #6B7280 0%, #4B5563 100%)`,
-      headerIcon: '&#128274;',
+      // headerIcon: '&#128274;',
       headerTitle: 'Account Deactivated',
       headerSubtitle: 'Your account has been deactivated',
       bodyContent: body,
@@ -1101,7 +1082,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #065F46 100%)`,
-      headerIcon: '&#10003;',
+      // headerIcon: '&#10003;',
       headerTitle: 'Account Reactivated',
       headerSubtitle: 'Your account is now active',
       bodyContent: body,
@@ -1148,7 +1129,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #065F46 100%)`,
-      headerIcon: '&#10003;',
+      // headerIcon: '&#10003;',
       headerTitle: 'Subscription Renewed',
       headerSubtitle: `${company.name} renewed their plan`,
       bodyContent: body,
@@ -1204,7 +1185,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
-      headerIcon: '&#9995;',
+      // headerIcon: '&#9995;',
       headerTitle: 'Connect SIM to Telegram',
       headerSubtitle: sim.mobileNumber,
       bodyContent: body,
@@ -1256,7 +1237,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #1A56DB 0%, #1E429F 100%)`,
-      headerIcon: '&#128176;',
+      // headerIcon: '&#128176;',
       headerTitle: 'New Registration',
       headerSubtitle: `${company.name} has signed up`,
       bodyContent: body,
@@ -1318,7 +1299,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #0088cc 0%, #006699 100%)`,
-      headerIcon: '&#9995;',
+      // headerIcon: '&#9995;',
       headerTitle: 'Connect SIMs to Telegram',
       headerSubtitle: `${simLinks.length} SIM${simLinks.length > 1 ? 's' : ''} to link`,
       bodyContent: body,
@@ -1350,7 +1331,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
-      headerIcon: '&#9993;',
+      // headerIcon: '&#9993;',
       headerTitle: 'Email Change Request',
       headerSubtitle: 'Verify your identity',
       bodyContent: body,
@@ -1378,7 +1359,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #047857 100%)`,
-      headerIcon: '&#9989;',
+      // headerIcon: '&#9989;',
       headerTitle: 'Verify New Email',
       headerSubtitle: 'Confirm your new Email ID',
       bodyContent: body,
@@ -1405,7 +1386,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #DC2626 0%, #991B1B 100%)`,
-      headerIcon: '&#9888;',
+      // headerIcon: '&#9888;',
       headerTitle: 'Email Changed',
       headerSubtitle: 'Security notification',
       bodyContent: body,
@@ -1432,7 +1413,7 @@ class EmailService {
 
     const html = baseLayout({
       headerBg: `linear-gradient(135deg, #057A55 0%, #047857 100%)`,
-      headerIcon: '&#9989;',
+      // headerIcon: '&#9989;',
       headerTitle: 'Email Updated',
       headerSubtitle: 'Your account is ready',
       bodyContent: body,

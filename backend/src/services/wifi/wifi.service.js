@@ -4,9 +4,49 @@ const Sim = require('../../models/sim/sim.model');
 const mongoose = require('mongoose');
 const { NotFoundError, ConflictError, ForbiddenError, ValidationError } = require('../../utils/errors');
 const notificationHelper = require('../../utils/notificationHelper');
+const emailService = require('../../utils/emailService');
 const logger = require('../../utils/logger');
 
 class WifiService {
+  // ==================== HELPER METHODS ====================
+
+  /**
+   * Safely create or update an alert (handles duplicate key errors)
+   * Uses atomic findOneAndUpdate to prevent race conditions
+   * @param {Object} filter - Filter to find existing alert
+   * @param {Object} alertData - Alert data to create/update
+   * @returns {Object} - The created or existing alert
+   */
+  async _createAlertSafely(filter, alertData) {
+    try {
+      // Try to create the alert
+      const alert = await WifiAlert.create(alertData);
+      return { alert, isNew: true };
+    } catch (error) {
+      // Handle duplicate key error (code 11000)
+      if (error.code === 11000) {
+        logger.warn('[WIFI ALERT] Duplicate alert detected, updating existing', {
+          filter,
+          duplicateKey: error.keyValue
+        });
+        // Find and update the existing alert
+        const existingAlert = await WifiAlert.findOne(filter);
+        if (existingAlert) {
+          // Update relevant fields
+          if (alertData.avgSpeed !== undefined) existingAlert.avgSpeed = alertData.avgSpeed;
+          if (alertData.message) existingAlert.message = alertData.message;
+          if (alertData.threshold !== undefined) existingAlert.threshold = alertData.threshold;
+          await existingAlert.save();
+          return { alert: existingAlert, isNew: false };
+        }
+        // If still not found, return null (shouldn't happen)
+        return { alert: null, isNew: false };
+      }
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
   // ==================== WIFI NETWORK METHODS ====================
 
   /**
@@ -886,6 +926,7 @@ class WifiService {
       offlineAlertsCreated: 0,
       wifiOffAlertsCreated: 0,
       disconnectedAlertsCreated: 0,
+      notificationsCreated: 0,
     };
 
     // Run all alert checks
@@ -939,41 +980,52 @@ class WifiService {
 
         if (avgSpeed < network.alertThreshold) {
           // Check if there's already an active low_speed alert
-          let alert = await WifiAlert.findOne({
+          const existingAlert = await WifiAlert.findOne({
             wifiId: network._id,
             status: 'active',
             alertType: 'low_speed',
           });
 
-          const isNewAlert = !alert;
+          if (!existingAlert) {
+            // Use safe create to handle duplicate key errors
+            const { alert, isNew } = await this._createAlertSafely(
+              { wifiId: network._id, status: 'active', alertType: 'low_speed' },
+              {
+                wifiId: network._id,
+                companyId: network.companyId,
+                avgSpeed,
+                threshold: network.alertThreshold,
+                alertType: 'low_speed',
+                message: `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`,
+              }
+            );
 
-          if (!alert) {
-            alert = await WifiAlert.create({
-              wifiId: network._id,
-              companyId: network.companyId,
-              avgSpeed,
-              threshold: network.alertThreshold,
-              alertType: 'low_speed',
-              message: `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`,
-            });
-            results.alertsCreated++;
-            logger.info('[WIFI ALERT] New low_speed alert created', {
-              wifiId: network._id,
-              wifiName: network.wifiName,
-              avgSpeed: avgSpeed.toFixed(2),
-              alertId: alert._id
-            });
+            if (alert) {
+              if (isNew) {
+                results.alertsCreated++;
+                logger.info('[WIFI ALERT] New low_speed alert created', {
+                  wifiId: network._id,
+                  wifiName: network.wifiName,
+                  avgSpeed: avgSpeed.toFixed(2),
+                  alertId: alert._id
+                });
+              } else {
+                results.alertsUpdated++;
+                logger.info('[WIFI ALERT] Low_speed alert updated (duplicate handled)', { wifiId: network._id, alertId: alert._id });
+              }
+            }
           } else {
-            alert.avgSpeed = avgSpeed;
-            alert.message = `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`;
-            await alert.save();
+            existingAlert.avgSpeed = avgSpeed;
+            existingAlert.message = `Average speed ${avgSpeed.toFixed(2)} Mbps is below threshold ${network.alertThreshold} Mbps`;
+            await existingAlert.save();
             results.alertsUpdated++;
-            logger.info('[WIFI ALERT] Low_speed alert updated', { wifiId: network._id, alertId: alert._id });
+            logger.info('[WIFI ALERT] Low_speed alert updated', { wifiId: network._id, alertId: existingAlert._id });
           }
 
           // Send email alert if enabled
-          if (network.emailAlertEnabled) {
-            await this._sendAlertEmails(network, alert, results, 'low_speed');
+          const alertToSend = existingAlert || (await WifiAlert.findOne({ wifiId: network._id, status: 'active', alertType: 'low_speed' }));
+          if (network.emailAlertEnabled && alertToSend) {
+            await this._sendAlertEmails(network, alertToSend, results, 'low_speed');
           }
         } else {
           // Speed is good, resolve any active low_speed alerts
@@ -1036,39 +1088,47 @@ class WifiService {
               ? Math.round((now - new Date(lastSeen)) / (1000 * 60))
               : OFFLINE_THRESHOLD_MINUTES;
 
-            // Create offline alert
-            const alert = await WifiAlert.create({
-              wifiId: wifiNetwork._id,
-              companyId: wifiNetwork.companyId,
-              deviceId: device._id,
-              deviceStringId: device.deviceId,
-              avgSpeed: 0,
-              threshold: 0,
-              alertType: 'device_offline',
-              message: `Device ${device.deviceName || device.deviceId} is offline. No data received for ${offlineDuration} minutes.`,
-            });
+            // Create offline alert using safe method to handle duplicates
+            const { alert, isNew } = await this._createAlertSafely(
+              { wifiId: wifiNetwork._id, deviceId: device._id, status: 'active', alertType: 'device_offline' },
+              {
+                wifiId: wifiNetwork._id,
+                companyId: wifiNetwork.companyId,
+                deviceId: device._id,
+                deviceStringId: device.deviceId,
+                avgSpeed: 0,
+                threshold: 0,
+                alertType: 'device_offline',
+                message: `Device ${device.deviceName || device.deviceId} is offline. No data received for ${offlineDuration} minutes.`,
+              }
+            );
 
-            results.alertsCreated++;
-            results.offlineAlertsCreated++;
+            if (alert) {
+              if (isNew) {
+                results.alertsCreated++;
+                results.offlineAlertsCreated++;
+              }
 
-            // Mark device as offline and alert sent
-            device.isOffline = true;
-            device.offlineSince = now;
-            device.offlineAlertSent = true;
-            await device.save();
+              // Mark device as offline and alert sent
+              device.isOffline = true;
+              device.offlineSince = now;
+              device.offlineAlertSent = true;
+              await device.save();
 
-            logger.info('[WIFI ALERT] Device offline alert created', {
-              deviceId: device.deviceId,
-              deviceName: device.deviceName,
-              wifiId: wifiNetwork._id,
-              wifiName: wifiNetwork.wifiName,
-              offlineDuration,
-              alertId: alert._id
-            });
+              logger.info('[WIFI ALERT] Device offline alert created', {
+                deviceId: device.deviceId,
+                deviceName: device.deviceName,
+                wifiId: wifiNetwork._id,
+                wifiName: wifiNetwork.wifiName,
+                offlineDuration,
+                alertId: alert._id,
+                isNew
+              });
 
-            // Send email alert
-            if (wifiNetwork.emailAlertEnabled) {
-              await this._sendAlertEmails(wifiNetwork, alert, results, 'device_offline', device);
+              // Send email alert
+              if (wifiNetwork.emailAlertEnabled) {
+                await this._sendAlertEmails(wifiNetwork, alert, results, 'device_offline', device);
+              }
             }
           } else if (!isOffline && device.isOffline) {
             // Device is back online, resolve alerts
@@ -1143,35 +1203,47 @@ class WifiService {
             if (!recentMetrics) {
               // No metrics received — WiFi might be off
               // Check if there's already an active wifi_off alert
-              let alert = await WifiAlert.findOne({
+              const existingAlert = await WifiAlert.findOne({
                 wifiId: network._id,
                 status: 'active',
                 alertType: 'wifi_off',
               });
 
-              if (!alert) {
-                // Create WiFi off alert
-                alert = await WifiAlert.create({
-                  wifiId: network._id,
-                  companyId: network.companyId,
-                  avgSpeed: 0,
-                  threshold: network.alertThreshold,
-                  alertType: 'wifi_off',
-                  message: `WiFi network ${network.wifiName} appears to be offline. No speed data received for ${WIFI_OFF_THRESHOLD_MINUTES}+ minutes.`,
-                });
+              if (!existingAlert) {
+                // Create WiFi off alert using safe method
+                const { alert, isNew } = await this._createAlertSafely(
+                  { wifiId: network._id, status: 'active', alertType: 'wifi_off' },
+                  {
+                    wifiId: network._id,
+                    companyId: network.companyId,
+                    avgSpeed: 0,
+                    threshold: network.alertThreshold,
+                    alertType: 'wifi_off',
+                    message: `WiFi network ${network.wifiName} appears to be offline. No speed data received for ${WIFI_OFF_THRESHOLD_MINUTES}+ minutes.`,
+                  }
+                );
 
-                results.alertsCreated++;
-                results.wifiOffAlertsCreated++;
+                if (alert) {
+                  if (isNew) {
+                    results.alertsCreated++;
+                    results.wifiOffAlertsCreated++;
+                    logger.info('[WIFI ALERT] WiFi off alert created', {
+                      wifiId: network._id,
+                      wifiName: network.wifiName,
+                      alertId: alert._id
+                    });
+                  } else {
+                    logger.info('[WIFI ALERT] WiFi off alert already exists (duplicate handled)', {
+                      wifiId: network._id,
+                      wifiName: network.wifiName,
+                      alertId: alert._id
+                    });
+                  }
 
-                logger.info('[WIFI ALERT] WiFi off alert created', {
-                  wifiId: network._id,
-                  wifiName: network.wifiName,
-                  alertId: alert._id
-                });
-
-                // Send email only if email alerts are enabled for this network
-                if (network.emailAlertEnabled) {
-                  await this._sendAlertEmails(network, alert, results, 'wifi_off');
+                  // Send email only if email alerts are enabled for this network
+                  if (network.emailAlertEnabled) {
+                    await this._sendAlertEmails(network, alert, results, 'wifi_off');
+                  }
                 }
               }
             } else {
@@ -1241,48 +1313,57 @@ class WifiService {
         if (isDisconnected && device.lastWifiConnected !== false) {
           // Device was connected but now disconnected from this WiFi
           // Create wifi_disconnected alert
-          let alert = await WifiAlert.findOne({
+          const existingAlert = await WifiAlert.findOne({
             wifiId: network._id,
             deviceId: device._id,
             status: 'active',
             alertType: 'wifi_disconnected',
           });
 
-          if (!alert) {
+          if (!existingAlert) {
             const disconnectDuration = lastMetricTime
               ? Math.round((Date.now() - new Date(lastMetricTime).getTime()) / (1000 * 60))
               : DISCONNECT_THRESHOLD_MINUTES;
 
-            alert = await WifiAlert.create({
-              wifiId: network._id,
-              companyId: network.companyId,
-              deviceId: device._id,
-              deviceStringId: device.deviceId,
-              avgSpeed: 0,
-              threshold: network.alertThreshold,
-              alertType: 'wifi_disconnected',
-              message: `Device ${device.deviceName || device.deviceId} disconnected from WiFi ${network.wifiName}. No data for ${disconnectDuration} minutes.`,
-            });
+            // Create alert using safe method
+            const { alert, isNew } = await this._createAlertSafely(
+              { wifiId: network._id, deviceId: device._id, status: 'active', alertType: 'wifi_disconnected' },
+              {
+                wifiId: network._id,
+                companyId: network.companyId,
+                deviceId: device._id,
+                deviceStringId: device.deviceId,
+                avgSpeed: 0,
+                threshold: network.alertThreshold,
+                alertType: 'wifi_disconnected',
+                message: `Device ${device.deviceName || device.deviceId} disconnected from WiFi ${network.wifiName}. No data for ${disconnectDuration} minutes.`,
+              }
+            );
 
-            results.alertsCreated++;
-            results.disconnectedAlertsCreated++;
+            if (alert) {
+              if (isNew) {
+                results.alertsCreated++;
+                results.disconnectedAlertsCreated++;
+              }
 
-            // Update device WiFi connection status
-            device.lastWifiConnected = false;
-            await device.save();
+              // Update device WiFi connection status
+              device.lastWifiConnected = false;
+              await device.save();
 
-            logger.info('[WIFI ALERT] WiFi disconnected alert created', {
-              deviceId: device.deviceId,
-              deviceName: device.deviceName,
-              wifiId: network._id,
-              wifiName: network.wifiName,
-              disconnectDuration,
-              alertId: alert._id
-            });
+              logger.info('[WIFI ALERT] WiFi disconnected alert created', {
+                deviceId: device.deviceId,
+                deviceName: device.deviceName,
+                wifiId: network._id,
+                wifiName: network.wifiName,
+                disconnectDuration,
+                alertId: alert._id,
+                isNew
+              });
 
-            // Send email
-            if (network.emailAlertEnabled) {
-              await this._sendAlertEmails(network, alert, results, 'wifi_disconnected', device);
+              // Send email
+              if (network.emailAlertEnabled) {
+                await this._sendAlertEmails(network, alert, results, 'wifi_disconnected', device);
+              }
             }
           }
         } else if (!isDisconnected) {
@@ -1323,6 +1404,7 @@ class WifiService {
 
   /**
    * Send alert emails to admins
+   * Note: Creates ONE company-wide notification, NOT one per admin
    */
   async _sendAlertEmails(network, alert, results, alertType, device = null) {
     try {
@@ -1332,6 +1414,29 @@ class WifiService {
         return;
       }
 
+      // Create ONE company-wide notification (not per-user)
+      // This prevents duplicate notifications for the same alert
+      const notificationData = {
+        companyId: network.companyId,
+        type: 'wifi_alert',
+        title: notificationHelper._getWifiAlertTitle(network, alertType, device),
+        message: alert.message,
+        priority: 'high',
+        metadata: {
+          wifiName: network.wifiName,
+          avgSpeed: alert.avgSpeed,
+          threshold: network.alertThreshold,
+          alertType: alertType,
+          deviceName: device?.deviceName,
+          deviceId: device?.deviceId,
+        },
+        data: { wifiId: network._id, alertId: alert._id, deviceId: device?._id },
+      };
+
+      await notificationHelper.createNotification(notificationData);
+      results.notificationsCreated++;
+
+      // Send emails to all admins (but only one notification)
       const adminUsers = await mongoose.model('User').find({
         companyId: network.companyId,
         role: { $in: ['admin', 'super_admin'] },
@@ -1346,14 +1451,29 @@ class WifiService {
       let anyEmailSent = false;
       for (const admin of adminUsers) {
         try {
-          await notificationHelper.sendWifiAlertEmail(admin, network, alert, alertType, device);
-          results.emailsSent++;
-          anyEmailSent = true;
-          logger.info('[WIFI ALERT] Email sent', {
-            email: admin.email,
-            wifiId: network._id,
-            alertType
-          });
+          // Only send email, don't create notification here
+          const emailData = {
+            to: admin.email,
+            subject: notificationHelper._getWifiAlertSubject(network, alertType, device),
+            html: notificationHelper._generateWifiAlertHtml(admin, network, alert, alertType, device),
+          };
+
+          // Check if email notifications are enabled for this company
+          const { isFeatureEnabled } = require('../../middleware/subscription');
+          const featureCheck = await isFeatureEnabled(network.companyId, 'emailNotifications');
+
+          if (featureCheck.enabled && emailService.isReady()) {
+            const emailResult = await emailService.sendEmail(emailData);
+            if (emailResult.success) {
+              results.emailsSent++;
+              anyEmailSent = true;
+              logger.info('[WIFI ALERT] Email sent', {
+                email: admin.email,
+                wifiId: network._id,
+                alertType
+              });
+            }
+          }
         } catch (emailError) {
           results.emailErrors.push({ email: admin.email, error: emailError.message });
           logger.error('[WIFI ALERT] Email send failed', {

@@ -5,6 +5,9 @@ import toast from 'react-hot-toast'
 import { formatDate } from '../utils/dateFormat'
 import { countryCodes } from '../data/countries'
 
+// Get unique sorted list of country names for dropdown
+const countryList = [...new Set(countryCodes.map(c => c.country))].sort((a, b) => a.localeCompare(b))
+
 /**
  * Validate a phone number in PhoneInput combined format (e.g., "+919876543210").
  * Uses the same 3-tier validation as the SIMs Add form:
@@ -1722,7 +1725,7 @@ export default function Settings() {
                         name="address.street"
                         value={companyFormData['address.street']}
                         onChange={handleCompanyChange}
-                        placeholder="456 Business Park Drive, Floor 3"
+                        placeholder="e.g., 456 Business Park Drive, Floor 3"
                         maxLength={200}
                         style={{
                           width: '100%',
@@ -1793,13 +1796,10 @@ export default function Settings() {
                         <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
                           Country
                         </label>
-                        <input
-                          type="text"
+                        <select
                           name="address.country"
                           value={companyFormData['address.country']}
                           onChange={handleCompanyChange}
-                          placeholder="United States"
-                          maxLength={50}
                           style={{
                             width: '100%',
                             padding: '10px 12px',
@@ -1808,8 +1808,15 @@ export default function Settings() {
                             fontSize: '14px',
                             outline: 'none',
                             boxSizing: 'border-box',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
                           }}
-                        />
+                        >
+                          <option value="">Select Country</option>
+                          {countryList.map((country) => (
+                            <option key={country} value={country}>{country}</option>
+                          ))}
+                        </select>
                         {companyFieldErrors['address.country'] && (
                           <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '4px', marginBottom: 0 }}>{companyFieldErrors['address.country']}</p>
                         )}

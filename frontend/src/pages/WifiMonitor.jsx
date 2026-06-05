@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   FiWifi,
@@ -17,6 +17,8 @@ import {
   FiArrowUp,
   FiArrowDown,
   FiMapPin,
+  FiPause,
+  FiPlay,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -772,7 +774,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
           </div>
 
           {/* Speed Chart (Simple visualization) */}
-          <div style={{ marginBottom: '24px' }}>
+          {/* <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Speed Over Last 24 Hours</h3>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -806,7 +808,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
                 <p style={{ color: '#6b7280' }}>No data available for the last 24 hours</p>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Devices List */}
           {/* <div>
@@ -860,14 +862,30 @@ export default function WifiMonitor() {
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
+  const [autoRefresh, setAutoRefresh] = useState(true) // Auto-refresh toggle
+  const fetchDataRef = useRef(null)
 
   useEffect(() => {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
+  // Auto-refresh polling (every 20 seconds)
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      // Silent refresh - use ref to avoid stale closure
+      fetchDataRef.current?.(true)
+    }, 20000)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh])
+
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       setError(null)
 
       const [statsRes, networksRes, alertsRes] = await Promise.all([
@@ -881,13 +899,20 @@ export default function WifiMonitor() {
       setAlerts(alertsRes.data.data || [])
     } catch (err) {
       console.error('Failed to fetch data:', err)
-      const message = err.response?.data?.message || err.message || 'Failed to fetch data'
-      setError(message)
-      toast.error(message)
+      if (!silent) {
+        const message = err.response?.data?.message || err.message || 'Failed to fetch data'
+        setError(message)
+        toast.error(message)
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
+
+  // Keep ref updated so auto-refresh always uses latest function
+  fetchDataRef.current = fetchData
 
   const handleSaveWifi = async (wifiId, data) => {
     if (wifiId) {
@@ -1101,9 +1126,41 @@ export default function WifiMonitor() {
         description="Monitor WiFi network speeds and performance"
         icon={FiWifi}
         action={
-          <Button icon={FiPlus} onClick={openAddModal}>
-            Add WiFi Network
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Auto-refresh toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                border: `1px solid ${autoRefresh ? '#16a34a' : '#d1d5db'}`,
+                borderRadius: '8px',
+                background: autoRefresh ? '#dcfce7' : '#fff',
+                color: autoRefresh ? '#16a34a' : '#6b7280',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
+              }}
+            >
+              {autoRefresh ? (
+                <>
+                  <FiPlay style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh ON
+                </>
+              ) : (
+                <>
+                  <FiPause style={{ width: '14px', height: '14px' }} />
+                  Auto-refresh OFF
+                </>
+              )}
+            </button>
+            <Button icon={FiPlus} onClick={openAddModal}>
+              Add WiFi Network
+            </Button>
+          </div>
         }
       />
 

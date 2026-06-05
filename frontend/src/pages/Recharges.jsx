@@ -12,6 +12,8 @@ import {
   FiSearch,
   FiDownload,
   FiEye,
+  FiEdit2,
+  FiTrash2,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -27,6 +29,7 @@ import {
   Pagination,
   Table,
   Modal,
+  ConfirmModal,
 } from '../components/ui'
 import { formatDate } from '../utils/dateFormat'
 
@@ -35,8 +38,10 @@ const paymentMethodColors = { cash: '#f0fdf4', upi: '#eff6ff', card: '#fdf4ff', 
 const paymentMethodTextColors = { cash: '#15803d', upi: '#1d4ed8', card: '#a21caf', netbanking: '#c2410c', wallet: '#a16207', other: '#6b7280' }
 
 // Recharge Modal Component
-function RechargeModal({ isOpen, onClose, onSave, sims }) {
+function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
   const [loading, setLoading] = useState(false)
+
+  const isEditMode = !!editRecharge
 
   useEffect(() => {
     if (isOpen) {
@@ -84,8 +89,6 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
     if (!formData.paymentMethod) newErrors.paymentMethod = 'Please select a payment method'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
   }
 
   const clearFieldError = (field) => {
@@ -103,6 +106,40 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
       setFormData((prev) => ({ ...prev, simId: sims[0]._id }))
     }
   }, [sims])
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editRecharge && isOpen) {
+      setFormData({
+        simId: editRecharge.simId?._id || editRecharge.simId || '',
+        amount: editRecharge.amount?.toString() || '',
+        plan: {
+          name: editRecharge.plan?.name || '',
+          validity: editRecharge.plan?.validity?.toString() || '',
+          data: editRecharge.plan?.data || '',
+          calls: editRecharge.plan?.calls || '',
+          sms: editRecharge.plan?.sms || '',
+        },
+        validity: editRecharge.validity?.toString() || '',
+        paymentMethod: editRecharge.paymentMethod || 'cash',
+        notes: editRecharge.notes || '',
+      })
+      setReceiptFile(null)
+      setErrors({})
+    } else if (!editRecharge && isOpen) {
+      // Reset form for new recharge
+      setFormData({
+        simId: sims && sims.length > 0 ? sims[0]._id : '',
+        amount: '',
+        plan: { name: '', validity: '', data: '', calls: '', sms: '' },
+        validity: '',
+        paymentMethod: 'cash',
+        notes: '',
+      })
+      setReceiptFile(null)
+      setErrors({})
+    }
+  }, [editRecharge, isOpen, sims])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -152,8 +189,8 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
         fd.append('receipt', receiptFile)
       }
 
-      await onSave(fd)
-      toast.success('Recharge added successfully')
+      await onSave(fd, isEditMode ? editRecharge._id : null)
+      toast.success(isEditMode ? 'Recharge updated successfully' : 'Recharge added successfully')
       onClose()
       setFormData({
         simId: sims && sims.length > 0 ? sims[0]._id : '',
@@ -200,7 +237,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
           padding: '16px 24px',
           borderBottom: '1px solid #e5e7eb'
         }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>Add Recharge</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>{isEditMode ? 'Edit Recharge' : 'Add Recharge'}</h2>
           <button onClick={onClose} style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
             <FiX style={{ width: '20px', height: '20px' }} />
           </button>
@@ -466,7 +503,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
               Cancel
             </Button>
             <Button loading={loading}>
-              {loading ? 'Adding...' : 'Add Recharge'}
+              {loading ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Recharge' : 'Add Recharge')}
             </Button>
           </div>
         </form>
@@ -476,7 +513,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims }) {
 }
 
 // Mobile Card View for each recharge record
-function RechargeCard({ row, getNextRechargeStatus, formatDate, onPreviewReceipt }) {
+function RechargeCard({ row, getNextRechargeStatus, formatDate, onPreviewReceipt, onEdit, onDelete }) {
   const nextRecharge = getNextRechargeStatus(row.nextRechargeDate)
 
   return (
@@ -486,6 +523,41 @@ function RechargeCard({ row, getNextRechargeStatus, formatDate, onPreviewReceipt
         <div>
           <p className="text-sm font-semibold text-gray-800">{row.simId?.mobileNumber || 'N/A'}</p>
           <p className="text-xs text-gray-500">{row.simId?.operator || ''}</p>
+        </div>
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => onEdit(row)}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              background: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Edit"
+          >
+            <FiEdit2 size={14} color="#6b7280" />
+          </button>
+          <button
+            onClick={() => onDelete(row)}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: '1px solid #fecaca',
+              background: '#fef2f2',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Delete"
+          >
+            <FiTrash2 size={14} color="#dc2626" />
+          </button>
         </div>
       </div>
 
@@ -581,6 +653,9 @@ export default function Recharges() {
   const [upcomingRecharges, setUpcomingRecharges] = useState([])
   const [overdueRecharges, setOverdueRecharges] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [editRecharge, setEditRecharge] = useState(null)
+  const [deleteRecharge, setDeleteRecharge] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     fetchRecharges()
@@ -659,8 +734,14 @@ export default function Recharges() {
     }
   }
 
-  const handleAddRecharge = async (formData) => {
-    await api.post('/recharges', formData)
+  const handleAddRecharge = async (formData, rechargeId = null) => {
+    if (rechargeId) {
+      // Update existing recharge
+      await api.put(`/recharges/${rechargeId}`, formData)
+    } else {
+      // Create new recharge
+      await api.post('/recharges', formData)
+    }
     if (pagination.page !== 1) {
       setPagination((prev) => ({ ...prev, page: 1 }))
     } else {
@@ -671,6 +752,41 @@ export default function Recharges() {
         fetchUpcoming(),
       ])
     }
+  }
+
+  const handleEditRecharge = (recharge) => {
+    setEditRecharge(recharge)
+    setShowModal(true)
+  }
+
+  const handleDeleteRecharge = async () => {
+    if (!deleteRecharge) return
+    setDeleteLoading(true)
+    try {
+      await api.delete(`/recharges/${deleteRecharge._id}`)
+      toast.success('Recharge deleted successfully')
+      setDeleteRecharge(null)
+      await Promise.all([
+        fetchRecharges(),
+        fetchStats(),
+        fetchOverdue(),
+        fetchUpcoming(),
+      ])
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete recharge')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const openAddModal = () => {
+    setEditRecharge(null)
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setEditRecharge(null)
   }
 
   const handleExport = async () => {
@@ -804,6 +920,46 @@ export default function Recharges() {
         ? <button onClick={() => setPreviewUrl(row.receiptImage)} style={{ color: '#2563eb', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}><FiEye size={16} /></button>
         : <span style={{ fontSize: '13px', color: '#9ca3af' }}>-</span>
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEditRecharge(row); }}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              background: '#fff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Edit"
+          >
+            <FiEdit2 size={14} color="#6b7280" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setDeleteRecharge(row); }}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: '1px solid #fecaca',
+              background: '#fef2f2',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Delete"
+          >
+            <FiTrash2 size={14} color="#dc2626" />
+          </button>
+        </div>
+      )
+    },
   ]
 
   if (loading) {
@@ -823,7 +979,7 @@ const today = new Date().toISOString().split('T')[0];
         action={
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Button variant="secondary" icon={FiDownload} onClick={handleExport}>Export</Button>
-            <Button icon={FiPlus} onClick={() => setShowModal(true)}>
+            <Button icon={FiPlus} onClick={openAddModal}>
               Add Recharge
             </Button>
           </div>
@@ -1010,7 +1166,7 @@ const today = new Date().toISOString().split('T')[0];
               data={filteredRecharges}
               emptyMessage="No Recharges Found"
               emptyAction={
-                <Button onClick={() => setShowModal(true)}>Add Recharge</Button>
+                <Button onClick={openAddModal}>Add Recharge</Button>
               }
               showSerial
               serialOffset={(pagination.page - 1) * pagination.limit}
@@ -1024,7 +1180,7 @@ const today = new Date().toISOString().split('T')[0];
         {filteredRecharges.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <p className="text-sm mb-3">No Recharges Found</p>
-            <Button onClick={() => setShowModal(true)}>Add Recharge</Button>
+            <Button onClick={openAddModal}>Add Recharge</Button>
           </div>
         ) : (
           filteredRecharges.map((row) => (
@@ -1034,6 +1190,8 @@ const today = new Date().toISOString().split('T')[0];
               getNextRechargeStatus={getNextRechargeStatus}
               formatDate={formatDate}
               onPreviewReceipt={setPreviewUrl}
+              onEdit={handleEditRecharge}
+              onDelete={setDeleteRecharge}
             />
           ))
         )}
@@ -1084,9 +1242,22 @@ const today = new Date().toISOString().split('T')[0];
       {/* Modal */}
       <RechargeModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={closeModal}
         onSave={handleAddRecharge}
         sims={sims}
+        editRecharge={editRecharge}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteRecharge}
+        onClose={() => setDeleteRecharge(null)}
+        onConfirm={handleDeleteRecharge}
+        title="Delete Recharge"
+        message={`Are you sure you want to delete this recharge of ₹${deleteRecharge?.amount?.toLocaleString() || 0}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        loading={deleteLoading}
       />
 
       {/* Receipt Preview Modal */}

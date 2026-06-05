@@ -468,14 +468,9 @@ export default function Notifications() {
                 `}
               >
                 <div className="p-3 sm:p-4 relative">
-                  {/* Timestamp — top-right corner on desktop */}
-                  <span className="hidden sm:flex items-center gap-1 text-xs text-gray-400 absolute top-3 right-28 sm:top-4 sm:right-4" title={formatDate(notification.createdAt)}>
-                    <FiClock className="w-3 h-3" />
-                    {formatFullDate(notification.createdAt)}
-                  </span>
+                  {/* Main row: checkbox + icon + content + timestamp + delete */}
+                  <div className="flex items-start gap-2 sm:gap-3">
 
-                  {/* Main row: checkbox + icon + content + delete */}
-                  <div className="flex items-start gap-2 sm:gap-3 sm:pr-44">
 
                     {/* Checkbox */}
                     <div
@@ -527,40 +522,47 @@ export default function Notifications() {
                       <p className="text-xs sm:text-sm text-gray-500 leading-relaxed line-clamp-2">
                         {highlightMessage(notification.message, notification.metadata)}
                       </p>
-
-                      {/* Mobile timestamp row */}
-                      <div className="flex items-center justify-between mt-2 sm:hidden">
-                        <span className="flex items-center gap-1 text-xs text-gray-400" title={formatDate(notification.createdAt)}>
-                          <FiClock className="w-3 h-3" />
-                          {formatFullDate(notification.createdAt)}
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Delete button */}
-                    <div
-                      className="shrink-0 self-start"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Desktop: text button */}
+                    {/* Desktop timestamp and delete button container */}
+                    <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
+                      {/* Timestamp — desktop only */}
+                      <span className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap" title={formatDate(notification.createdAt)}>
+                        <FiClock className="w-3 h-3" />
+                        {formatFullDate(notification.createdAt)}
+                      </span>
+
+                      {/* Delete button — desktop */}
                       <button
                         type="button"
                         onClick={() => deleteNotification(notification._id)}
-                        className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                       >
                         <FiTrash2 className="w-3.5 h-3.5" />
                         Delete
                       </button>
-                      {/* Mobile: icon-only button */}
-                      <button
-                        type="button"
-                        onClick={() => deleteNotification(notification._id)}
-                        className="sm:hidden flex items-center justify-center w-8 h-8 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        aria-label="Delete"
-                      >
-                        <FiTrash2 className="w-4 h-4" />
-                      </button>
                     </div>
+
+                    {/* Mobile timestamp row */}
+                    <div className="sm:hidden flex items-center gap-1 text-xs text-gray-400 shrink-0" title={formatDate(notification.createdAt)}>
+                      <FiClock className="w-3 h-3" />
+                      {formatFullDate(notification.createdAt)}
+                    </div>
+                  </div>
+
+                  {/* Mobile delete button */}
+                  <div
+                    className="sm:hidden absolute top-3 right-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => deleteNotification(notification._id)}
+                      className="flex items-center justify-center w-8 h-8 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      aria-label="Delete"
+                    >
+                      <FiTrash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>

@@ -424,6 +424,12 @@ const LandingContent = () => {
     cta: true,
     footer: true,
   })
+  // Track which feature items are expanded (by index)
+  const [expandedFeatureItems, setExpandedFeatureItems] = useState({})
+  // Track which testimonial items are expanded (by index)
+  const [expandedTestimonialItems, setExpandedTestimonialItems] = useState({})
+  // Track which FAQ items are expanded (by index)
+  const [expandedFaqItems, setExpandedFaqItems] = useState({})
 
   // Fetch content on mount
   useEffect(() => {
@@ -649,14 +655,14 @@ const LandingContent = () => {
           <p className="text-secondary-600 mt-1">Manage the content displayed on your public landing page</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <button
+          {/* <button
             onClick={handleReset}
             disabled={saving}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-secondary-300 rounded-lg text-secondary-700 hover:bg-secondary-50 disabled:opacity-50"
           >
             <FiRefreshCw className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} />
             Reset to Default
-          </button>
+          </button> */}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -973,89 +979,131 @@ const LandingContent = () => {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Feature Items</label>
-                      <button
-                        onClick={() => {
-                          const newFeatures = [...(content.features?.items || []), {
-                            icon: 'FiSmartphone',
-                            title: 'New Feature',
-                            description: 'Feature description'
-                          }]
-                          setContent(prev => ({
-                            ...prev,
-                            features: { ...prev.features, items: newFeatures }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Feature
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      {content.features?.items?.map((feature, index) => (
-                        <div key={index} className="p-4 bg-secondary-50 rounded-lg space-y-3">
-                          <div className="flex justify-between">
-                            <select
-                              value={feature.icon}
-                              onChange={(e) => {
-                                const newItems = [...content.features.items]
-                                newItems[index].icon = e.target.value
-                                setContent(prev => ({
-                                  ...prev,
-                                  features: { ...prev.features, items: newItems }
-                                }))
-                              }}
-                              className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Feature Items</label>
+                    <div className="space-y-2">
+                      {content.features?.items?.map((feature, index) => {
+                        const isExpanded = expandedFeatureItems[index] !== false
+                        return (
+                          <div key={index} className="border border-secondary-200 rounded-lg overflow-hidden">
+                            {/* Header - always visible, clickable to toggle */}
+                            <div
+                              className="flex items-center justify-between p-3 bg-secondary-50 cursor-pointer hover:bg-secondary-100 transition-colors"
+                              onClick={() => setExpandedFeatureItems(prev => ({ ...prev, [index]: !isExpanded }))}
                             >
-                              {availableIcons.map(icon => (
-                                <option key={icon} value={icon}>{icon}</option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => {
-                                const newItems = content.features.items.filter((_, i) => i !== index)
-                                setContent(prev => ({
-                                  ...prev,
-                                  features: { ...prev.features, items: newItems }
-                                }))
-                              }}
-                              className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-sm text-secondary-500">#{index + 1}</span>
+                                <span className="font-medium text-secondary-900 truncate">{feature.title || 'New Feature'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <FiChevronUp className="w-4 h-4 text-secondary-500" />
+                                ) : (
+                                  <FiChevronDown className="w-4 h-4 text-secondary-500" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Content - collapsible */}
+                            {isExpanded && (
+                              <div className="p-4 space-y-3 bg-white">
+                                <div className="flex justify-between">
+                                  <select
+                                    value={feature.icon}
+                                    onChange={(e) => {
+                                      const newItems = [...content.features.items]
+                                      newItems[index].icon = e.target.value
+                                      setContent(prev => ({
+                                        ...prev,
+                                        features: { ...prev.features, items: newItems }
+                                      }))
+                                    }}
+                                    className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  >
+                                    {availableIcons.map(icon => (
+                                      <option key={icon} value={icon}>{icon}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      const newItems = content.features.items.filter((_, i) => i !== index)
+                                      setContent(prev => ({
+                                        ...prev,
+                                        features: { ...prev.features, items: newItems }
+                                      }))
+                                      // Update expanded state after deletion
+                                      setExpandedFeatureItems(prev => {
+                                        const newState = {}
+                                        Object.keys(prev).forEach(key => {
+                                          const idx = parseInt(key)
+                                          if (idx < index) {
+                                            newState[idx] = prev[idx]
+                                          } else if (idx > index) {
+                                            newState[idx - 1] = prev[idx]
+                                          }
+                                        })
+                                        return newState
+                                      })
+                                    }}
+                                    className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={feature.title}
+                                  onChange={(e) => {
+                                    const newItems = [...content.features.items]
+                                    newItems[index].title = e.target.value
+                                    setContent(prev => ({
+                                      ...prev,
+                                      features: { ...prev.features, items: newItems }
+                                    }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Feature Title"
+                                />
+                                <textarea
+                                  value={feature.description}
+                                  onChange={(e) => {
+                                    const newItems = [...content.features.items]
+                                    newItems[index].description = e.target.value
+                                    setContent(prev => ({
+                                      ...prev,
+                                      features: { ...prev.features, items: newItems }
+                                    }))
+                                  }}
+                                  rows={2}
+                                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Feature description"
+                                />
+                              </div>
+                            )}
                           </div>
-                          <input
-                            type="text"
-                            value={feature.title}
-                            onChange={(e) => {
-                              const newItems = [...content.features.items]
-                              newItems[index].title = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                features: { ...prev.features, items: newItems }
-                              }))
-                            }}
-                            className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Feature Title"
-                          />
-                          <textarea
-                            value={feature.description}
-                            onChange={(e) => {
-                              const newItems = [...content.features.items]
-                              newItems[index].description = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                features: { ...prev.features, items: newItems }
-                              }))
-                            }}
-                            rows={2}
-                            className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Feature description"
-                          />
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
+                    <button
+                      onClick={() => {
+                        const currentItems = content.features?.items || []
+                        const newIndex = currentItems.length
+                        const newFeatures = [...currentItems, {
+                          icon: 'FiSmartphone',
+                          title: 'New Feature',
+                          description: 'Feature description'
+                        }]
+                        setContent(prev => ({
+                          ...prev,
+                          features: { ...prev.features, items: newFeatures }
+                        }))
+                        // Auto-expand the newly added feature
+                        setExpandedFeatureItems(prev => ({ ...prev, [newIndex]: true }))
+                      }}
+                      className="mt-3 w-full py-2 px-4 border-2 border-dashed border-secondary-300 rounded-lg text-secondary-600 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FiPlus className="w-4 h-4" /> Add Feature
+                    </button>
                   </div>
                 </div>
               )}
@@ -1087,25 +1135,7 @@ const LandingContent = () => {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Steps</label>
-                      <button
-                        onClick={() => {
-                          const newSteps = [...(content.howItWorks?.steps || []), {
-                            step: (content.howItWorks?.steps?.length || 0) + 1,
-                            title: 'New Step',
-                            description: 'Step description'
-                          }]
-                          setContent(prev => ({
-                            ...prev,
-                            howItWorks: { ...prev.howItWorks, steps: newSteps }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Step
-                      </button>
-                    </div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Steps</label>
                     <div className="space-y-4">
                       {content.howItWorks?.steps?.map((step, index) => (
                         <div key={index} className="flex gap-4 items-start p-4 bg-secondary-50 rounded-lg">
@@ -1157,6 +1187,22 @@ const LandingContent = () => {
                         </div>
                       ))}
                     </div>
+                    <button
+                      onClick={() => {
+                        const newSteps = [...(content.howItWorks?.steps || []), {
+                          step: (content.howItWorks?.steps?.length || 0) + 1,
+                          title: 'New Step',
+                          description: 'Step description'
+                        }]
+                        setContent(prev => ({
+                          ...prev,
+                          howItWorks: { ...prev.howItWorks, steps: newSteps }
+                        }))
+                      }}
+                      className="mt-3 w-full py-2 px-4 border-2 border-dashed border-secondary-300 rounded-lg text-secondary-600 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FiPlus className="w-4 h-4" /> Add Step
+                    </button>
                   </div>
                 </div>
               )}
@@ -1188,124 +1234,168 @@ const LandingContent = () => {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Testimonials</label>
-                      <button
-                        onClick={() => {
-                          const newItems = [...(content.testimonials?.items || []), {
-                            name: 'New Person',
-                            role: 'Role',
-                            company: 'Company',
-                            content: 'Testimonial content',
-                            rating: 5
-                          }]
-                          setContent(prev => ({
-                            ...prev,
-                            testimonials: { ...prev.testimonials, items: newItems }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Testimonial
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      {content.testimonials?.items?.map((item, index) => (
-                        <div key={index} className="p-4 bg-secondary-50 rounded-lg space-y-3">
-                          <div className="flex justify-end">
-                            <button
-                              onClick={() => {
-                                const newItems = content.testimonials.items.filter((_, i) => i !== index)
-                                setContent(prev => ({
-                                  ...prev,
-                                  testimonials: { ...prev.testimonials, items: newItems }
-                                }))
-                              }}
-                              className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Testimonials</label>
+                    <div className="space-y-2">
+                      {content.testimonials?.items?.map((item, index) => {
+                        const isExpanded = expandedTestimonialItems[index] !== false
+                        return (
+                          <div key={index} className="border border-secondary-200 rounded-lg overflow-hidden">
+                            {/* Header - always visible, clickable to toggle */}
+                            <div
+                              className="flex items-center justify-between p-3 bg-secondary-50 cursor-pointer hover:bg-secondary-100 transition-colors"
+                              onClick={() => setExpandedTestimonialItems(prev => ({ ...prev, [index]: !isExpanded }))}
                             >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-sm text-secondary-500">#{index + 1}</span>
+                                <span className="font-medium text-secondary-900 truncate">{item.name || 'New Person'}</span>
+                                {item.role && <span className="text-sm text-secondary-500 truncate">({item.role})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <FiChevronUp className="w-4 h-4 text-secondary-500" />
+                                ) : (
+                                  <FiChevronDown className="w-4 h-4 text-secondary-500" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Content - collapsible */}
+                            {isExpanded && (
+                              <div className="p-4 space-y-3 bg-white">
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      const newItems = content.testimonials.items.filter((_, i) => i !== index)
+                                      setContent(prev => ({
+                                        ...prev,
+                                        testimonials: { ...prev.testimonials, items: newItems }
+                                      }))
+                                      // Update expanded state after deletion
+                                      setExpandedTestimonialItems(prev => {
+                                        const newState = {}
+                                        Object.keys(prev).forEach(key => {
+                                          const idx = parseInt(key)
+                                          if (idx < index) {
+                                            newState[idx] = prev[idx]
+                                          } else if (idx > index) {
+                                            newState[idx - 1] = prev[idx]
+                                          }
+                                        })
+                                        return newState
+                                      })
+                                    }}
+                                    className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <input
+                                    type="text"
+                                    value={item.name}
+                                    onChange={(e) => {
+                                      const newItems = [...content.testimonials.items]
+                                      newItems[index].name = e.target.value
+                                      setContent(prev => ({
+                                        ...prev,
+                                        testimonials: { ...prev.testimonials, items: newItems }
+                                      }))
+                                    }}
+                                    className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Name"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={item.role}
+                                    onChange={(e) => {
+                                      const newItems = [...content.testimonials.items]
+                                      newItems[index].role = e.target.value
+                                      setContent(prev => ({
+                                        ...prev,
+                                        testimonials: { ...prev.testimonials, items: newItems }
+                                      }))
+                                    }}
+                                    className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Role"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={item.company}
+                                    onChange={(e) => {
+                                      const newItems = [...content.testimonials.items]
+                                      newItems[index].company = e.target.value
+                                      setContent(prev => ({
+                                        ...prev,
+                                        testimonials: { ...prev.testimonials, items: newItems }
+                                      }))
+                                    }}
+                                    className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Company"
+                                  />
+                                </div>
+                                <textarea
+                                  value={item.content}
+                                  onChange={(e) => {
+                                    const newItems = [...content.testimonials.items]
+                                    newItems[index].content = e.target.value
+                                    setContent(prev => ({
+                                      ...prev,
+                                      testimonials: { ...prev.testimonials, items: newItems }
+                                    }))
+                                  }}
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Testimonial content"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <label className="text-sm text-secondary-700">Rating:</label>
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <button
+                                      key={star}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        const newItems = [...content.testimonials.items]
+                                        newItems[index].rating = star
+                                        setContent(prev => ({
+                                          ...prev,
+                                          testimonials: { ...prev.testimonials, items: newItems }
+                                        }))
+                                      }}
+                                      className={`w-6 h-6 ${star <= item.rating ? 'text-warning-500' : 'text-secondary-300'}`}
+                                    >
+                                      ★
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <input
-                              type="text"
-                              value={item.name}
-                              onChange={(e) => {
-                                const newItems = [...content.testimonials.items]
-                                newItems[index].name = e.target.value
-                                setContent(prev => ({
-                                  ...prev,
-                                  testimonials: { ...prev.testimonials, items: newItems }
-                                }))
-                              }}
-                              className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Name"
-                            />
-                            <input
-                              type="text"
-                              value={item.role}
-                              onChange={(e) => {
-                                const newItems = [...content.testimonials.items]
-                                newItems[index].role = e.target.value
-                                setContent(prev => ({
-                                  ...prev,
-                                  testimonials: { ...prev.testimonials, items: newItems }
-                                }))
-                              }}
-                              className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Role"
-                            />
-                            <input
-                              type="text"
-                              value={item.company}
-                              onChange={(e) => {
-                                const newItems = [...content.testimonials.items]
-                                newItems[index].company = e.target.value
-                                setContent(prev => ({
-                                  ...prev,
-                                  testimonials: { ...prev.testimonials, items: newItems }
-                                }))
-                              }}
-                              className="px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Company"
-                            />
-                          </div>
-                          <textarea
-                            value={item.content}
-                            onChange={(e) => {
-                              const newItems = [...content.testimonials.items]
-                              newItems[index].content = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                testimonials: { ...prev.testimonials, items: newItems }
-                              }))
-                            }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Testimonial content"
-                          />
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm text-secondary-700">Rating:</label>
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <button
-                                key={star}
-                                onClick={() => {
-                                  const newItems = [...content.testimonials.items]
-                                  newItems[index].rating = star
-                                  setContent(prev => ({
-                                    ...prev,
-                                    testimonials: { ...prev.testimonials, items: newItems }
-                                  }))
-                                }}
-                                className={`w-6 h-6 ${star <= item.rating ? 'text-warning-500' : 'text-secondary-300'}`}
-                              >
-                                ★
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
+                    <button
+                      onClick={() => {
+                        const currentItems = content.testimonials?.items || []
+                        const newIndex = currentItems.length
+                        const newItems = [...currentItems, {
+                          name: 'New Person',
+                          role: 'Role',
+                          company: 'Company',
+                          content: 'Testimonial content',
+                          rating: 5
+                        }]
+                        setContent(prev => ({
+                          ...prev,
+                          testimonials: { ...prev.testimonials, items: newItems }
+                        }))
+                        // Auto-expand the newly added testimonial
+                        setExpandedTestimonialItems(prev => ({ ...prev, [newIndex]: true }))
+                      }}
+                      className="mt-3 w-full py-2 px-4 border-2 border-dashed border-secondary-300 rounded-lg text-secondary-600 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FiPlus className="w-4 h-4" /> Add Testimonial
+                    </button>
                   </div>
                 </div>
               )}
@@ -1369,6 +1459,63 @@ const LandingContent = () => {
                         className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-secondary-700 mb-2">Features</label>
+                      <div className="space-y-2">
+                        {content.integrations?.whatsapp?.features?.map((feature, index) => (
+                          <div key={index} className="flex gap-2 items-center">
+                            <span className="text-sm text-secondary-500 w-6">{index + 1}.</span>
+                            <input
+                              type="text"
+                              value={feature}
+                              onChange={(e) => {
+                                const newFeatures = [...(content.integrations?.whatsapp?.features || [])]
+                                newFeatures[index] = e.target.value
+                                setContent(prev => ({
+                                  ...prev,
+                                  integrations: {
+                                    ...prev.integrations,
+                                    whatsapp: { ...prev.integrations?.whatsapp, features: newFeatures }
+                                  }
+                                }))
+                              }}
+                              className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              placeholder="Feature text"
+                            />
+                            <button
+                              onClick={() => {
+                                const newFeatures = content.integrations?.whatsapp?.features?.filter((_, i) => i !== index) || []
+                                setContent(prev => ({
+                                  ...prev,
+                                  integrations: {
+                                    ...prev.integrations,
+                                    whatsapp: { ...prev.integrations?.whatsapp, features: newFeatures }
+                                  }
+                                }))
+                              }}
+                              className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newFeatures = [...(content.integrations?.whatsapp?.features || []), 'New feature']
+                          setContent(prev => ({
+                            ...prev,
+                            integrations: {
+                              ...prev.integrations,
+                              whatsapp: { ...prev.integrations?.whatsapp, features: newFeatures }
+                            }
+                          }))
+                        }}
+                        className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                      >
+                        <FiPlus className="w-4 h-4" /> Add Feature
+                      </button>
+                    </div>
                   </div>
 
                   {/* Telegram */}
@@ -1404,6 +1551,63 @@ const LandingContent = () => {
                         className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-secondary-700 mb-2">Features</label>
+                      <div className="space-y-2">
+                        {content.integrations?.telegram?.features?.map((feature, index) => (
+                          <div key={index} className="flex gap-2 items-center">
+                            <span className="text-sm text-secondary-500 w-6">{index + 1}.</span>
+                            <input
+                              type="text"
+                              value={feature}
+                              onChange={(e) => {
+                                const newFeatures = [...(content.integrations?.telegram?.features || [])]
+                                newFeatures[index] = e.target.value
+                                setContent(prev => ({
+                                  ...prev,
+                                  integrations: {
+                                    ...prev.integrations,
+                                    telegram: { ...prev.integrations?.telegram, features: newFeatures }
+                                  }
+                                }))
+                              }}
+                              className="flex-1 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              placeholder="Feature text"
+                            />
+                            <button
+                              onClick={() => {
+                                const newFeatures = content.integrations?.telegram?.features?.filter((_, i) => i !== index) || []
+                                setContent(prev => ({
+                                  ...prev,
+                                  integrations: {
+                                    ...prev.integrations,
+                                    telegram: { ...prev.integrations?.telegram, features: newFeatures }
+                                  }
+                                }))
+                              }}
+                              className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newFeatures = [...(content.integrations?.telegram?.features || []), 'New feature']
+                          setContent(prev => ({
+                            ...prev,
+                            integrations: {
+                              ...prev.integrations,
+                              telegram: { ...prev.integrations?.telegram, features: newFeatures }
+                            }
+                          }))
+                        }}
+                        className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                      >
+                        <FiPlus className="w-4 h-4" /> Add Feature
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1435,74 +1639,115 @@ const LandingContent = () => {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-secondary-700">Questions</label>
-                      <button
-                        onClick={() => {
-                          const newItems = [...(content.faq?.items || []), {
-                            question: 'New Question?',
-                            answer: 'Answer to the question.',
-                            order: (content.faq?.items?.length || 0) + 1
-                          }]
-                          setContent(prev => ({
-                            ...prev,
-                            faq: { ...prev.faq, items: newItems }
-                          }))
-                        }}
-                        className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <FiPlus className="w-4 h-4" /> Add Question
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      {content.faq?.items?.map((item, index) => (
-                        <div key={index} className="p-4 bg-secondary-50 rounded-lg space-y-3">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-secondary-500">#{index + 1}</span>
-                            <button
-                              onClick={() => {
-                                const newItems = content.faq.items.filter((_, i) => i !== index)
-                                setContent(prev => ({
-                                  ...prev,
-                                  faq: { ...prev.faq, items: newItems }
-                                }))
-                              }}
-                              className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">Questions</label>
+                    <div className="space-y-2">
+                      {content.faq?.items?.map((item, index) => {
+                        const isExpanded = expandedFaqItems[index] !== false
+                        return (
+                          <div key={index} className="border border-secondary-200 rounded-lg overflow-hidden">
+                            {/* Header - always visible, clickable to toggle */}
+                            <div
+                              className="flex items-center justify-between p-3 bg-secondary-50 cursor-pointer hover:bg-secondary-100 transition-colors"
+                              onClick={() => setExpandedFaqItems(prev => ({ ...prev, [index]: !isExpanded }))}
                             >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-sm text-secondary-500">#{index + 1}</span>
+                                <span className="font-medium text-secondary-900 truncate">{item.question || 'New Question?'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <FiChevronUp className="w-4 h-4 text-secondary-500" />
+                                ) : (
+                                  <FiChevronDown className="w-4 h-4 text-secondary-500" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Content - collapsible */}
+                            {isExpanded && (
+                              <div className="p-4 space-y-3 bg-white">
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      const newItems = content.faq.items.filter((_, i) => i !== index)
+                                      setContent(prev => ({
+                                        ...prev,
+                                        faq: { ...prev.faq, items: newItems }
+                                      }))
+                                      // Update expanded state after deletion
+                                      setExpandedFaqItems(prev => {
+                                        const newState = {}
+                                        Object.keys(prev).forEach(key => {
+                                          const idx = parseInt(key)
+                                          if (idx < index) {
+                                            newState[idx] = prev[idx]
+                                          } else if (idx > index) {
+                                            newState[idx - 1] = prev[idx]
+                                          }
+                                        })
+                                        return newState
+                                      })
+                                    }}
+                                    className="p-2 text-danger-500 hover:bg-danger-50 rounded-lg"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={item.question}
+                                  onChange={(e) => {
+                                    const newItems = [...content.faq.items]
+                                    newItems[index].question = e.target.value
+                                    setContent(prev => ({
+                                      ...prev,
+                                      faq: { ...prev.faq, items: newItems }
+                                    }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Question"
+                                />
+                                <textarea
+                                  value={item.answer}
+                                  onChange={(e) => {
+                                    const newItems = [...content.faq.items]
+                                    newItems[index].answer = e.target.value
+                                    setContent(prev => ({
+                                      ...prev,
+                                      faq: { ...prev.faq, items: newItems }
+                                    }))
+                                  }}
+                                  rows={3}
+                                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Answer"
+                                />
+                              </div>
+                            )}
                           </div>
-                          <input
-                            type="text"
-                            value={item.question}
-                            onChange={(e) => {
-                              const newItems = [...content.faq.items]
-                              newItems[index].question = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                faq: { ...prev.faq, items: newItems }
-                              }))
-                            }}
-                            className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Question"
-                          />
-                          <textarea
-                            value={item.answer}
-                            onChange={(e) => {
-                              const newItems = [...content.faq.items]
-                              newItems[index].answer = e.target.value
-                              setContent(prev => ({
-                                ...prev,
-                                faq: { ...prev.faq, items: newItems }
-                              }))
-                            }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Answer"
-                          />
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
+                    <button
+                      onClick={() => {
+                        const currentItems = content.faq?.items || []
+                        const newIndex = currentItems.length
+                        const newItems = [...currentItems, {
+                          question: 'New Question?',
+                          answer: 'Answer to the question.',
+                          order: (currentItems.length || 0) + 1
+                        }]
+                        setContent(prev => ({
+                          ...prev,
+                          faq: { ...prev.faq, items: newItems }
+                        }))
+                        // Auto-expand the newly added question
+                        setExpandedFaqItems(prev => ({ ...prev, [newIndex]: true }))
+                      }}
+                      className="mt-3 w-full py-2 px-4 border-2 border-dashed border-secondary-300 rounded-lg text-secondary-600 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <FiPlus className="w-4 h-4" /> Add Question
+                    </button>
                   </div>
                 </div>
               )}

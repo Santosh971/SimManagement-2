@@ -70,6 +70,16 @@ WifiAlertSchema.index({ status: 1, createdAt: -1 });
 WifiAlertSchema.index({ alertType: 1, status: 1 });
 WifiAlertSchema.index({ deviceId: 1, status: 1 });
 
+// Compound unique index to prevent duplicate active alerts
+// Only one active alert per wifiId + alertType + deviceId combination
+WifiAlertSchema.index(
+  { wifiId: 1, alertType: 1, deviceId: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: 'active' }
+  }
+);
+
 // Virtual for duration
 WifiAlertSchema.virtual('duration').get(function () {
   if (this.status === 'active') {

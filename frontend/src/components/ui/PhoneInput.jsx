@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { countryCodes, getDialCode } from '../../data/countries'
+import { countryCodes, getDialCode, getFlagUrl, countryCodeMap } from '../../data/countries'
 import { CountryCodeSelect } from './'
 
 /**
@@ -20,6 +20,7 @@ import { CountryCodeSelect } from './'
  * @param {function} onBlur - Blur handler for the phone number input
  * @param {string} className - Additional class names
  * @param {object} style - Additional inline styles for the wrapper
+ * @param {boolean} showTooltip - Whether to show country flag/code tooltip on hover (default: true)
  */
 export default function PhoneInput({
   value = '',
@@ -31,9 +32,11 @@ export default function PhoneInput({
   error,
   className = '',
   style = {},
+  showTooltip = true,
 }) {
   const [countryCode, setCountryCode] = useState('+91')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [isHovered, setIsHovered] = useState(false)
 
   // Compute maxLength based on country code (same logic as SIMs Add form)
   const maxPhoneLength = countryCode === '+91' ? 10 : 15 - (countryCode.length - 1)
@@ -78,6 +81,9 @@ export default function PhoneInput({
     onChange(fullPhone)
   }
 
+  // Get current country info for tooltip
+  const currentCountry = countryCodeMap[countryCode] || countryCodeMap['+91']
+
   return (
     <div className={className} style={style}>
       {label && (
@@ -86,7 +92,11 @@ export default function PhoneInput({
           {required && <span style={{ color: '#dc2626' }}>*</span>}
         </label>
       )}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <div
+        style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', position: 'relative' }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <CountryCodeSelect
           value={countryCode}
           onChange={handleCountryCodeChange}
@@ -109,6 +119,62 @@ export default function PhoneInput({
             boxSizing: 'border-box',
           }}
         />
+
+        {/* Tooltip on hover - shows country flag, code and name */}
+        {showTooltip && isHovered && currentCountry && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              left: '0',
+              backgroundColor: '#1f2937',
+              color: '#fff',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              zIndex: 99999,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            {/* Tooltip arrow */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '-6px',
+                left: '20px',
+                width: 0,
+                height: 0,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderBottom: '6px solid #1f2937',
+              }}
+            />
+            {/* Country Flag - using same styling as CountryCodeSelect dropdown */}
+            <img
+              src={getFlagUrl(currentCountry.iso)}
+              alt={currentCountry.iso}
+              style={{
+                width: '20px',
+                height: '14px',
+                objectFit: 'cover',
+                borderRadius: '2px',
+                display: 'block',
+              }}
+            />
+            {/* Country Code */}
+            <span style={{ fontWeight: '600', color: '#fff' }}>
+              {currentCountry.code}
+            </span>
+            {/* Country Name */}
+            <span style={{ color: '#9ca3af' }}>
+              {currentCountry.country}
+            </span>
+          </div>
+        )}
       </div>
       {error && (
         <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>

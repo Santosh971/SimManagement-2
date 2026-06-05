@@ -29,6 +29,8 @@ import {
   FaGithub,
 } from "react-icons/fa";
 import Logo from "../components/Logo";
+import { CountryCodeSelect } from "../components/ui";
+import { countryCodes } from "../data/countries";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -269,14 +271,56 @@ const Landing = () => {
   const [loading, setLoading] = useState(true);
 
   // Contact form state
-  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', company: '', message: '' });
+  const [contactForm, setContactForm] = useState({ name: '', email: '', countryCode: '+91', phone: '', company: '', message: '' });
   const [contactErrors, setContactErrors] = useState({});
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [billingCycle, setBillingCycle] = useState("monthly");
 
+  // Red asterisk for required fields
+  const requiredAsterisk = <span style={{ color: '#dc2626' }}>*</span>;
+
+  // Compute max phone length based on country code (same logic as SIMs form)
+  const getMaxPhoneLength = (countryCode) => {
+    if (countryCode === '+91') return 10
+    return 15 - (countryCode.length - 1)
+  }
+
+  // Phone validation - matches SIMs form pattern
+  const validatePhoneNumber = (phone, countryCode) => {
+    // Phone is optional
+    if (!phone || !phone.trim()) return ''
+
+    const cleanPhone = phone.trim()
+
+    // Must contain only digits
+    if (!/^\d+$/.test(cleanPhone)) return 'Only digits are allowed'
+
+    // For Indian numbers, must be exactly 10 digits
+    if (countryCode === '+91' && !/^\d{10}$/.test(cleanPhone)) {
+      return 'Must be 10 digits for Indian numbers'
+    }
+
+    // Combined number (country code + phone) must be 10-15 digits
+    const totalDigits = (countryCode.length - 1) + cleanPhone.length
+    if (totalDigits < 10 || totalDigits > 15) {
+      return 'Combined number must be 10-15 digits'
+    }
+
+    return ''
+  }
+
+  // Get phone length info for display
+  const getPhoneLengthInfo = (countryCode) => {
+    if (countryCode === '+91') {
+      return { current: contactForm.phone?.length || 0, required: 10, exact: true }
+    }
+    const maxLen = 15 - (countryCode.length - 1)
+    return { current: contactForm.phone?.length || 0, max: maxLen, exact: false }
+  }
+
   // Contact form handlers
-  const validateContactField = (name, value) => {
+  const validateContactField = (name, value, countryCode = null) => {
     switch (name) {
       case 'name':
         if (!value || !value.trim()) return 'Name is required'
@@ -287,8 +331,7 @@ const Landing = () => {
         if (!/^\S+@\S+\.\S+$/.test(value.trim())) return 'Please enter a valid email address'
         return ''
       case 'phone':
-        if (value && value.trim() && !/^\+?\d{10,15}$/.test(value.trim())) return 'Phone number must be 10-15 digits'
-        return ''
+        return validatePhoneNumber(value, countryCode || contactForm.countryCode)
       case 'message':
         if (!value || !value.trim()) return 'Message is required'
         if (value.trim().length > 1000) return 'Message cannot exceed 1000 characters'
@@ -300,20 +343,61 @@ const Landing = () => {
 
   const handleContactChange = (e) => {
     const { name, value } = e.target
-    setContactForm((prev) => ({ ...prev, [name]: value }))
-    if (contactErrors[name]) {
-      setContactErrors((prev) => {
-        const updated = { ...prev }
-        delete updated[name]
-        return updated
-      })
+    if (name === 'countryCode') {
+      // When country code changes, update country code and revalidate phone if there's a value
+      const newCountryCode = value
+      const newMaxLen = getMaxPhoneLength(newCountryCode)
+      // Truncate phone number if it exceeds the new country's maxLength
+      const trimmedPhone = contactForm.phone && contactForm.phone.length > newMaxLen
+        ? contactForm.phone.substring(0, newMaxLen)
+        : contactForm.phone
+      setContactForm((prev) => ({ ...prev, countryCode: newCountryCode, phone: trimmedPhone }))
+      // Revalidate phone with new country code
+      if (trimmedPhone && trimmedPhone.trim()) {
+        const phoneError = validatePhoneNumber(trimmedPhone, newCountryCode)
+        setContactErrors((prev) => ({ ...prev, phone: phoneError }))
+      } else {
+        setContactErrors((prev) => {
+          const updated = { ...prev }
+          delete updated.phone
+          return updated
+        })
+      }
+    } else if (name === 'phone') {
+      // Only allow digits and enforce maxLength
+      const digitsOnly = value.replace(/\D/g, '')
+      const maxLen = getMaxPhoneLength(contactForm.countryCode)
+      const truncated = digitsOnly.substring(0, maxLen)
+      setContactForm((prev) => ({ ...prev, [name]: truncated }))
+      // Clear error on change
+      if (contactErrors.phone) {
+        setContactErrors((prev) => {
+          const updated = { ...prev }
+          delete updated.phone
+          return updated
+        })
+      }
+    } else {
+      setContactForm((prev) => ({ ...prev, [name]: value }))
+      if (contactErrors[name]) {
+        setContactErrors((prev) => {
+          const updated = { ...prev }
+          delete updated[name]
+          return updated
+        })
+      }
     }
   }
 
   const handleContactBlur = (e) => {
     const { name, value } = e.target
-    const error = validateContactField(name, value)
-    setContactErrors((prev) => ({ ...prev, [name]: error }))
+    if (name === 'phone') {
+      const error = validateContactField(name, value, contactForm.countryCode)
+      setContactErrors((prev) => ({ ...prev, [name]: error }))
+    } else {
+      const error = validateContactField(name, value)
+      setContactErrors((prev) => ({ ...prev, [name]: error }))
+    }
   }
 
   const handleContactSubmit = async (e) => {
@@ -321,7 +405,7 @@ const Landing = () => {
     const newErrors = {}
     const fieldsToValidate = ['name', 'email', 'phone', 'message']
     fieldsToValidate.forEach((field) => {
-      const error = validateContactField(field, contactForm[field])
+      const error = validateContactField(field, contactForm[field], contactForm.countryCode)
       if (error) newErrors[field] = error
     })
 
@@ -332,13 +416,18 @@ const Landing = () => {
 
     setContactSubmitting(true)
     try {
+      // Combine country code with phone number
+      const fullPhone = contactForm.phone && contactForm.phone.trim()
+        ? contactForm.countryCode + contactForm.phone.trim()
+        : ''
+
       const response = await fetch(`${API_URL}/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: contactForm.name,
           email: contactForm.email,
-          phone: contactForm.phone,
+          phone: fullPhone,
           company: contactForm.company,
           message: contactForm.message,
         }),
@@ -1036,18 +1125,11 @@ const Landing = () => {
             {content.cta?.subtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {/* <Link
-              to="/register"
+            <a
+              href={content.cta?.button1Link || "#pricing"}
               className="inline-flex items-center justify-center gap-2 bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-primary-50 transition-all"
             >
               {content.cta?.button1Text || "Get Started"}
-              <FiArrowRight className="w-5 h-5" />
-            </Link> */}
-            <a
-              href="#pricing"
-              className="inline-flex items-center justify-center gap-2 bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-primary-50 transition-all"
-            >
-              {content.hero?.cta1Text || "Get Started"}
               <FiArrowRight className="w-5 h-5" />
             </a>
             <Link
@@ -1078,7 +1160,7 @@ const Landing = () => {
                 <h3 className="text-2xl font-bold text-secondary-900 mb-2">Thank You!</h3>
                 <p className="text-secondary-600 mb-6">Your message has been sent successfully. We'll get back to you soon.</p>
                 <button
-                  onClick={() => { setContactSubmitted(false); setContactForm({ name: '', email: '', phone: '', company: '', message: '' }); setContactErrors({}); }}
+                  onClick={() => { setContactSubmitted(false); setContactForm({ name: '', email: '', countryCode: '+91', phone: '', company: '', message: '' }); setContactErrors({}); }}
                   className="text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Send another message
@@ -1088,7 +1170,7 @@ const Landing = () => {
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Name *</label>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Name {requiredAsterisk}</label>
                     <input
                       type="text"
                       name="name"
@@ -1101,7 +1183,7 @@ const Landing = () => {
                     {contactErrors.name && <p className="text-xs text-red-500 mt-1">{contactErrors.name}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Email *</label>
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Email {requiredAsterisk}</label>
                     <input
                       type="email"
                       name="email"
@@ -1114,19 +1196,55 @@ const Landing = () => {
                     {contactErrors.email && <p className="text-xs text-red-500 mt-1">{contactErrors.email}</p>}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Phone</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={contactForm.phone}
-                      onChange={handleContactChange}
-                      onBlur={handleContactBlur}
-                      className={`w-full px-4 py-2.5 rounded-lg border ${contactErrors.phone ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200`}
-                      placeholder="+91 9876543210"
-                    />
+                    <label className="block text-sm font-medium text-secondary-700 mb-1.5">Phone <span className="text-secondary-400 text-xs">(optional)</span></label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="sm:flex-shrink-0">
+                        <CountryCodeSelect
+                          value={contactForm.countryCode}
+                          onChange={handleContactChange}
+                        />
+                      </div>
+                      <div className="relative w-full sm:flex-1">
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={contactForm.phone}
+                          onChange={handleContactChange}
+                          onBlur={handleContactBlur}
+                          maxLength={getMaxPhoneLength(contactForm.countryCode)}
+                          className={`w-full px-4 py-2.5 pr-12 rounded-lg border ${contactErrors.phone ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-secondary-300 focus:ring-primary-500 focus:border-primary-500'} focus:outline-none focus:ring-2 transition-all duration-200`}
+                          placeholder={contactForm.countryCode === '+91' ? '9876543210' : 'Enter phone number'}
+                        />
+                        {/* Digit counter */}
+                        {contactForm.phone && (
+                          <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium ${
+                            contactErrors.phone ? 'text-red-500' :
+                            (contactForm.countryCode === '+91'
+                              ? contactForm.phone.length === 10
+                              : contactForm.phone.length >= 6 && contactForm.phone.length <= getMaxPhoneLength(contactForm.countryCode))
+                              ? 'text-green-600' : 'text-secondary-400'
+                          }`}>
+                            {contactForm.phone.length}/{contactForm.countryCode === '+91' ? '10' : getMaxPhoneLength(contactForm.countryCode)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     {contactErrors.phone && <p className="text-xs text-red-500 mt-1">{contactErrors.phone}</p>}
+                    {!contactErrors.phone && contactForm.phone && contactForm.phone.length > 0 && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Valid phone number format
+                      </p>
+                    )}
+                    <p className="text-xs text-secondary-400 mt-1">
+                      {contactForm.countryCode === '+91'
+                        ? 'Indian numbers must be exactly 10 digits'
+                        : `Enter ${getMaxPhoneLength(contactForm.countryCode)} digits after country code`}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-secondary-700 mb-1.5">Company</label>
@@ -1141,7 +1259,7 @@ const Landing = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">Message *</label>
+                  <label className="block text-sm font-medium text-secondary-700 mb-1.5">Message {requiredAsterisk}</label>
                   <textarea
                     name="message"
                     value={contactForm.message}

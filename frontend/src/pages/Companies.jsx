@@ -54,6 +54,15 @@ const inputStyle = {
   cursor: 'pointer',
 }
 
+// Helper: get the correct monthly duration for a plan (free trial is always 14 days)
+const getPlanDuration = (plan, billingCycle = 'monthly') => {
+  if (!plan) return 0
+  if (plan.planType === 'free_trial') return 14
+  return billingCycle === 'yearly'
+    ? (plan.durationDays?.yearly ?? 365)
+    : (plan.durationDays?.monthly ?? 30)
+}
+
 // Company Modal Component
 function CompanyModal({ isOpen, onClose, company, subscriptions, onSave, api }) {
   const [loading, setLoading] = useState(false)
@@ -73,15 +82,6 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave, api }) 
     'address.country': '',
     'address.zipCode': '',
   })
-
-  // Helper: get the correct monthly duration for a plan (free trial is always 14 days)
-  const getPlanDuration = (plan, billingCycle = 'monthly') => {
-    if (!plan) return 0
-    if (plan.planType === 'free_trial') return 14
-    return billingCycle === 'yearly'
-      ? (plan.durationDays?.yearly ?? 336)
-      : (plan.durationDays?.monthly ?? 28)
-  }
 
   useEffect(() => {
     if (company) {
@@ -467,7 +467,7 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave, api }) 
               setErrors((prev) => ({ ...prev, phone: error }))
             }}
             label="Contact Number"
-            placeholder="9874563210"
+            placeholder="Contact Number"
             error={errors.phone || ''}
           />
           {!errors.phone && (
@@ -1456,6 +1456,19 @@ function ManagePlanModal({ isOpen, onClose, company, subscriptions, api, onRefre
           display: 'flex', margin: '16px 18px 0',
           backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '4px',
         }}>
+          <button
+            onClick={() => setActiveTab('renew')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
+              fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+              backgroundColor: activeTab === 'renew' ? '#ffffff' : 'transparent',
+              color: activeTab === 'renew' ? '#111827' : '#6b7280',
+              boxShadow: activeTab === 'renew' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Renew / Change Plan
+          </button>
           {company.isTrial && (
             <button
               onClick={() => setActiveTab('extend')}
@@ -1471,7 +1484,6 @@ function ManagePlanModal({ isOpen, onClose, company, subscriptions, api, onRefre
               Extend Trial
             </button>
           )}
-         
         </div>
 
         {/* Tab content */}
@@ -1625,7 +1637,7 @@ export default function Companies() {
 
   // Delete confirmation state
   const [deleteCompanyConfirm, setDeleteCompanyConfirm] = useState({ show: false, companyId: null, companyName: '' })
-  const [deleteAdminConfirm, setDeleteAdminConfirm] = useState({ show: false, adminId: null, adminName: '' })
+  const [deleteAdminConfirm, setDeleteAdminConfirm] = useState({ show: false, adminId: null, adminName: '', companyId: null })
 
   // Toggle active status confirmation state
   const [toggleActiveConfirm, setToggleActiveConfirm] = useState({ show: false, companyId: null, companyName: '', currentStatus: true })
@@ -1699,10 +1711,12 @@ export default function Companies() {
       const response = await api.get(`/companies/${companyId}/admins`)
       setCompanyAdmins((prev) => ({
         ...prev,
-        [companyId]: response.data.data,
+        [companyId]: response.data.data || [],
       }))
+      return response.data.data
     } catch (error) {
-      toast.error('Failed to fetch admins')
+      console.error('Failed to fetch admins:', error)
+      throw error
     }
   }
 
@@ -1748,28 +1762,63 @@ export default function Companies() {
         } else {
           toast.success('Admin created successfully. Login credentials sent to email.')
         }
+
+        // Update admin count in companies list (only for new admins)
+        setCompanies((prevCompanies) =>
+          prevCompanies.map((company) =>
+            company._id === selectedCompany._id
+              ? { ...company, adminCount: (company.adminCount || 0) + 1 }
+              : company
+          )
+        )
       }
-      fetchCompanyAdmins(selectedCompany._id)
+      // Refresh admin list after successful save
+      try {
+        await fetchCompanyAdmins(selectedCompany._id)
+      } catch (refreshError) {
+        console.error('Failed to refresh admin list:', refreshError)
+      }
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to save admin'
       toast.error(message)
     }
   }
 
-  const handleDeleteAdmin = (adminId) => {
-    const admin = companyAdmins[selectedCompany?._id]?.find((a) => a._id === adminId)
-    setDeleteAdminConfirm({ show: true, adminId, adminName: admin?.name || '' })
+  const handleDeleteAdmin = (adminId, companyId) => {
+    const admin = companyAdmins[companyId]?.find((a) => a._id === adminId)
+    setDeleteAdminConfirm({ show: true, adminId, adminName: admin?.name || '', companyId })
   }
 
   const confirmDeleteAdmin = async () => {
     try {
       await api.delete(`/companies/admins/${deleteAdminConfirm.adminId}`)
       toast.success('Admin deleted successfully')
-      fetchCompanyAdmins(selectedCompany._id)
+      const companyId = deleteAdminConfirm.companyId
+      setDeleteAdminConfirm({ show: false, adminId: null, adminName: '', companyId: null })
+
+      // Update admin count in companies list
+      setCompanies((prevCompanies) =>
+        prevCompanies.map((company) =>
+          company._id === companyId
+            ? { ...company, adminCount: Math.max(0, (company.adminCount || 1) - 1) }
+            : company
+        )
+      )
+
+      // Refresh admin list after successful delete
+      try {
+        const response = await api.get(`/companies/${companyId}/admins`)
+        setCompanyAdmins((prev) => ({
+          ...prev,
+          [companyId]: response.data.data || [],
+        }))
+      } catch (refreshError) {
+        console.error('Failed to refresh admin list:', refreshError)
+      }
     } catch (error) {
-      toast.error('Failed to delete admin')
-    } finally {
-      setDeleteAdminConfirm({ show: false, adminId: null, adminName: '' })
+      const message = error.response?.data?.message || 'Failed to delete admin'
+      toast.error(message)
+      setDeleteAdminConfirm({ show: false, adminId: null, adminName: '', companyId: null })
     }
   }
 
@@ -1817,7 +1866,7 @@ export default function Companies() {
     } else {
       setExpandedCompanies([...expandedCompanies, companyId])
       if (!companyAdmins[companyId]) {
-        fetchCompanyAdmins(companyId)
+        fetchCompanyAdmins(companyId).catch(err => console.error('Failed to fetch admins:', err))
       }
     }
   }
@@ -2128,7 +2177,7 @@ export default function Companies() {
                                           <FiRefreshCw style={{ width: '16px', height: '16px' }} />
                                         </button>
                                         <button
-                                          onClick={() => handleDeleteAdmin(admin._id)}
+                                          onClick={() => handleDeleteAdmin(admin._id, company._id)}
                                           style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}
                                           title="Delete"
                                         >
@@ -2250,7 +2299,7 @@ export default function Companies() {
       {/* Delete Admin Confirmation */}
       <ConfirmModal
         isOpen={deleteAdminConfirm.show}
-        onClose={() => setDeleteAdminConfirm({ show: false, adminId: null, adminName: '' })}
+        onClose={() => setDeleteAdminConfirm({ show: false, adminId: null, adminName: '', companyId: null })}
         onConfirm={confirmDeleteAdmin}
         title="Delete Admin"
         message={`Are you sure you want to permanently delete admin "${deleteAdminConfirm.adminName}"? This action cannot be undone.`}
