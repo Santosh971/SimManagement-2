@@ -536,6 +536,23 @@ class CompanyController {
     try {
       await companyService.resendCompanyEmailChangeOTP(req.user.companyId);
 
+      // Audit log: COMPANY_EMAIL_CHANGE_RESEND
+      try {
+        await auditLogService.logAction({
+          action: 'COMPANY_EMAIL_CHANGE_RESEND',
+          module: 'COMPANY',
+          description: `Company email change verification code resent`,
+          performedBy: req.user.id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          entityType: 'COMPANY',
+          entityId: req.user.companyId,
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail resend if audit log fails
+      }
+
       return successResponse(res, null, 'Verification code resent');
     } catch (error) {
       next(error);

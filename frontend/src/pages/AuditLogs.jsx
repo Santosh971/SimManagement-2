@@ -14,7 +14,7 @@ import {
   FiChevronDown,
   FiChevronUp,
 } from 'react-icons/fi'
-import { Pagination, Button } from '../components/ui'
+import { Pagination, Button, Tooltip } from '../components/ui'
 import { formatDate, formatTime, formatDateTime, formatDateTimeShort } from '../utils/dateFormat'
 
 const AuditLogs = () => {
@@ -42,15 +42,15 @@ const AuditLogs = () => {
   const modules = [
     'AUTH', 'SIM', 'RECHARGE', 'USER', 'REPORT', 'COMPANY',
     'SUBSCRIPTION', 'PAYMENT', 'CALL_LOG', 'NOTIFICATION', 'SETTINGS', 'WHATSAPP', 'TELEGRAM',
-    'WIFI', 'CALL_AUTOMATION', 'SMS',
+    'WIFI_MONITOR ', 'CALL_AUTOMATION', 'SMS',
   ]
   const actions = {
-    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER',  'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY', 'OTP_RESEND', 'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_RESEND', 'FORGOT_PASSWORD_OTP_VERIFIED', 'PASSWORD_RESET_VIA_OTP', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED'],
+    AUTH: ['USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGE', 'PASSWORD_RESET', 'OTP_SEND', 'OTP_VERIFY',  'FORGOT_PASSWORD_OTP_REQUEST', 'FORGOT_PASSWORD_OTP_RESEND', 'FORGOT_PASSWORD_OTP_VERIFIED', 'EMAIL_CHANGE_REQUESTED', 'EMAIL_CHANGE_OLD_VERIFIED', 'EMAIL_CHANGE_COMPLETED', 'EMAIL_CHANGE_RESEND', 'REGISTRATION'],
     SIM: ['SIM_CREATE', 'SIM_UPDATE', 'SIM_DELETE', 'SIM_ASSIGN', 'SIM_UNASSIGN', 'SIM_STATUS_CHANGE', 'SIM_BULK_CREATE', 'SIM_BULK_IMPORT', 'SIM_EXPORT', 'SIM_MESSAGING_UPDATE'],
-    RECHARGE: ['RECHARGE_ADD'],
+    RECHARGE: ['RECHARGE_ADD', 'RECHARGE_UPDATE', 'RECHARGE_DELETE'],
     USER: ['USER_CREATE', 'USER_UPDATE', 'USER_DELETE', 'USER_PASSWORD_RESET', 'USER_STATUS_CHANGE'],
     REPORT: ['REPORT_EXPORT', 'REPORT_IMPORT', 'REPORT_DOWNLOAD', 'REPORT_GENERATE'],
-    COMPANY: ['COMPANY_CREATE', 'COMPANY_UPDATE', 'COMPANY_DELETE', 'COMPANY_ADMIN_CREATE', 'COMPANY_ADMIN_UPDATE', 'COMPANY_ADMIN_DELETE', 'COMPANY_SUBSCRIPTION_RENEW', 'COMPANY_PROFILE_UPDATE', 'COMPANY_EMAIL_CHANGE_REQUEST', 'COMPANY_EMAIL_CHANGE_COMPLETE', 'COMPANY_EMAIL_CHANGE_CANCEL', 'COMPANY_TRIAL_EXTEND'],
+    COMPANY: ['COMPANY_CREATE', 'COMPANY_UPDATE', 'COMPANY_DELETE', 'COMPANY_ADMIN_CREATE', 'COMPANY_ADMIN_UPDATE', 'COMPANY_ADMIN_DELETE', 'COMPANY_SUBSCRIPTION_RENEW', 'COMPANY_PROFILE_UPDATE', 'COMPANY_EMAIL_CHANGE_REQUEST', 'COMPANY_EMAIL_CHANGE_COMPLETE', 'COMPANY_EMAIL_CHANGE_CANCEL', 'COMPANY_EMAIL_CHANGE_RESEND', 'COMPANY_TRIAL_EXTEND'],
     SUBSCRIPTION: ['SUBSCRIPTION_CREATE', 'SUBSCRIPTION_UPDATE', 'SUBSCRIPTION_DELETE', 'SUBSCRIPTION_TOGGLE'],
     PAYMENT: ['PAYMENT_INITIATE', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'PAYMENT_REFUND'],
     CALL_LOG: ['CALL_LOG_SYNC', 'CALL_LOG_EXPORT', 'CALL_LOG_FLAG'],
@@ -243,20 +243,24 @@ const AuditLogs = () => {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <Button
-                variant="secondary"
-                icon={FiRefreshCw}
-                onClick={() => fetchLogs()}
-              >
-                {loading ? 'Loading...' : 'Refresh'}
-              </Button>
-              {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'company_admin') && (
+              <Tooltip text="Refresh audit logs">
                 <Button
-                  icon={FiDownload}
-                  onClick={handleExport}
+                  variant="secondary"
+                  icon={FiRefreshCw}
+                  onClick={() => fetchLogs()}
                 >
-                  Export
+                  {loading ? 'Loading...' : 'Refresh'}
                 </Button>
+              </Tooltip>
+              {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'company_admin') && (
+                <Tooltip text="Export audit logs to Excel">
+                  <Button
+                    icon={FiDownload}
+                    onClick={handleExport}
+                  >
+                    Export
+                  </Button>
+                </Tooltip>
               )}
             </div>
           </div>

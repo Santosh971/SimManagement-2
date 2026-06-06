@@ -185,7 +185,8 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="card-body" noValidate>
             {/* Email */}
             <div className="form-group">
-              <label className="label">Email ID<span style={{ color: '#dc2626' }}>*</span></label>
+              {/* <label className="label">Email ID<span style={{ color: '#dc2626' }}>*</span></label> */}
+               <label className="label">Email Id<span style={{ color: '#dc2626' }}>*</span></label>
               <div className="relative">
                 <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
                 <input

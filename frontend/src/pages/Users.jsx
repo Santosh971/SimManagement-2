@@ -108,6 +108,7 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
   }
 
   useEffect(() => {
+    if (!isOpen) return
     if (user) {
       setFormData({
         name: user.name || '',
@@ -124,7 +125,7 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
       })
     }
     setErrors({})
-  }, [user])
+  }, [user, isOpen])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target

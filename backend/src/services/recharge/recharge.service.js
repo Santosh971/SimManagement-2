@@ -264,7 +264,7 @@ class RechargeService {
     // Update company stats
     await this.updateCompanyStats(recharge.companyId);
 
-    return true;
+    return recharge;
   }
 
   async getUpcomingRecharges(companyId, days = 7) {

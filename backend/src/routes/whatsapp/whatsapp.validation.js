@@ -36,8 +36,8 @@ const sendBulkValidation = [
     .notEmpty()
     .withMessage('Message is required')
     .trim()
-    .isLength({ min: 1, max: 1000 })
-    .withMessage('Message must be between 1 and 1000 characters'),
+    .isLength({ min: 10, max: 4096 })
+    .withMessage('Message must be between 10 and 4096 characters'),
 
   // Custom validation: at least one of simIds or userIds must have elements
   body().custom((value) => {

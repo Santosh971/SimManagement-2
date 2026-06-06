@@ -312,7 +312,7 @@ class NotificationHelper {
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-              <h1 style="margin: 0;">⚠️ Inactive SIM Alert</h1>
+              <h1 style="margin: 0;">Inactive SIM Alert</h1>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
               <h2>Hello ${admin.name},</h2>
@@ -680,7 +680,7 @@ class NotificationHelper {
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+           
             <h1 style="margin: 0; font-size: 28px; font-weight: 600;">WiFi Speed Alert</h1>
           </div>
 
@@ -745,7 +745,7 @@ class NotificationHelper {
 
             <!-- Action Required -->
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
-              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">⚡ Action Required</div>
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">Action Required</div>
               <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.6;">
                 Please check your network connection and take necessary steps to resolve the issue.
                 If this issue persists, consider contacting your internet service provider.
@@ -783,7 +783,7 @@ class NotificationHelper {
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); padding: 40px 30px; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 10px;">📡</div>
+  
             <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">WiFi Network Offline</h1>
           </div>
 
@@ -829,7 +829,7 @@ class NotificationHelper {
 
             <!-- Possible Causes -->
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
-              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">Possible Causes</div>
               <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
                 <li>WiFi router/modem is turned off or disconnected</li>
                 <li>Power outage affecting the network equipment</li>
@@ -870,7 +870,7 @@ class NotificationHelper {
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); padding: 40px 30px; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 10px;">📱</div>
+            
             <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Device Disconnected from WiFi</h1>
           </div>
 
@@ -920,7 +920,7 @@ class NotificationHelper {
 
             <!-- Possible Causes -->
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
-              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">Possible Causes</div>
               <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
                 <li>User moved out of WiFi coverage area</li>
                 <li>WiFi was manually disabled on the device</li>
@@ -961,7 +961,7 @@ class NotificationHelper {
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 40px 30px; text-align: center;">
-            <div style="font-size: 48px; margin-bottom: 10px;">📵</div>
+            
             <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Device Offline Alert</h1>
           </div>
 
@@ -1011,7 +1011,7 @@ class NotificationHelper {
 
             <!-- Possible Causes -->
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px;">
-              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">🔍 Possible Causes</div>
+              <div style="font-size: 14px; font-weight: 600; color: #92400e; margin-bottom: 8px;">Possible Causes</div>
               <ul style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.8; padding-left: 20px;">
                 <li>Mobile device battery has drained</li>
                 <li>Device is powered off intentionally</li>

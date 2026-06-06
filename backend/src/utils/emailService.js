@@ -619,7 +619,10 @@ class EmailService {
       ['Role', (user.role || 'User').charAt(0).toUpperCase() + (user.role || 'User').slice(1)],
       ['Company', company.name],
     ])}
-     
+      ${tempPassword ? passwordBox(tempPassword) : ''}
+      ${paragraph('You can log in to your dashboard using the button below:')}
+      ${ctaButton('Log In Now', loginUrl)}
+      ${divider()}
       ${paragraph(`If you have any questions or need help getting set up, feel free to reach out to your administrator.`)}
     `;
 

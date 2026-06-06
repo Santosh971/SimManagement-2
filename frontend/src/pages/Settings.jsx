@@ -1437,8 +1437,8 @@ export default function Settings() {
       errors.name = 'Name must be at least 2 characters'
     } else if (profileData.name.trim().length > 50) {
       errors.name = 'Name cannot exceed 50 characters'
-    } else if (!/^[a-zA-Z\s.''-]+$/.test(profileData.name.trim())) {
-      errors.name = 'Name can only contain letters, spaces, dots, hyphens and apostrophes'
+    } else if (/[0-9]/.test(profileData.name.trim())) {
+      errors.name = 'Name cannot contain numbers'
     }
     const phoneError = validatePhone(profileData.phone)
     if (phoneError) errors.phone = phoneError
@@ -1939,7 +1939,7 @@ export default function Settings() {
     maxLength={50}
     placeholder="Mohit Patil"
     onChange={(e) => {
-      const filtered = e.target.value.replace(/[^a-zA-Z\s.''-]/g, '')
+      const filtered = e.target.value.replace(/[0-9]/g, '')
       setProfileData({
         ...profileData,
         name: filtered,
@@ -1963,10 +1963,10 @@ export default function Settings() {
           ...prev,
           name: 'Name cannot exceed 50 characters',
         }));
-      } else if (!/^[a-zA-Z\s.''-]+$/.test(profileData.name.trim())) {
+      } else if (/[0-9]/.test(profileData.name.trim())) {
         setProfileFieldErrors((prev) => ({
           ...prev,
-          name: 'Name can only contain letters, spaces, dots, hyphens and apostrophes',
+          name: 'Name cannot contain numbers',
         }));
       }
     }}

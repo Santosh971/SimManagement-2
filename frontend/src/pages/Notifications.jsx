@@ -470,7 +470,10 @@ export default function Notifications() {
                 <div className="p-3 sm:p-4 relative">
                   {/* Main row: checkbox + icon + content + timestamp + delete */}
                   <div className="flex items-start gap-2 sm:gap-3">
-
+                    
+                  <div>
+                    
+                  </div>
 
                     {/* Checkbox */}
                     <div
@@ -493,7 +496,7 @@ export default function Notifications() {
                     </div>
 
                     {/* Main content */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 relative">
                       {/* Badges row */}
                       <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                         {/* Type badge — icon visible on mobile */}
@@ -522,17 +525,16 @@ export default function Notifications() {
                       <p className="text-xs sm:text-sm text-gray-500 leading-relaxed line-clamp-2">
                         {highlightMessage(notification.message, notification.metadata)}
                       </p>
-                    </div>
-
-                    {/* Desktop timestamp and delete button container */}
-                    <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
-                      {/* Timestamp — desktop only */}
-                      <span className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap" title={formatDate(notification.createdAt)}>
+                      {/* Timestamp — right side */}
+                      <span className="absolute top-0 right-0 flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap" title={formatDate(notification.createdAt)}>
                         <FiClock className="w-3 h-3" />
                         {formatFullDate(notification.createdAt)}
                       </span>
 
-                      {/* Delete button — desktop */}
+                    </div>
+
+                    {/* Desktop delete button container */}
+                    <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => deleteNotification(notification._id)}
@@ -542,6 +544,7 @@ export default function Notifications() {
                         Delete
                       </button>
                     </div>
+
 
                     {/* Mobile timestamp row */}
                     <div className="sm:hidden flex items-center gap-1 text-xs text-gray-400 shrink-0" title={formatDate(notification.createdAt)}>

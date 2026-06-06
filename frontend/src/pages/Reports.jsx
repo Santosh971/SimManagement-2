@@ -227,7 +227,7 @@ export default function Reports() {
               value={summary.total || 0}
             />
             <StatCard
-              title="Total Amount"
+              title="Total Amounts"
               value={`₹${(summary.totalAmount || 0).toLocaleString()}`}
             />
             <StatCard
@@ -439,8 +439,8 @@ export default function Reports() {
           return ['S.No.', 'Contact Number', 'Operator', 'Amount', 'Validity', 'Plan Name', 'Payment Methods', 'Recharge Date', 'Next Recharge']
         case 'callLogs':
           return filters.callType === 'missed'
-            ? ['S.No.', 'Contact Number', 'Call Type', 'SIM', 'Contact', 'Date']
-            : ['S.No.', 'Contact Number', 'Call Type', 'Duration', 'SIM', 'Contact', 'Date']
+            ? ['S.No.', 'Contact Number', 'All Type', 'SIM', 'Contact', 'Date']
+            : ['S.No.', 'Contact Number', 'All Type', 'Duration', 'SIM', 'Contact', 'Date']
         case 'companies':
           return ['S.No.', 'Company', 'Email', 'Status', 'Subscription', 'SIMs', 'Revenue', 'Created']
         default:

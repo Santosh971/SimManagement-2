@@ -221,13 +221,13 @@ class AuthController {
         } catch (e) { /* ignore lookup failure */ }
 
         await auditLogService.logAction({
-          action: 'PASSWORD_RESET_VIA_OTP',
+          action: 'PASSWORD_RESET',
           module: 'AUTH',
           description: `Password reset successfully for ${email}`,
           performedBy: userForAudit?._id || null,
           role: userForAudit?.role || 'anonymous',
           companyId: userForAudit?.companyId || null,
-          metadata: { email },
+          metadata: { email, method: 'otp' },
           req,
         });
       } catch (auditError) {
@@ -239,13 +239,13 @@ class AuthController {
       // Audit log: failed password reset attempt
       try {
         await auditLogService.logAction({
-          action: 'PASSWORD_RESET_VIA_OTP',
+          action: 'PASSWORD_RESET',
           module: 'AUTH',
           description: `Failed password reset attempt for ${req.body.email}: ${error.message}`,
           performedBy: null,
           role: 'anonymous',
           companyId: null,
-          metadata: { email: req.body.email, success: false, error: error.message },
+          metadata: { email: req.body.email, success: false, error: error.message, method: 'otp' },
           req,
         });
       } catch (auditError) {
@@ -430,6 +430,23 @@ class AuthController {
   async resendEmailChangeOTP(req, res, next) {
     try {
       const result = await authService.resendEmailChangeOTP(req.user.id);
+
+      // Audit log: EMAIL_CHANGE_RESEND
+      try {
+        await auditLogService.logAction({
+          action: 'EMAIL_CHANGE_RESEND',
+          module: 'AUTH',
+          description: `Email change verification code resent for ${req.user.email}`,
+          performedBy: req.user.id,
+          role: req.user.role,
+          companyId: req.user.companyId,
+          metadata: { email: req.user.email },
+          req,
+        });
+      } catch (auditError) {
+        // Don't fail resend if audit log fails
+      }
+
       return successResponse(res, result, 'Verification code resent');
     } catch (error) {
       next(error);

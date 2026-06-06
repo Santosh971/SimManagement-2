@@ -311,7 +311,7 @@ export default function WhatsAppMessages() {
                   <FiSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: '#9ca3af' }} />
                   <input
                     type="text"
-                    placeholder="Search by number, message, name..."
+                    placeholder="Search by Contact number, message, name..."
                     value={phoneSearch}
                     onChange={(e) => setPhoneSearch(e.target.value)}
                     style={{

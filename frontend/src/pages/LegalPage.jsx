@@ -129,6 +129,19 @@ export default function LegalPage({ slug }) {
             lineHeight: 1.8,
             fontSize: '15px',
           }}
+          onClick={(e) => {
+            const anchor = e.target.closest('a')
+            if (!anchor) return
+            const href = anchor.getAttribute('href')
+            if (!href) return
+            // Explicitly handle protocol links (mailto:, tel:) to ensure
+            // the browser triggers the correct handler when rendered
+            // inside dangerouslySetInnerHTML content
+            if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+              e.preventDefault()
+              window.location.href = href
+            }
+          }}
           dangerouslySetInnerHTML={{ __html: page.content }}
         />
 

@@ -97,7 +97,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Select/Deselect all for message tab
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredSIMs.length) {
+    if (selectedIds.length > 0) {
       setSelectedIds([])
     } else {
       setSelectedIds(filteredSIMs.map((s) => s._id))
@@ -106,7 +106,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Select/Deselect all for email tab
   const toggleEmailSelectAll = () => {
-    if (emailSelectedIds.length === filteredAllSIMs.length) {
+    if (emailSelectedIds.length > 0) {
       setEmailSelectedIds([])
     } else {
       setEmailSelectedIds(filteredAllSIMs.map((s) => s._id))
@@ -441,7 +441,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                     cursor: 'pointer',
                   }}
                 >
-                  {selectedIds.length === filteredSIMs.length ? 'Deselect All' : 'Select All'}
+                  {selectedIds.length > 0 ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
 
@@ -519,7 +519,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                     fontSize: '14px',
                   }}
                 >
-                  Message <span style={{ color: '#dc2626' }}>*</span>
+                  Message<span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <textarea
                   value={message}
@@ -790,7 +790,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                     cursor: 'pointer',
                   }}
                 >
-                  {emailSelectedIds.length === filteredAllSIMs.length ? 'Deselect All' : 'Select All'}
+                  {emailSelectedIds.length > 0 ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
 

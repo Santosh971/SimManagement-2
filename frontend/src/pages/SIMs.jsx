@@ -463,6 +463,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
   const hideCircleField = circleOptions === null
 
   useEffect(() => {
+    if (!isOpen) return
     if (sim) {
       // Extract country code if present in mobileNumber
       let mobileNum = sim.mobileNumber || ''
@@ -491,7 +492,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         isAdminCaller: sim.isAdminCaller || false,
       })
     } else {
-      // Default to India
+      // Fresh form for new SIM — reset to defaults
       const defaultConfig = getCountryConfig('+91')
       setFormData({
         countryCode: '+91',
@@ -506,7 +507,8 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
         isAdminCaller: false,
       })
     }
-  }, [sim])
+    setDetectingOperator(false)
+  }, [sim, isOpen])
 
   // Auto-detect operator when Contact Number changes (for Indian numbers)
   const detectOperatorFromNumber = async (mobileNum, countryCode) => {

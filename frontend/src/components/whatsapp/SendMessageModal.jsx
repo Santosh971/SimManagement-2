@@ -98,7 +98,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
   // Select/Deselect all
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredRecipients.length) {
+    if (selectedIds.length > 0) {
       setSelectedIds([])
     } else {
       setSelectedIds(filteredRecipients.map((r) => r.id))
@@ -438,7 +438,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
                   cursor: 'pointer',
                 }}
               >
-                {selectedIds.length === filteredRecipients.length ? 'Deselect All' : 'Select All'}
+                {selectedIds.length > 0 ? 'Deselect All' : 'Select All'}
               </button>
             </div>
 

@@ -86,7 +86,7 @@ class PageContentService {
 <p>We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used or accessed in an unauthorized way, altered or disclosed.</p>
 
 <h2>5. Contact Us</h2>
-<p>If you have any questions about this privacy policy or our data practices, please contact us at support@simtrackr.com</p>`,
+<p>If you have any questions about this privacy policy or our data practices, please contact us at <a href="mailto:support@simtrackr.com">support@simtrackr.com</a></p>`,
         metaDescription: 'Privacy Policy for SIM Trackr - Learn how we collect, use, and protect your personal data.',
       },
       {
@@ -134,7 +134,7 @@ class PageContentService {
 <p>We reserve the right to modify these terms at any time. We will notify users of any material changes by posting the new Terms on this page.</p>
 
 <h2>8. Contact Us</h2>
-<p>If you have any questions about these Terms, please contact us at support@simtrackr.com</p>`,
+<p>If you have any questions about these Terms, please contact us at <a href="mailto:support@simtrackr.com">support@simtrackr.com</a></p>`,
         metaDescription: 'Terms of Service for SIM Trackr - Read our terms and conditions for using our SIM management services.',
       },
     ]

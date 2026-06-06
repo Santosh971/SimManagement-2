@@ -70,6 +70,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
       case 'admin': {
         const navItems = [
           { name: 'Dashboard', href: '/app/dashboard', icon: FiHome },
+          { name: 'Users', href: '/app/users', icon: FiUsers },
           { name: 'SIMs', href: '/app/sims', icon: FiSmartphone },
           { name: 'Recharges', href: '/app/recharges', icon: FiCreditCard },
           { name: 'Call Logs', href: '/app/call-logs', icon: FiPhone },
@@ -79,7 +80,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           { name: 'WiFi Monitor', href: '/app/wifi-monitor', icon: FiWifi, feature: 'wifiMonitor' },
           // { name: 'WiFi Devices', href: '/app/wifi-devices', icon: FiSmartphone },
           { name: 'Call Automation', href: '/app/call-automation', icon: FiPhoneOutgoing, feature: 'callAutomation' },
-          { name: 'Users', href: '/app/users', icon: FiUsers },
+        
           { name: 'Reports', href: '/app/reports', icon: FiFileText },
           { name: 'Subscription', href: '/app/subscription', icon: FiPackage },
           { name: 'Audit Logs', href: '/app/audit-logs', icon: FiClipboard },

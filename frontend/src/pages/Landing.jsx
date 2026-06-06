@@ -263,12 +263,45 @@ const iconMap = {
   FiPlay,
 };
 
+// Navigation section IDs in page order
+const navSections = ['features', 'howItWorks', 'pricing', 'testimonials', 'faq'];
+
+const navLinks = [
+  { id: 'features', label: 'Features' },
+  { id: 'howItWorks', label: 'How It Works' },
+  { id: 'pricing', label: 'Pricing' },
+  { id: 'testimonials', label: 'Testimonials' },
+  { id: 'faq', label: 'FAQ' },
+];
+
 const Landing = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [content, setContent] = useState(defaultContent);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState('');
+
+  // Scroll spy: track which section is currently in view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: '-50% 0px -50% 0px' }
+    );
+
+    navSections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [loading]);
 
   // Contact form state
   const [contactForm, setContactForm] = useState({ name: '', email: '', countryCode: '+91', phone: '', company: '', message: '' });
@@ -519,30 +552,19 @@ const Landing = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              <a
-                href="#features"
-                className="text-secondary-600 hover:text-primary-600 transition-colors"
-              >
-                Features
-              </a>
-              <a
-                href="#pricing"
-                className="text-secondary-600 hover:text-primary-600 transition-colors"
-              >
-                Pricing
-              </a>
-              <a
-                href="#testimonials"
-                className="text-secondary-600 hover:text-primary-600 transition-colors"
-              >
-                Testimonials
-              </a>
-              <a
-                href="#faq"
-                className="text-secondary-600 hover:text-primary-600 transition-colors"
-              >
-                FAQ
-              </a>
+              {navLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  className={`transition-colors pb-1 border-b-2 ${
+                    activeSection === link.id
+                      ? 'text-primary-600 border-primary-600 font-medium'
+                      : 'text-secondary-600 border-transparent hover:text-primary-600 hover:border-primary-300'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              ))}
             </div>
 
             {/* CTA Buttons */}
@@ -579,30 +601,20 @@ const Landing = () => {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-secondary-200">
             <div className="px-4 py-4 space-y-3">
-              <a
-                href="#features"
-                className="block py-2 text-secondary-600 hover:text-primary-600"
-              >
-                Features
-              </a>
-              <a
-                href="#pricing"
-                className="block py-2 text-secondary-600 hover:text-primary-600"
-              >
-                Pricing
-              </a>
-              <a
-                href="#testimonials"
-                className="block py-2 text-secondary-600 hover:text-primary-600"
-              >
-                Testimonials
-              </a>
-              <a
-                href="#faq"
-                className="block py-2 text-secondary-600 hover:text-primary-600"
-              >
-                FAQ
-              </a>
+              {navLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 transition-colors ${
+                    activeSection === link.id
+                      ? 'text-primary-600 font-medium'
+                      : 'text-secondary-600 hover:text-primary-600'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              ))}
               <div className="pt-4 border-t border-secondary-200 space-y-3">
                 <Link
                   to="/login"
@@ -885,7 +897,7 @@ const Landing = () => {
                           ₹{displayPrice}
                         </span>
                         <span className="text-secondary-500 text-sm">
-                          /{billingCycle === "monthly" ? "mo" : "yr"}
+                          /{billingCycle === "monthly" ? "Monthly" : "Yearly"}
                         </span>
                       </div>
                       {billingCycle === "yearly" && yearlySavings > 0 && (
