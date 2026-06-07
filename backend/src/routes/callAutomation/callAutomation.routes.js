@@ -158,6 +158,14 @@ router.put(
   callAutomationController.toggleActive
 );
 
+// Delete configuration (admin only)
+router.delete(
+  '/config',
+  authorize('super_admin', 'admin'),
+  checkCompanyAccess,
+  callAutomationController.deleteConfig
+);
+
 // Get eligible SIMs for selection (admin only)
 router.get(
   '/eligible-sims',

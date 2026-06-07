@@ -220,6 +220,32 @@ class CallAutomationController {
   }
 
   /**
+   * Delete call automation configuration
+   * DELETE /api/call-automation/config
+   */
+  async deleteConfig(req, res, next) {
+    try {
+      const result = await callAutomationService.deleteConfig(req.user);
+
+      // Audit log
+      await auditLogService.logAction({
+        action: 'CALL_AUTOMATION_CONFIG_DELETE',
+        module: 'CALL_AUTOMATION',
+        description: 'Deleted call automation configuration',
+        performedBy: req.user._id,
+        role: req.user.role,
+        companyId: req.user.role === 'super_admin' ? req.user.queryCompanyId : req.user.companyId,
+        req,
+      });
+
+      return successResponse(res, null, result.message);
+    } catch (error) {
+      logger.error('[CALL AUTOMATION CONTROLLER] Delete config error', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
    * Remove a target-caller mapping
    * DELETE /api/call-automation/mapping/:targetSimId
    */

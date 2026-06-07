@@ -510,6 +510,10 @@ export default function CallAutomation() {
   const [newTargetIds, setNewTargetIds] = useState([])
   const [newCallerIds, setNewCallerIds] = useState([])
 
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   // Compute available targets (not yet in mappings)
   const usedTargetIds = targetCallerMappings.map(m => m.targetSimId)
   const availableTargets = potentialTargets.filter(t => !usedTargetIds.includes(t._id))
@@ -605,22 +609,32 @@ export default function CallAutomation() {
         setConfig(existingConfig)
 
         // Handle new format (targetCallerMappings)
+        // Filter out mappings with null/missing targetSimId (deleted SIMs)
         if (existingConfig.targetCallerMappings && existingConfig.targetCallerMappings.length > 0) {
-          const mappings = existingConfig.targetCallerMappings.map(m => ({
-            targetSimId: m.targetSimId?._id || m.targetSimId,
-            callerSimIds: (m.callerSimIds || []).map(c => c._id || c),
-            callDuration: m.callDuration || existingConfig.callDuration || 10
-          }))
+          const mappings = existingConfig.targetCallerMappings
+            .filter(m => m.targetSimId) // Filter out mappings where targetSimId is null (deleted SIM)
+            .map(m => ({
+              targetSimId: m.targetSimId?._id || m.targetSimId,
+              callerSimIds: (m.callerSimIds || [])
+                .map(c => c?._id || c)
+                .filter(Boolean), // Filter out null/undefined caller IDs (deleted SIMs)
+              callDuration: m.callDuration || existingConfig.callDuration || 10
+            }))
+            .filter(m => m.targetSimId && m.callerSimIds.length > 0) // Only keep valid mappings
           setTargetCallerMappings(mappings)
         }
         // Handle old format (callerSimIds + targetSimIds) - convert to new format
+        // Filter out null/missing references (deleted SIMs)
         else if (existingConfig.callerSimIds?.length > 0 && existingConfig.targetSimIds?.length > 0) {
-          const oldCallers = existingConfig.callerSimIds.map(c => c._id || c)
-          const mappings = existingConfig.targetSimIds.map(t => ({
-            targetSimId: t._id || t,
-            callerSimIds: oldCallers,
-            callDuration: existingConfig.callDuration || 10
-          }))
+          const oldCallers = existingConfig.callerSimIds.map(c => c?._id || c).filter(Boolean)
+          const mappings = existingConfig.targetSimIds
+            .map(t => t?._id || t)
+            .filter(Boolean) // Filter out null target IDs (deleted SIMs)
+            .map(t => ({
+              targetSimId: t,
+              callerSimIds: oldCallers,
+              callDuration: existingConfig.callDuration || 10
+            }))
           setTargetCallerMappings(mappings)
         }
 
@@ -699,8 +713,25 @@ export default function CallAutomation() {
     handleAddTargets(true)
   }
 
-  const handleRemoveTarget = (targetSimId) => {
-    setTargetCallerMappings(targetCallerMappings.filter(m => m.targetSimId !== targetSimId))
+  const handleRemoveTarget = async (targetSimId) => {
+    // If this is the last mapping, suggest deleting the whole config instead
+    if (targetCallerMappings.length <= 1) {
+      toast.error('Cannot remove the last target. Use "Delete Configuration" to remove all mappings.')
+      return
+    }
+
+    try {
+      await api.delete(`/call-automation/mapping/${targetSimId}`)
+      toast.success('Target mapping removed')
+      // Update local state to reflect the removal
+      setTargetCallerMappings(targetCallerMappings.filter(m => m.targetSimId !== targetSimId))
+      // Refresh config from server to stay in sync
+      fetchData()
+    } catch (err) {
+      console.error('Failed to remove target mapping:', err)
+      const errorMsg = err.response?.data?.message || 'Failed to remove target mapping'
+      toast.error(errorMsg)
+    }
   }
 
   const handleUpdateCallers = (targetSimId, callerIds) => {
@@ -717,14 +748,19 @@ export default function CallAutomation() {
   }
 
   const handleSave = async () => {
+    // Filter out any invalid mappings (null targetSimId, empty callers) before validation
+    const validMappings = targetCallerMappings.filter(
+      m => m.targetSimId && m.callerSimIds && m.callerSimIds.length > 0
+    )
+
     // Validation
-    if (targetCallerMappings.length === 0) {
-      toast.error('Please add at least one target SIM')
+    if (validMappings.length === 0) {
+      toast.error('Please add at least one target SIM with callers')
       return
     }
 
     // Validate each mapping
-    for (const mapping of targetCallerMappings) {
+    for (const mapping of validMappings) {
       if (!mapping.callerSimIds || mapping.callerSimIds.length === 0) {
         const target = potentialTargets.find(t => t._id === mapping.targetSimId)
         toast.error(`Target ${target?.mobileNumber || mapping.targetSimId} needs at least one caller SIM`)
@@ -733,7 +769,7 @@ export default function CallAutomation() {
     }
 
     // Check for overlap
-    for (const mapping of targetCallerMappings) {
+    for (const mapping of validMappings) {
       if (mapping.callerSimIds.includes(mapping.targetSimId)) {
         toast.error('A SIM cannot be both caller and target')
         return
@@ -752,7 +788,7 @@ export default function CallAutomation() {
 
     try {
       const data = {
-        targetCallerMappings,
+        targetCallerMappings: validMappings,
         callDuration: parseInt(callDuration),
         frequency,
         scheduledTime,
@@ -782,6 +818,30 @@ export default function CallAutomation() {
     } catch (err) {
       console.error('Failed to toggle:', err)
       toast.error(err.response?.data?.message || 'Failed to toggle')
+    }
+  }
+
+  const handleDeleteConfig = async () => {
+    setDeleting(true)
+    try {
+      await api.delete('/call-automation/config')
+      toast.success('Configuration deleted successfully')
+      // Reset all state to defaults
+      setConfig(null)
+      setTargetCallerMappings([])
+      setCallDuration(10)
+      setFrequency('daily')
+      setScheduledTime('09:00')
+      setScheduledDay('monday')
+      setHourlyShiftStartTime('08:00')
+      setHourlyShiftEndTime('20:00')
+      setIsActive(true)
+      setShowDeleteModal(false)
+    } catch (err) {
+      console.error('Failed to delete config:', err)
+      toast.error(err.response?.data?.message || 'Failed to delete configuration')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -1409,23 +1469,97 @@ export default function CallAutomation() {
             A SIM cannot be both a Caller and a Target at the same time.
           </div>
 
-          {/* Save Button */}
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-            <Button
-              variant="secondary"
-              onClick={() => fetchData()}
-            >
-              Reset
-            </Button>
-            <Button
-              icon={FiSave}
-              onClick={handleSave}
-              loading={saving}
-              disabled={!isActive && targetCallerMappings.length === 0}
-            >
-              Save Configuration
-            </Button>
+          {/* Save and Delete Buttons */}
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            {config && (
+              <Button
+                variant="secondary"
+                onClick={() => setShowDeleteModal(true)}
+                style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                icon={FiTrash2}
+              >
+                Delete Configuration
+              </Button>
+            )}
+            <div style={{ display: 'flex', gap: '12px', marginLeft: 'auto' }}>
+              <Button
+                variant="secondary"
+                onClick={() => fetchData()}
+              >
+                Reset
+              </Button>
+              <Button
+                icon={FiSave}
+                onClick={handleSave}
+                loading={saving}
+                disabled={!isActive && targetCallerMappings.length === 0}
+              >
+                Save Configuration
+              </Button>
+            </div>
           </div>
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                maxWidth: '440px',
+                width: '90%',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: '#fef2f2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <FiAlertCircle style={{ color: '#dc2626', width: '20px', height: '20px' }} />
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                    Delete Configuration
+                  </h3>
+                </div>
+                <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.6', marginBottom: '24px' }}>
+                  Are you sure you want to delete the call automation configuration? This will remove all target-caller mappings and schedule settings. <strong>This action cannot be undone.</strong>
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDeleteConfig}
+                    loading={deleting}
+                    style={{ backgroundColor: '#dc2626', borderColor: '#dc2626', color: 'white' }}
+                  >
+                    Delete Configuration
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Mobile App Sync Note */}
           <div style={{

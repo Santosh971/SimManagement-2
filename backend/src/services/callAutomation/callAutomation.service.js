@@ -638,10 +638,13 @@ class CallAutomationService {
       throw new NotFoundError('Call automation configuration not found');
     }
 
-    // Remove the mapping
-    config.targetCallerMappings = config.targetCallerMappings.filter(
-      m => (m.targetSimId._id || m.targetSimId).toString() !== targetSimId
-    );
+    // Remove the mapping (handle both populated and unpopulated targetSimId, plus null from deleted SIMs)
+    config.targetCallerMappings = config.targetCallerMappings.filter(m => {
+      // Skip null targetSimId entries (from deleted SIMs)
+      if (!m.targetSimId) return false;
+      const id = m.targetSimId._id ? m.targetSimId._id.toString() : m.targetSimId.toString();
+      return id !== targetSimId;
+    });
 
     if (config.targetCallerMappings.length === 0) {
       throw new ValidationError('Cannot remove the last target. At least one target is required.');
@@ -659,6 +662,31 @@ class CallAutomationService {
     });
 
     return config;
+  }
+
+  /**
+   * Delete the entire call automation configuration for a company
+   * @param {Object} user - User making the request
+   * @returns {Object} Deletion confirmation
+   */
+  async deleteConfig(user) {
+    const companyId = user.role === 'super_admin' ? user.queryCompanyId : user.companyId;
+
+    if (!companyId) {
+      throw new ForbiddenError('Company ID is required');
+    }
+
+    const config = await CallAutomationConfig.findOne({ companyId });
+
+    if (!config) {
+      throw new NotFoundError('Call automation configuration not found');
+    }
+
+    await CallAutomationConfig.deleteOne({ companyId });
+
+    logger.info('[CALL AUTOMATION] Config deleted', { companyId });
+
+    return { message: 'Call automation configuration deleted successfully' };
   }
 
   /**
@@ -688,10 +716,12 @@ class CallAutomationService {
       throw new ValidationError('At least one caller SIM is required');
     }
 
-    // Check if target already exists
-    const existingIndex = config.targetCallerMappings.findIndex(
-      m => (m.targetSimId._id || m.targetSimId).toString() === mapping.targetSimId
-    );
+    // Check if target already exists (handle populated and null targetSimId)
+    const existingIndex = config.targetCallerMappings.findIndex(m => {
+      if (!m.targetSimId) return false;
+      const id = m.targetSimId._id ? m.targetSimId._id.toString() : m.targetSimId.toString();
+      return id === mapping.targetSimId;
+    });
 
     if (existingIndex >= 0) {
       // Update existing mapping
