@@ -13,6 +13,8 @@ import {
   FiTrendingDown,
   FiClock,
   FiUsers,
+  FiEye,
+  FiEyeOff,
   FiSearch,
   FiArrowUp,
   FiArrowDown,
@@ -50,6 +52,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
   }, [isOpen])
   const [simSearch, setSimSearch] = useState('')
   const [showSimDropdown, setShowSimDropdown] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     wifiName: '',
@@ -60,6 +63,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
     alertThreshold: '',
     emailAlertEnabled: true,
     assignedSims: [],
+    password: '',
   })
 
   // Fetch eligible SIMs when modal opens
@@ -81,6 +85,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
         alertThreshold: wifi.alertThreshold || '',
         emailAlertEnabled: wifi.emailAlertEnabled ?? true,
         assignedSims: wifi.assignedSims?.map(s => s._id || s) || [],
+        password: wifi.password || '',
       })
     } else {
       setFormData({
@@ -92,9 +97,11 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
         alertThreshold: '',
         emailAlertEnabled: true,
         assignedSims: [],
+        password: '',
       })
     }
     setErrors({})
+    setShowPassword(false)
   }, [wifi])
 
   const fetchEligibleSims = async () => {
@@ -151,6 +158,11 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
       else if (formData.expectedSpeed && parseFloat(value) >= parseFloat(formData.expectedSpeed)) newErrors.alertThreshold = 'Alert threshold must be less than expected speed'
       else delete newErrors.alertThreshold
     }
+    if (name === 'password') {
+      if (value && value.trim().length > 0 && value.trim().length < 4) newErrors.password = 'WiFi password must be at least 4 characters'
+      else if (value && value.includes(' ')) newErrors.password = 'WiFi password cannot contain spaces'
+      else delete newErrors.password
+    }
 
     setErrors(newErrors)
   }
@@ -202,6 +214,11 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
     if (!formData.alertThreshold) newErrors.alertThreshold = 'Alert threshold is required'
     else if (parseFloat(formData.alertThreshold) <= 0) newErrors.alertThreshold = 'Alert threshold must be greater than 0'
     else if (parseFloat(formData.alertThreshold) >= parseFloat(formData.expectedSpeed)) newErrors.alertThreshold = 'Alert threshold must be less than expected speed'
+    // WiFi Password is optional — only validate if a value is provided
+    if (formData.password && formData.password.trim().length > 0) {
+      if (formData.password.trim().length < 4) newErrors.password = 'WiFi password must be at least 4 characters'
+      else if (formData.password.includes(' ')) newErrors.password = 'WiFi password cannot contain spaces'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -243,6 +260,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
         alertThreshold: parseFloat(formData.alertThreshold),
         emailAlertEnabled: formData.emailAlertEnabled,
         assignedSims: formData.assignedSims,
+        password: formData.password,
       }
 
       if (wifi) {
@@ -286,7 +304,7 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -431,6 +449,62 @@ function AddWifiModal({ isOpen, onClose, wifi, onSave, existingNetworks }) {
               <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
                 MAC address format: XX:XX:XX:XX:XX:XX (hex characters 0-9, A-F, a-f)
               </p>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
+                WiFi Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  maxLength={100}
+                  autoComplete="new-password"
+                  placeholder={wifi ? 'Enter new password to change' : 'Enter WiFi password'}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    paddingRight: '44px',
+                    border: `1px solid ${errors.password ? '#dc2626' : '#d1d5db'}`,
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    color: '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                {errors.password ? <p style={{ fontSize: '12px', color: '#dc2626', margin: 0 }}>{errors.password}</p> : <span />}
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formData.password.length}/100</span>
+              </div>
+              {wifi && !errors.password && (
+                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  Clear to remove password, or enter a new one to change it
+                </p>
+              )}
             </div>
           </div>
 
@@ -623,6 +697,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
   const { api } = useAuth()
   const [hourlyData, setHourlyData] = useState([])
   const [loading, setLoading] = useState(false)
+  const [showDetailPassword, setShowDetailPassword] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -663,7 +738,7 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -735,6 +810,26 @@ function WifiDetailsModal({ isOpen, onClose, wifi, stats }) {
               <div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>BSSID (Router MAC)</div>
                 <div style={{ fontSize: '14px', fontWeight: '500', fontFamily: 'monospace' }}>{wifi.bssid || 'Not set'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>WiFi Password</div>
+                {wifi.password ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '500', fontFamily: showDetailPassword ? 'inherit' : 'monospace' }}>
+                      {showDetailPassword ? wifi.password : '••••••••'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailPassword(!showDetailPassword)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#6b7280', display: 'flex', alignItems: 'center' }}
+                      title={showDetailPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showDetailPassword ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '14px', fontWeight: '500', color: '#9ca3af' }}>Not set</div>
+                )}
               </div>
             </div>
           </div>
@@ -956,8 +1051,17 @@ export default function WifiMonitor() {
     setShowAddModal(true)
   }
 
-  const openEditModal = (wifi) => {
-    setEditingWifi(wifi)
+  const openEditModal = async (wifi) => {
+    try {
+      // Fetch full network details including password (not returned in list API)
+      const response = await api.get(`/wifi/networks/${wifi._id}`)
+      const fullWifi = response.data?.data || response.data || wifi
+      setEditingWifi(fullWifi)
+    } catch (error) {
+      // Fallback to list data if fetch fails (password won't be available)
+      console.error('Failed to fetch WiFi network details:', error)
+      setEditingWifi(wifi)
+    }
     setShowAddModal(true)
   }
 
@@ -966,8 +1070,17 @@ export default function WifiMonitor() {
     setEditingWifi(null)
   }
 
-  const openDetailsModal = (wifi) => {
-    setSelectedWifi(wifi)
+  const openDetailsModal = async (wifi) => {
+    try {
+      // Fetch full network details including password (not returned in list API)
+      const response = await api.get(`/wifi/networks/${wifi._id}`)
+      const fullWifi = response.data?.data || response.data || wifi
+      setSelectedWifi(fullWifi)
+    } catch (error) {
+      // Fallback to list data if fetch fails (password won't be available)
+      console.error('Failed to fetch WiFi network details:', error)
+      setSelectedWifi(wifi)
+    }
     setShowDetailsModal(true)
   }
 

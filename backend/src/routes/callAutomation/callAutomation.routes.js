@@ -51,6 +51,23 @@ const saveConfigValidation = [
     .optional()
     .isIn(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'])
     .withMessage('Scheduled day must be a valid day of week'),
+  body('hourlyShiftStartTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Hourly shift start time must be in HH:MM format'),
+  body('hourlyShiftEndTime')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Hourly shift end time must be in HH:MM format'),
+  // Custom validation: shift start and end must not be the same
+  body('hourlyShiftStartTime').custom((startTime, { req }) => {
+    const endTime = req.body.hourlyShiftEndTime;
+    // Only validate if both are provided
+    if (startTime && endTime && startTime === endTime) {
+      throw new Error('Hourly shift start time and end time cannot be the same');
+    }
+    return true;
+  }),
   body('isActive')
     .optional()
     .isBoolean()

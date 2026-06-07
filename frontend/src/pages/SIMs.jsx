@@ -627,7 +627,7 @@ function SimModal({ isOpen, onClose, sim, onSave, users, loadingUsers }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -1102,7 +1102,7 @@ function SimListModal({ isOpen, onClose, title, sims }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',

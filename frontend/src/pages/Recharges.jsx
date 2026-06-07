@@ -14,6 +14,8 @@ import {
   FiEye,
   FiEdit2,
   FiTrash2,
+  FiFile,
+  FiImage,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -38,7 +40,7 @@ const paymentMethodColors = { cash: '#f0fdf4', upi: '#eff6ff', card: '#fdf4ff', 
 const paymentMethodTextColors = { cash: '#15803d', upi: '#1d4ed8', card: '#a21caf', netbanking: '#c2410c', wallet: '#a16207', other: '#6b7280' }
 
 // Recharge Modal Component
-function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
+function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge, onPreviewReceipt }) {
   const [loading, setLoading] = useState(false)
 
   const isEditMode = !!editRecharge
@@ -68,6 +70,26 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
     notes: '',
   })
   const [receiptFile, setReceiptFile] = useState(null)
+  const [existingReceipt, setExistingReceipt] = useState(null)
+  const [removeExistingReceipt, setRemoveExistingReceipt] = useState(false)
+
+  // Extract filename from URL
+  const getFilenameFromUrl = (url) => {
+    if (!url) return ''
+    try {
+      const decoded = decodeURIComponent(url)
+      return decoded.split('/').pop()
+    } catch {
+      return url.split('/').pop()
+    }
+  }
+
+  // Check if URL is an image
+  const isImageUrl = (url) => {
+    if (!url) return false
+    const lower = url.toLowerCase()
+    return lower.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?.*)?$/)
+  }
 
   const paymentMethods = [
     { value: 'cash', label: 'Cash' },
@@ -125,6 +147,8 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
         notes: editRecharge.notes || '',
       })
       setReceiptFile(null)
+      setExistingReceipt(editRecharge.receiptImage || null)
+      setRemoveExistingReceipt(false)
       setErrors({})
     } else if (!editRecharge && isOpen) {
       // Reset form for new recharge
@@ -137,6 +161,8 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
         notes: '',
       })
       setReceiptFile(null)
+      setExistingReceipt(null)
+      setRemoveExistingReceipt(false)
       setErrors({})
     }
   }, [editRecharge, isOpen, sims])
@@ -187,6 +213,8 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
 
       if (receiptFile) {
         fd.append('receipt', receiptFile)
+      } else if (removeExistingReceipt) {
+        fd.append('receiptImage', '')
       }
 
       await onSave(fd, isEditMode ? editRecharge._id : null)
@@ -201,6 +229,8 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
         notes: '',
       })
       setReceiptFile(null)
+      setExistingReceipt(null)
+      setRemoveExistingReceipt(false)
       setErrors({})
     } catch (error) {
       toast.error(error.response?.data?.message || 'Operation failed')
@@ -221,7 +251,7 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
       justifyContent: 'center',
       zIndex: 50,
       padding: '16px',
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -473,10 +503,171 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: '#374151' }}>
               Payment Proof (optional)
             </label>
+
+            {/* Show existing receipt when editing and not removed */}
+            {isEditMode && existingReceipt && !removeExistingReceipt && !receiptFile && (
+              <div style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                marginBottom: '8px',
+                background: '#f9fafb',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {/* Thumbnail */}
+                  {isImageUrl(existingReceipt) ? (
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      border: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                    }} onClick={() => onPreviewReceipt(existingReceipt)}>
+                      <img
+                        src={existingReceipt}
+                        alt="Receipt"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '6px',
+                      background: '#fef3c7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      border: '1px solid #fde68a',
+                    }}>
+                      <FiFile size={18} color="#d97706" />
+                    </div>
+                  )}
+
+                  {/* Filename & info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {getFilenameFromUrl(existingReceipt)}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                      {isImageUrl(existingReceipt) ? 'Image' : 'PDF'} • Previously uploaded
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => onPreviewReceipt(existingReceipt)}
+                      style={{
+                        padding: '6px',
+                        borderRadius: '6px',
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="View receipt"
+                    >
+                      <FiEye size={14} color="#2563eb" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemoveExistingReceipt(true)
+                      }}
+                      style={{
+                        padding: '6px',
+                        borderRadius: '6px',
+                        border: '1px solid #fecaca',
+                        background: '#fef2f2',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="Remove receipt"
+                    >
+                      <FiX size={14} color="#dc2626" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show newly selected file info */}
+            {receiptFile && (
+              <div style={{
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                marginBottom: '8px',
+                background: '#eff6ff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {receiptFile.type.startsWith('image/') ? (
+                    <FiImage size={18} color="#2563eb" />
+                  ) : (
+                    <FiFile size={18} color="#2563eb" />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '500',
+                      color: '#374151',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {receiptFile.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                      {(receiptFile.size / 1024).toFixed(1)} KB{isEditMode && existingReceipt ? ' • New file (will replace existing)' : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReceiptFile(null)}
+                    style={{
+                      padding: '6px',
+                      borderRadius: '6px',
+                      border: '1px solid #fecaca',
+                      background: '#fef2f2',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                    title="Remove selected file"
+                  >
+                    <FiX size={14} color="#dc2626" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* File input — always show; label changes if existing receipt present */}
             <input
               type="file"
               accept=".jpg,.jpeg,.png,.pdf"
-              onChange={(e) => setReceiptFile(e.target.files[0] || null)}
+              onChange={(e) => {
+                setReceiptFile(e.target.files[0] || null)
+                // If user selects a new file, don't remove existing receipt flag
+                // (new file will replace it)
+              }}
               style={{
                 width: '100%',
                 padding: '8px',
@@ -488,13 +679,10 @@ function RechargeModal({ isOpen, onClose, onSave, sims, editRecharge }) {
                 backgroundColor: '#fff',
               }}
             />
-            {receiptFile && (
-              <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
-                {receiptFile.name} ({(receiptFile.size / 1024).toFixed(1)} KB)
-              </span>
-            )}
             <span style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', display: 'block' }}>
-              JPG, PNG, or PDF — max 5 MB
+              {isEditMode && existingReceipt && !removeExistingReceipt
+                ? 'Select a new file to replace the existing receipt'
+                : 'JPG, PNG, or PDF — max 5 MB'}
             </span>
           </div>
 
@@ -893,7 +1081,7 @@ export default function Recharges() {
     },
     {
       key: 'paymentMethod',
-      header: 'Payment',
+      header: 'Payment Method',
       render: (row) => {
         const method = paymentMethodLabels[row.paymentMethod] || row.paymentMethod || '-'
         return (
@@ -914,17 +1102,28 @@ export default function Recharges() {
       render: (row) => <span style={{ fontSize: '13px', color: '#6b7280' }}>{row.notes || '-'}</span>
     },
     {
-      key: 'receipt',
-      header: 'Receipt',
-      render: (row) => row.receiptImage
-        ? <button onClick={() => setPreviewUrl(row.receiptImage)} style={{ color: '#2563eb', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}><FiEye size={16} /></button>
-        : <span style={{ fontSize: '13px', color: '#9ca3af' }}>-</span>
-    },
-    {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
         <div style={{ display: 'flex', gap: '8px' }}>
+          {row.receiptImage && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setPreviewUrl(row.receiptImage); }}
+              style={{
+                padding: '6px',
+                borderRadius: '6px',
+                border: '1px solid #bfdbfe',
+                background: '#eff6ff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="View Receipt"
+            >
+              <FiEye size={14} color="#2563eb" />
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); handleEditRecharge(row); }}
             style={{
@@ -1246,6 +1445,7 @@ const today = new Date().toISOString().split('T')[0];
         onSave={handleAddRecharge}
         sims={sims}
         editRecharge={editRecharge}
+        onPreviewReceipt={setPreviewUrl}
       />
 
       {/* Delete Confirmation Modal */}

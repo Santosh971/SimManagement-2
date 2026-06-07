@@ -134,12 +134,46 @@ export default function LegalPage({ slug }) {
             if (!anchor) return
             const href = anchor.getAttribute('href')
             if (!href) return
-            // Explicitly handle protocol links (mailto:, tel:) to ensure
-            // the browser triggers the correct handler when rendered
-            // inside dangerouslySetInnerHTML content
-            if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+            if (href.startsWith('mailto:')) {
+              e.preventDefault()
+              const afterProtocol = href.slice(7) // remove 'mailto:'
+              if (afterProtocol.startsWith('http://') || afterProtocol.startsWith('https://')) {
+                // Malformed mailto: with a web URL — strip prefix and open as regular link
+                window.open(afterProtocol, '_blank', 'noopener,noreferrer')
+              } else {
+                // Try native mailto: protocol handler.
+                // window.location.href runs synchronously in the click handler,
+                // so Chrome recognizes it as a user gesture and allows the launch.
+                window.location.href = href
+                // Fallback: if no email client is configured, the page stays
+                // focused. After 500ms, open Gmail compose as a reliable alternative.
+                const fallbackTimer = setTimeout(() => {
+                  if (document.hasFocus()) {
+                    const email = afterProtocol.split('?')[0]
+                    const params = afterProtocol.includes('?') ? '&' + afterProtocol.split('?').slice(1).join('?') : ''
+                    window.open(
+                      `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}${params}`,
+                      '_blank',
+                      'noopener,noreferrer'
+                    )
+                  }
+                }, 500)
+                // If an email client does launch, the page loses focus — cancel fallback
+                window.addEventListener('blur', () => clearTimeout(fallbackTimer), { once: true })
+              }
+            } else if (href.startsWith('tel:')) {
               e.preventDefault()
               window.location.href = href
+            } else if (href.startsWith('#')) {
+              // In-page anchor links — let browser handle natively
+            } else if (href.startsWith('http://') || href.startsWith('https://')) {
+              // External web links — open in a new tab
+              e.preventDefault()
+              window.open(href, '_blank', 'noopener,noreferrer')
+            } else {
+              // Other relative/unknown links — open in new tab as fallback
+              e.preventDefault()
+              window.open(href, '_blank', 'noopener,noreferrer')
             }
           }}
           dangerouslySetInnerHTML={{ __html: page.content }}

@@ -6,6 +6,26 @@ const emailService = require('../../utils/emailService');
 const crypto = require('crypto');
 
 class AuthService {
+  /**
+   * Normalize phone number to international format for mobileNumber field.
+   * - Strips spaces and dashes
+   * - 10 digits → +91 prefix (Indian number)
+   * - 12 digits starting with 91 → + prefix
+   * - Already has + prefix → keep as-is
+   * Returns null if phone is empty/falsy.
+   */
+  _normalizePhone(phone) {
+    if (!phone) return null;
+    let normalizedPhone = phone.replace(/[\s-]/g, '');
+    if (/^\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+91' + normalizedPhone;
+    }
+    if (/^91\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    return normalizedPhone;
+  }
+
   async register(userData) {
     const { email, password, name, role, companyId, phone } = userData;
 
@@ -33,6 +53,7 @@ class AuthService {
       role: role || 'user',
       companyId: companyId || null,
       phone,
+      mobileNumber: phone ? this._normalizePhone(phone) : undefined,
     });
 
     try {
@@ -390,6 +411,27 @@ class AuthService {
         updates[key] = updateData[key];
       }
     });
+
+    // [PHONE SYNC FIX] - When phone is updated, sync mobileNumber for OTP login and uniqueness
+    if ('phone' in updateData) {
+      if (updates.phone) {
+        const normalizedPhone = this._normalizePhone(updates.phone);
+
+        // Pre-check uniqueness before the MongoDB unique index error
+        const existingUser = await User.findOne({
+          mobileNumber: normalizedPhone,
+          _id: { $ne: userId },
+        });
+        if (existingUser) {
+          throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
+        }
+
+        updates.mobileNumber = normalizedPhone;
+      } else {
+        // Phone cleared — free the old mobileNumber so it can be reused
+        updates.mobileNumber = null;
+      }
+    }
 
     const user = await User.findByIdAndUpdate(userId, updates, {
       new: true,

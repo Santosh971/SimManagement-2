@@ -71,7 +71,7 @@ function AssignDeviceModal({ isOpen, onClose, device, wifiNetworks, onAssign }) 
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',

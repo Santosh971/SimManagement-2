@@ -501,6 +501,8 @@ export default function CallAutomation() {
   const [frequency, setFrequency] = useState('daily')
   const [scheduledTime, setScheduledTime] = useState('09:00')
   const [scheduledDay, setScheduledDay] = useState('monday')
+  const [hourlyShiftStartTime, setHourlyShiftStartTime] = useState('08:00')
+  const [hourlyShiftEndTime, setHourlyShiftEndTime] = useState('20:00')
   const [isActive, setIsActive] = useState(true)
 
   // Add target modal state
@@ -626,6 +628,8 @@ export default function CallAutomation() {
         setFrequency(existingConfig.frequency || 'daily')
         setScheduledTime(existingConfig.scheduledTime || '09:00')
         setScheduledDay(existingConfig.scheduledDay || 'monday')
+        setHourlyShiftStartTime(existingConfig.hourlyShiftStartTime || '08:00')
+        setHourlyShiftEndTime(existingConfig.hourlyShiftEndTime || '20:00')
         setIsActive(existingConfig.isActive ?? true)
       }
     } catch (err) {
@@ -736,6 +740,14 @@ export default function CallAutomation() {
       }
     }
 
+    // Validate hourly shift times
+    if (frequency === 'hourly') {
+      if (hourlyShiftStartTime === hourlyShiftEndTime) {
+        toast.error('Shift start time and end time cannot be the same')
+        return
+      }
+    }
+
     setSaving(true)
 
     try {
@@ -745,6 +757,8 @@ export default function CallAutomation() {
         frequency,
         scheduledTime,
         scheduledDay,
+        hourlyShiftStartTime: frequency === 'hourly' ? hourlyShiftStartTime : undefined,
+        hourlyShiftEndTime: frequency === 'hourly' ? hourlyShiftEndTime : undefined,
         isActive
       }
 
@@ -865,7 +879,7 @@ export default function CallAutomation() {
                 </div>
                 <div style={{ fontSize: '13px', color: '#6b7280' }}>
                   {isActive
-                    ? `${targetCallerMappings.length} target SIMs configured • ${frequency === 'hourly' ? 'Every hour' : frequency === 'daily' ? `Daily at ${scheduledTime}` : `Every ${scheduledDay} at ${scheduledTime}`}`
+                    ? `${targetCallerMappings.length} target SIMs configured • ${frequency === 'hourly' ? `Hourly (${hourlyShiftStartTime}–${hourlyShiftEndTime})` : frequency === 'daily' ? `Daily at ${scheduledTime}` : `Every ${scheduledDay} at ${scheduledTime}`}`
                     : 'Enable to start automated calls'}
                 </div>
               </div>
@@ -1216,7 +1230,7 @@ export default function CallAutomation() {
           </div>
 
           {/* Scheduled Time Settings */}
-          <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: frequency === 'weekly' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '24px' }}>
+          <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: frequency === 'hourly' ? '1fr 1fr 1fr' : frequency === 'weekly' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '24px' }}>
             <div>
               <label style={{
                 display: 'block',
@@ -1246,6 +1260,76 @@ export default function CallAutomation() {
                 {frequency === 'hourly' ? 'Not applicable for hourly frequency' : 'Time for calls'}
               </div>
             </div>
+
+            {/* Hourly Shift Window — only visible when frequency is 'hourly' */}
+            {frequency === 'hourly' && (
+              <>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    color: '#374151'
+                  }}>
+                    Shift Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={hourlyShiftStartTime}
+                    onChange={(e) => setHourlyShiftStartTime(e.target.value)}
+                    disabled={!isActive}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: hourlyShiftStartTime === hourlyShiftEndTime ? '1px solid #ef4444' : '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      backgroundColor: isActive ? '#fff' : '#f3f4f6',
+                    }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Calls will start from this time each day
+                  </div>
+                  {hourlyShiftStartTime === hourlyShiftEndTime && (
+                    <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>
+                      Start and end times cannot be the same
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    color: '#374151'
+                  }}>
+                    Shift End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={hourlyShiftEndTime}
+                    onChange={(e) => setHourlyShiftEndTime(e.target.value)}
+                    disabled={!isActive}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: hourlyShiftStartTime === hourlyShiftEndTime ? '1px solid #ef4444' : '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      backgroundColor: isActive ? '#fff' : '#f3f4f6',
+                    }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Calls will stop after this time. Supports overnight shifts (e.g., 22:00–06:00).
+                  </div>
+                </div>
+              </>
+            )}
 
             {frequency === 'weekly' && (
               <div>
@@ -1301,7 +1385,7 @@ export default function CallAutomation() {
                 backgroundColor: '#f9fafb',
                 color: '#374151'
               }}>
-                {frequency === 'hourly' && 'Every hour (24 times per day)'}
+                {frequency === 'hourly' && `Every hour during shift (${hourlyShiftStartTime} – ${hourlyShiftEndTime})`}
                 {frequency === 'daily' && `Daily at ${scheduledTime}`}
                 {frequency === 'weekly' && `Every ${scheduledDay.charAt(0).toUpperCase() + scheduledDay.slice(1)} at ${scheduledTime}`}
               </div>

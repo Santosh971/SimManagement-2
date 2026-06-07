@@ -58,6 +58,15 @@ const WifiNetworkSchema = new Schema({
     trim: true,
     default: '',
   },
+  // WiFi network password for admin reference
+  // select: false excludes it from default queries (list endpoints won't leak it)
+  // Use .select('+password') to include it in create/update/get-by-id responses
+  password: {
+    type: String,
+    trim: true,
+    default: '',
+    select: false,
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

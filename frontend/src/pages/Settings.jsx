@@ -1456,7 +1456,7 @@ export default function Settings() {
         const mapped = {}
         data.errors.forEach((e) => {
           if (e.field === 'name') mapped.name = e.message
-          else if (e.field === 'phone') mapped.phone = e.message
+          else if (e.field === 'phone' || e.field === 'mobileNumber') mapped.phone = e.message
         })
         if (Object.keys(mapped).length > 0) {
           setProfileFieldErrors(mapped)

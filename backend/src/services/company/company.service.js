@@ -22,6 +22,26 @@ const config = require('../../config');
 
 class CompanyService {
   /**
+   * Normalize phone number to international format for mobileNumber field.
+   * - Strips spaces and dashes
+   * - 10 digits → +91 prefix (Indian number)
+   * - 12 digits starting with 91 → + prefix
+   * - Already has + prefix → keep as-is
+   * Returns null if phone is empty/falsy.
+   */
+  _normalizePhone(phone) {
+    if (!phone) return null;
+    let normalizedPhone = phone.replace(/[\s-]/g, '');
+    if (/^\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+91' + normalizedPhone;
+    }
+    if (/^91\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    return normalizedPhone;
+  }
+
+  /**
    * Create a new company with subscription
    * Handles both free trial and paid plans
    * @param {Object} data - Company data
@@ -629,6 +649,7 @@ class CompanyService {
       password: adminData.password,
       name: adminData.name,
       phone: adminData.phone,
+      mobileNumber: adminData.phone ? this._normalizePhone(adminData.phone) : undefined,
       role: 'admin',
       companyId: companyId,
       isActive: true,
@@ -710,6 +731,27 @@ class CompanyService {
         updates[key] = updateData[key];
       }
     });
+
+    // [PHONE SYNC FIX] - When phone is updated, sync mobileNumber for OTP login and uniqueness
+    if ('phone' in updateData) {
+      if (updates.phone) {
+        const normalizedPhone = this._normalizePhone(updates.phone);
+
+        // Pre-check uniqueness before the MongoDB unique index error
+        const existingUser = await User.findOne({
+          mobileNumber: normalizedPhone,
+          _id: { $ne: adminId },
+        });
+        if (existingUser) {
+          throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
+        }
+
+        updates.mobileNumber = normalizedPhone;
+      } else {
+        // Phone cleared — free the old mobileNumber so it can be reused
+        updates.mobileNumber = null;
+      }
+    }
 
     const admin = await User.findOneAndUpdate(
       { _id: adminId, role: 'admin' },

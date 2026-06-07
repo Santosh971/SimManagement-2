@@ -266,6 +266,43 @@ const LegalPages = () => {
                     </label>
                     <div
                       className="border border-secondary-200 rounded-lg p-4 bg-secondary-50 max-h-96 overflow-y-auto"
+                      onClick={(e) => {
+                        const anchor = e.target.closest('a')
+                        if (!anchor) return
+                        const href = anchor.getAttribute('href')
+                        if (!href) return
+                        if (href.startsWith('mailto:')) {
+                          e.preventDefault()
+                          const afterProtocol = href.slice(7)
+                          if (afterProtocol.startsWith('http://') || afterProtocol.startsWith('https://')) {
+                            window.open(afterProtocol, '_blank', 'noopener,noreferrer')
+                          } else {
+                            window.location.href = href
+                            const fallbackTimer = setTimeout(() => {
+                              if (document.hasFocus()) {
+                                const email = afterProtocol.split('?')[0]
+                                window.open(
+                                  `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`,
+                                  '_blank',
+                                  'noopener,noreferrer'
+                                )
+                              }
+                            }, 500)
+                            window.addEventListener('blur', () => clearTimeout(fallbackTimer), { once: true })
+                          }
+                        } else if (href.startsWith('tel:')) {
+                          e.preventDefault()
+                          window.location.href = href
+                        } else if (href.startsWith('#')) {
+                          // Let browser handle natively
+                        } else if (href.startsWith('http://') || href.startsWith('https://')) {
+                          e.preventDefault()
+                          window.open(href, '_blank', 'noopener,noreferrer')
+                        } else {
+                          e.preventDefault()
+                          window.open(href, '_blank', 'noopener,noreferrer')
+                        }
+                      }}
                       dangerouslySetInnerHTML={{ __html: editForm.content }}
                     />
                   </div>

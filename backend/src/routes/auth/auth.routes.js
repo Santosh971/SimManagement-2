@@ -40,7 +40,8 @@ const changePasswordValidation = [
 const updateProfileValidation = [
   body('name').optional().trim().isLength({ max: 50 }).withMessage('Name cannot exceed 50 characters'),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // { checkFalsy: true } allows clearing the phone field (empty string, null, undefined skip validation)
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('preferences.notifications.email').optional().isBoolean(),
   body('preferences.notifications.sms').optional().isBoolean(),
   body('preferences.notifications.inApp').optional().isBoolean(),

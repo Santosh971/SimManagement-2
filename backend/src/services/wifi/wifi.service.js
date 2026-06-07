@@ -54,7 +54,7 @@ class WifiService {
    * [SIM-BASED WIFI ACCESS CONTROL] - Now supports assignedSims field
    */
   async createWifiNetwork(data, user) {
-    const { wifiName, expectedSpeed, alertThreshold, emailAlertEnabled, assignedSims, ssid, bssid, location } = data;
+    const { wifiName, expectedSpeed, alertThreshold, emailAlertEnabled, assignedSims, ssid, bssid, location, password } = data;
     const targetCompanyId = user.role === 'super_admin' ? data.companyId : user.companyId;
 
     if (!targetCompanyId) {
@@ -117,11 +117,12 @@ class WifiService {
       ssid: ssid || '',
       bssid: bssid || '',
       location: location || '',
+      password: password || '',
     });
 
     await wifiNetwork.save();
 
-    // Populate assigned SIMs in response
+    // Populate assigned SIMs in response, and include password (select: false field)
     await wifiNetwork.populate('assignedSims', 'mobileNumber operator status');
 
     return wifiNetwork;
@@ -208,6 +209,7 @@ class WifiService {
     }
 
     const network = await WifiNetwork.findOne(filter)
+      .select('+password')
       .populate('createdBy', 'name email')
       .populate({
         path: 'assignedSims',
@@ -248,7 +250,7 @@ class WifiService {
       filter.companyId = user.companyId;
     }
 
-    const allowedUpdates = ['wifiName', 'expectedSpeed', 'alertThreshold', 'emailAlertEnabled', 'assignedSims', 'ssid', 'bssid', 'location'];
+    const allowedUpdates = ['wifiName', 'expectedSpeed', 'alertThreshold', 'emailAlertEnabled', 'assignedSims', 'ssid', 'bssid', 'location', 'password'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -256,6 +258,10 @@ class WifiService {
         updates[key] = updateData[key];
       }
     });
+
+    // [PASSWORD FIX] - Password can be explicitly set or cleared.
+    // If 'password' key is present in the update, apply it as-is (including empty string to clear).
+    // If 'password' key is absent, the password remains unchanged (no accidental clear).
 
     // Check for duplicate name if name is being changed
     if (updates.wifiName) {
@@ -312,7 +318,7 @@ class WifiService {
     const network = await WifiNetwork.findOneAndUpdate(filter, updates, {
       new: true,
       runValidators: true,
-    }).populate('assignedSims', 'mobileNumber operator status');
+    }).select('+password').populate('assignedSims', 'mobileNumber operator status');
 
     if (!network) {
       throw new NotFoundError('WiFi network');

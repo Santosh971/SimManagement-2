@@ -52,6 +52,8 @@ class WifiController {
       const network = await wifiService.updateWifiNetwork(req.params.id, req.body, req.user);
 
       // Audit log: WIFI_NETWORK_UPDATE
+      // Exclude password from audit log for security
+      const { password, ...auditData } = req.body;
       await auditLogService.logAction({
         action: 'WIFI_NETWORK_UPDATE',
         module: 'WIFI',
@@ -61,7 +63,7 @@ class WifiController {
         companyId: network.companyId,
         entityId: network._id,
         entityType: 'WifiNetwork',
-        metadata: { wifiName: network.wifiName, changes: req.body },
+        metadata: { wifiName: network.wifiName, changes: auditData },
         req,
       });
 

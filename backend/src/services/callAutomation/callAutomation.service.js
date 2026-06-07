@@ -102,6 +102,17 @@ class CallAutomationService {
       throw new ValidationError('Scheduled time must be in HH:MM format');
     }
 
+    // Validate hourly shift times
+    if (data.hourlyShiftStartTime && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(data.hourlyShiftStartTime)) {
+      throw new ValidationError('Hourly shift start time must be in HH:MM format');
+    }
+    if (data.hourlyShiftEndTime && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(data.hourlyShiftEndTime)) {
+      throw new ValidationError('Hourly shift end time must be in HH:MM format');
+    }
+    if (data.hourlyShiftStartTime && data.hourlyShiftEndTime && data.hourlyShiftStartTime === data.hourlyShiftEndTime) {
+      throw new ValidationError('Hourly shift start time and end time cannot be the same');
+    }
+
     // Check for existing config
     let config = await CallAutomationConfig.findOne({ companyId });
 
@@ -141,6 +152,8 @@ class CallAutomationService {
       config.frequency = data.frequency || 'daily';
       config.scheduledTime = data.scheduledTime || '09:00';
       config.scheduledDay = data.scheduledDay || 'monday';
+      config.hourlyShiftStartTime = data.hourlyShiftStartTime || config.hourlyShiftStartTime || '08:00';
+      config.hourlyShiftEndTime = data.hourlyShiftEndTime || config.hourlyShiftEndTime || '20:00';
       config.isActive = data.isActive !== undefined ? data.isActive : true;
       config.updatedBy = user._id;
       config.nextRunAt = config.calculateNextRunTime();
@@ -171,6 +184,8 @@ class CallAutomationService {
         frequency: data.frequency || 'daily',
         scheduledTime: data.scheduledTime || '09:00',
         scheduledDay: data.scheduledDay || 'monday',
+        hourlyShiftStartTime: data.hourlyShiftStartTime || '08:00',
+        hourlyShiftEndTime: data.hourlyShiftEndTime || '20:00',
         isActive: data.isActive !== undefined ? data.isActive : true,
         createdBy: user._id,
         migrated: true,
@@ -286,6 +301,8 @@ class CallAutomationService {
         targets: [],
         callDuration: 10,
         frequency: 'daily',
+        hourlyShiftStartTime: '08:00',
+        hourlyShiftEndTime: '20:00',
         isActive: false,
       };
     }
@@ -302,6 +319,8 @@ class CallAutomationService {
         frequency: 'daily',
         scheduledTime: '09:00',
         scheduledDay: 'monday',
+        hourlyShiftStartTime: '08:00',
+        hourlyShiftEndTime: '20:00',
         isActive: false,
       };
     }
@@ -326,6 +345,8 @@ class CallAutomationService {
         frequency: 'daily',
         scheduledTime: '09:00',
         scheduledDay: 'monday',
+        hourlyShiftStartTime: '08:00',
+        hourlyShiftEndTime: '20:00',
         isActive: false,
         simId: sim._id,
         mobileNumber: sim.mobileNumber,
@@ -350,6 +371,8 @@ class CallAutomationService {
         frequency: 'daily',
         scheduledTime: '09:00',
         scheduledDay: 'monday',
+        hourlyShiftStartTime: '08:00',
+        hourlyShiftEndTime: '20:00',
         isActive: false,
         simId: sim._id,
         mobileNumber: sim.mobileNumber,
@@ -462,6 +485,8 @@ class CallAutomationService {
       frequency: config.frequency,
       scheduledTime: config.scheduledTime || '09:00',
       scheduledDay: config.scheduledDay || 'monday',
+      hourlyShiftStartTime: config.hourlyShiftStartTime || '08:00',
+      hourlyShiftEndTime: config.hourlyShiftEndTime || '20:00',
       isActive: config.isActive,
       simId: sim._id,
       mobileNumber: sim.mobileNumber,

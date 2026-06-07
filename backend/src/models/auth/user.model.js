@@ -93,6 +93,12 @@ const UserSchema = new Schema({
     type: Boolean,
     default: true,
   },
+  // Controls whether the user's mobile app can sync call logs and SMS data
+  // When false, sync endpoints will reject requests for this user's SIMs
+  dataSync: {
+    type: Boolean,
+    default: true,
+  },
   emailVerified: {
     type: Boolean,
     default: false,
@@ -184,6 +190,7 @@ const UserSchema = new Schema({
 UserSchema.index({ companyId: 1 });
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
+UserSchema.index({ dataSync: 1 });
 
 // [EMAIL OTP FIX] - TTL index for automatic OTP cleanup (expires after 5 minutes)
 // This ensures expired OTPs are automatically removed from the database

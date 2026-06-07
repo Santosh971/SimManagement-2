@@ -1,5 +1,6 @@
 const CallLog = require('../../models/callLog/callLog.model');
 const Sim = require('../../models/sim/sim.model');
+const User = require('../../models/auth/user.model');
 const { NotFoundError, ForbiddenError } = require('../../utils/errors');
 // [PHONE NORMALIZATION FIX]
 const { buildPhoneQuery, normalizePhoneNumber } = require('../../utils/response');
@@ -17,6 +18,14 @@ class CallLogService {
 
     if (user.role !== 'super_admin' && sim.companyId.toString() !== user.companyId.toString()) {
       throw new ForbiddenError('Access denied to this SIM');
+    }
+
+    // Check if data sync is enabled for the SIM's assigned user
+    if (sim.assignedTo) {
+      const assignedUser = await User.findById(sim.assignedTo).select('dataSync');
+      if (assignedUser && assignedUser.dataSync === false) {
+        throw new ForbiddenError('Data sync is disabled for this user. Contact your admin to re-enable it.');
+      }
     }
 
     // Bulk upsert call logs
@@ -60,6 +69,11 @@ class CallLogService {
         companyId: user.companyId,
       });
       throw new ForbiddenError('Unauthorized SIM - SIM not assigned to your account');
+    }
+
+    // Check if data sync is disabled for this user
+    if (user.dataSync === false) {
+      throw new ForbiddenError('Data sync is disabled for your account. Contact your admin to re-enable it.');
     }
 
     logger.info('[CALL LOG SYNC] Validated SIM ownership', {
@@ -182,6 +196,14 @@ class CallLogService {
       simMobileNumber: sim.mobileNumber,
       companyId: sim.companyId
     });
+
+    // Check if data sync is disabled for the SIM's assigned user
+    if (sim.assignedTo) {
+      const assignedUser = await User.findById(sim.assignedTo).select('dataSync');
+      if (assignedUser && assignedUser.dataSync === false) {
+        throw new ForbiddenError('Data sync is disabled for this user. Contact your admin to re-enable it.');
+      }
+    }
 
     // Get company from SIM
     const companyId = sim.companyId;

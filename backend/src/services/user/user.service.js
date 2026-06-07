@@ -16,6 +16,26 @@ const notificationHelper = require('../../utils/notificationHelper');
 const crypto = require('crypto');
 
 class UserService {
+  /**
+   * Normalize phone number to international format for mobileNumber field.
+   * - Strips spaces and dashes
+   * - 10 digits → +91 prefix (Indian number)
+   * - 12 digits starting with 91 → + prefix
+   * - Already has + prefix → keep as-is
+   * Returns null if phone is empty/falsy.
+   */
+  _normalizePhone(phone) {
+    if (!phone) return null;
+    let normalizedPhone = phone.replace(/[\s-]/g, '');
+    if (/^\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+91' + normalizedPhone;
+    }
+    if (/^91\d{10}$/.test(normalizedPhone)) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    return normalizedPhone;
+  }
+
   async getUsers(query, user) {
     const { page = 1, limit = 10, search, status, role, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
@@ -88,19 +108,7 @@ class UserService {
     }
 
     // [OTP EMAIL FIX] - Normalize phone number for mobile login
-    let normalizedPhone = phone;
-    if (phone) {
-      // Remove spaces and dashes
-      normalizedPhone = phone.replace(/[\s-]/g, '');
-      // If 10 digits, add +91 prefix
-      if (/^\d{10}$/.test(normalizedPhone)) {
-        normalizedPhone = '+91' + normalizedPhone;
-      }
-      // If starts with 91 and is 12 digits, add + prefix
-      if (/^91\d{10}$/.test(normalizedPhone)) {
-        normalizedPhone = '+' + normalizedPhone;
-      }
-    }
+    const normalizedPhone = this._normalizePhone(phone);
 
     // Create user linked to admin's company
     const user = new User({
@@ -165,7 +173,9 @@ class UserService {
     const originalValues = {
       name: user.name,
       phone: user.phone,
+      mobileNumber: user.mobileNumber,
       isActive: user.isActive,
+      dataSync: user.dataSync,
     };
 
     // Track if isActive is being changed
@@ -174,7 +184,7 @@ class UserService {
     const becomingInactive = updateData.isActive === false;
 
     // Only allow updating specific fields
-    const allowedUpdates = ['name', 'phone', 'isActive'];
+    const allowedUpdates = ['name', 'phone', 'isActive', 'dataSync'];
     const updates = {};
 
     Object.keys(updateData).forEach((key) => {
@@ -182,6 +192,27 @@ class UserService {
         updates[key] = updateData[key];
       }
     });
+
+    // [PHONE SYNC FIX] - When phone is updated, sync mobileNumber for OTP login and uniqueness
+    if ('phone' in updateData) {
+      if (updates.phone) {
+        const normalizedPhone = this._normalizePhone(updates.phone);
+
+        // Pre-check uniqueness before the MongoDB unique index error
+        const existingUser = await User.findOne({
+          mobileNumber: normalizedPhone,
+          _id: { $ne: userId },
+        });
+        if (existingUser) {
+          throw new ConflictError('This phone number is already registered in the system. Please use a different phone number.');
+        }
+
+        updates.mobileNumber = normalizedPhone;
+      } else {
+        // Phone cleared — free the old mobileNumber so it can be reused
+        updates.mobileNumber = null;
+      }
+    }
 
     const updatedUser = await User.findOneAndUpdate(
       { _id: userId, companyId: adminUser.companyId },

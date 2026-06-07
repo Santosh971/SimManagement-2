@@ -334,7 +334,6 @@ function CompanyModal({ isOpen, onClose, company, subscriptions, onSave, api }) 
     padding: '16px',
     boxSizing: 'border-box',
   }}
-  onClick={onClose}
 >
   <div
     style={{
@@ -963,7 +962,7 @@ function AdminModal({ isOpen, onClose, companyId, admin, onSave }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -1246,7 +1245,7 @@ function ResetPasswordModal({ isOpen, onClose, adminId, adminName, onReset }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -1389,7 +1388,6 @@ function ManagePlanModal({ isOpen, onClose, company, subscriptions, api, onRefre
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 50, padding: '16px', boxSizing: 'border-box',
       }}
-      onClick={onClose}
     >
       <div
         style={{
@@ -1947,11 +1945,11 @@ export default function Companies() {
       <PageHeader
         title="Companies"
         description="Manage client companies and their admins"
-        action={
-          <Button icon={FiPlus} onClick={() => openCompanyModal()}>
-            Add Company
-          </Button>
-        }
+        // action={
+        //   <Button icon={FiPlus} onClick={() => openCompanyModal()}>
+        //     Add Company
+        //   </Button>
+        // }
       />
 
       {/* Error State */}
@@ -2087,13 +2085,13 @@ export default function Companies() {
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
+                            {/* <button
                               onClick={() => openAdminModal(company)}
                               style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}
                               title="Add Admin"
                             >
                               <FiUser style={{ width: '16px', height: '16px', color: '#2563eb' }} />
-                            </button>
+                            </button> */}
                             <button
                               onClick={() => openCompanyModal(company)}
                               style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }}
@@ -2136,9 +2134,9 @@ export default function Companies() {
                             <div style={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                                 <h4 style={{ fontWeight: '500', margin: 0 }}>Company Admins</h4>
-                                <Button size="sm" icon={FiPlus} onClick={() => openAdminModal(company)}>
+                                {/* <Button size="sm" icon={FiPlus} onClick={() => openAdminModal(company)}>
                                   Add Admin
-                                </Button>
+                                </Button> */}
                               </div>
                               {companyAdmins[company._id]?.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2162,27 +2160,27 @@ export default function Companies() {
                                         <Badge variant={admin.isActive ? 'success' : 'danger'}>
                                           {admin.isActive ? 'Active' : 'Inactive'}
                                         </Badge>
-                                        <button
+                                        {/* <button
                                           onClick={() => openAdminModal(company, admin)}
                                           style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}
                                           title="Edit"
                                         >
                                           <FiEdit style={{ width: '16px', height: '16px' }} />
-                                        </button>
-                                        <button
+                                        </button> */}
+                                        {/* <button
                                           onClick={() => openResetModal(admin)}
                                           style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}
                                           title="Reset Password"
                                         >
                                           <FiRefreshCw style={{ width: '16px', height: '16px' }} />
-                                        </button>
-                                        <button
+                                        </button> */}
+                                        {/* <button
                                           onClick={() => handleDeleteAdmin(admin._id, company._id)}
                                           style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}
                                           title="Delete"
                                         >
                                           <FiTrash2 style={{ width: '16px', height: '16px', color: '#dc2626' }} />
-                                        </button>
+                                        </button> */}
                                       </div>
                                     </div>
                                   ))}
@@ -2209,9 +2207,9 @@ export default function Companies() {
               <p style={{ color: '#6b7280', marginBottom: '16px' }}>Add your first company to get started</p>
               {/* <Button onClick={() => openCompanyModal()}>+ Add Company</Button> */}
             
-                 <Button icon={FiPlus} onClick={() => openCompanyModal()}>
+                 {/* <Button icon={FiPlus} onClick={() => openCompanyModal()}>
                      Add Company
-                 </Button>            
+                 </Button>             */}
             </div>
           )}
         </CardBody>

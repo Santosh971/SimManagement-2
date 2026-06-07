@@ -24,8 +24,10 @@ const updateUserValidation = [
   param('id').isMongoId().withMessage('Invalid user ID'),
   body('name').optional().trim().isLength({ max: 100 }),
   // [PHONE VALIDATION FIX] - Accept phone with or without country code (same as SIM module)
-  body('phone').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
+  // { checkFalsy: true } allows clearing the phone field (empty string, null, undefined skip validation)
+  body('phone').optional({ checkFalsy: true }).matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number (Must be 10-15 digits)'),
   body('isActive').optional().isBoolean(),
+  body('dataSync').optional().isBoolean().withMessage('Data sync must be a boolean'),
 ];
 
 const resetPasswordValidation = [

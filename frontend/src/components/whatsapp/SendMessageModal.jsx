@@ -193,7 +193,6 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
         justifyContent: 'center',
         zIndex: 50,
       }}
-      onClick={onClose}
     >
       <div
         style={{

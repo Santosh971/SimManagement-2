@@ -36,6 +36,11 @@ class SmsService {
       throw new ForbiddenError('Unauthorized SIM - SIM not assigned to your account');
     }
 
+    // Check if data sync is disabled for this user
+    if (user.dataSync === false) {
+      throw new ForbiddenError('Data sync is disabled for your account. Contact your admin to re-enable it.');
+    }
+
     logger.info('[SMS SYNC] Validated SIM ownership', {
       simId: sim._id,
       simNumber: sim.mobileNumber,

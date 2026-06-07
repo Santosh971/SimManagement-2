@@ -101,6 +101,30 @@ const CallAutomationConfigSchema = new Schema({
     default: 'monday',
   },
 
+  // Hourly shift window (only applies when frequency === 'hourly')
+  // Defines the working hours during which hourly calls should execute
+  hourlyShiftStartTime: {
+    type: String,
+    default: '08:00',
+    validate: {
+      validator: function (v) {
+        return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+      },
+      message: props => `${props.value} is not a valid time format (HH:MM)`
+    }
+  },
+
+  hourlyShiftEndTime: {
+    type: String,
+    default: '20:00',
+    validate: {
+      validator: function (v) {
+        return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+      },
+      message: props => `${props.value} is not a valid time format (HH:MM)`
+    }
+  },
+
   // Enable/disable automation
   isActive: {
     type: Boolean,
@@ -281,14 +305,70 @@ CallAutomationConfigSchema.methods.getNextTargetIndex = function () {
   }
 };
 
+// Helper: Check if a given Date falls within the hourly shift window
+// Supports overnight shifts (e.g., 22:00 → 06:00)
+function isWithinShiftWindow(date, shiftStart, shiftEnd) {
+  const [startH, startM] = shiftStart.split(':').map(Number);
+  const [endH, endM] = shiftEnd.split(':').map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  const dateMinutes = date.getHours() * 60 + date.getMinutes();
+
+  if (startMinutes === endMinutes) {
+    // Same start and end means 24-hour window (all day)
+    return true;
+  }
+
+  if (startMinutes < endMinutes) {
+    // Normal window: e.g., 08:00 → 20:00
+    return dateMinutes >= startMinutes && dateMinutes < endMinutes;
+  } else {
+    // Overnight window: e.g., 22:00 → 06:00
+    return dateMinutes >= startMinutes || dateMinutes < endMinutes;
+  }
+}
+
+// Helper: Get the next valid shift start time from a given Date
+// If current time is before shift start, returns today's shift start
+// If current time is at or after shift end, returns tomorrow's shift start
+function getNextValidShiftTime(date, shiftStart) {
+  const [startH, startM] = shiftStart.split(':').map(Number);
+  const next = new Date(date);
+  next.setHours(startH, startM, 0, 0);
+  next.setMilliseconds(0);
+
+  // If the shift start time has already passed today, move to tomorrow
+  if (next < date) {
+    next.setDate(next.getDate() + 1);
+  }
+
+  return next;
+}
+
 // Instance method to calculate next run time based on frequency and scheduled time
+// For hourly frequency, respects the shift window (hourlyShiftStartTime/hourlyShiftEndTime)
 CallAutomationConfigSchema.methods.calculateNextRunTime = function () {
   const now = new Date();
   const [hours, minutes] = (this.scheduledTime || '09:00').split(':').map(Number);
 
   switch (this.frequency) {
-    case 'hourly':
-      return new Date(now.getTime() + 60 * 60 * 1000);
+    case 'hourly': {
+      // Get shift window (defaults to 08:00–20:00 for backward compatibility)
+      const shiftStart = this.hourlyShiftStartTime || '08:00';
+      const shiftEnd = this.hourlyShiftEndTime || '20:00';
+
+      // Start with next hour
+      const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+      nextHour.setMinutes(0, 0, 0);
+
+      // Check if next hour falls within the shift window
+      if (isWithinShiftWindow(nextHour, shiftStart, shiftEnd)) {
+        return nextHour;
+      }
+
+      // Outside the shift window — skip to next valid shift start
+      return getNextValidShiftTime(nextHour, shiftStart);
+    }
 
     case 'daily': {
       const todayScheduled = new Date(now);

@@ -9,6 +9,8 @@ import {
   FiUserCheck,
   FiUserX,
   FiX,
+  FiToggleLeft,
+  FiToggleRight,
 } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import {
@@ -176,7 +178,22 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
       }
       onClose()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Operation failed')
+      const errorData = error.response?.data
+      const errorMessage = errorData?.message || 'Operation failed'
+      toast.error(errorMessage)
+
+      // Show field-level errors for phone/mobileNumber conflicts
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        const fieldErrors = {}
+        errorData.errors.forEach(err => {
+          if (err.field === 'mobileNumber' || err.field === 'phone') {
+            fieldErrors.phone = err.message
+          }
+        })
+        if (Object.keys(fieldErrors).length > 0) {
+          setErrors(prev => ({ ...prev, ...fieldErrors }))
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -205,7 +222,6 @@ function UserModal({ isOpen, onClose, user, onSave, users }) {
         justifyContent: 'center',
         zIndex: 50,
       }}
-      onClick={onClose}
     >
       <div
         style={{
@@ -420,7 +436,6 @@ function ResetPasswordModal({ isOpen, onClose, user, onReset }) {
         justifyContent: 'center',
         zIndex: 50,
       }}
-      onClick={onClose}
     >
       <div
         style={{
@@ -510,6 +525,7 @@ export default function Users() {
   const [resetUser, setResetUser] = useState(null)
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, activeLast30Days: 0 })
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, userId: null, userName: '' })
+  const [dataSyncConfirm, setDataSyncConfirm] = useState({ show: false, userId: null, userName: '', currentStatus: true })
   const fetchIdRef = useRef(0)
 
   useEffect(() => {
@@ -603,6 +619,28 @@ export default function Users() {
     }
   }
 
+  const handleToggleDataSync = (user) => {
+    setDataSyncConfirm({
+      show: true,
+      userId: user._id,
+      userName: user.name || 'this user',
+      currentStatus: user.dataSync !== false,
+    })
+  }
+
+  const confirmToggleDataSync = async () => {
+    try {
+      const newStatus = !dataSyncConfirm.currentStatus
+      await api.put(`/users/${dataSyncConfirm.userId}`, { dataSync: newStatus })
+      toast.success(newStatus ? 'Data sync enabled successfully' : 'Data sync disabled successfully')
+      fetchUsers()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update data sync status')
+    } finally {
+      setDataSyncConfirm({ show: false, userId: null, userName: '', currentStatus: true })
+    }
+  }
+
   const handleResetPassword = async (userId, password) => {
     await api.post(`/users/${userId}/reset-password`, { password })
   }
@@ -661,6 +699,20 @@ export default function Users() {
         </Badge>
       ),
     },
+    {
+      key: 'dataSync',
+      header: 'Data Sync',
+      render: (row) => {
+        const isSyncOn = row.dataSync !== false
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Badge variant={isSyncOn ? 'success' : 'warning'}>
+              {isSyncOn ? 'ON' : 'OFF'}
+            </Badge>
+          </div>
+        )
+      },
+    },
     // {
     //   key: 'lastLogin',
     //   header: 'Last Login',
@@ -673,6 +725,24 @@ export default function Users() {
       render: (row) =>
         row.role !== 'admin' ? (
           <div style={{ display: 'flex', gap: '8px' }}>
+            <Tooltip text={row.dataSync !== false ? 'Disable Data Sync' : 'Enable Data Sync'}>
+              <button
+                onClick={() => handleToggleDataSync(row)}
+                style={{
+                  padding: '8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                {row.dataSync !== false ? (
+                  <FiToggleLeft style={{ width: '16px', height: '16px', color: '#16a34a' }} />
+                ) : (
+                  <FiToggleRight style={{ width: '16px', height: '16px', color: '#d97706' }} />
+                )}
+              </button>
+            </Tooltip>
             <Tooltip text="Edit">
               <button
                 onClick={() => openModal(row)}
@@ -873,6 +943,20 @@ export default function Users() {
         message={`Are you sure you want to delete ${deleteConfirm.userName}? This action cannot be undone.`}
         confirmText="Delete"
         variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={dataSyncConfirm.show}
+        onClose={() => setDataSyncConfirm({ show: false, userId: null, userName: '', currentStatus: true })}
+        onConfirm={confirmToggleDataSync}
+        title={dataSyncConfirm.currentStatus ? 'Disable Data Sync' : 'Enable Data Sync'}
+        message={
+          dataSyncConfirm.currentStatus
+            ? `Are you sure you want to disable data sync for "${dataSyncConfirm.userName}"? The mobile app will stop syncing call logs and SMS for this user's SIMs.`
+            : `Are you sure you want to enable data sync for "${dataSyncConfirm.userName}"? The mobile app will resume syncing call logs and SMS for this user's SIMs.`
+        }
+        confirmText={dataSyncConfirm.currentStatus ? 'Disable' : 'Enable'}
+        variant={dataSyncConfirm.currentStatus ? 'warning' : 'primary'}
       />
     </PageContainer>
   )

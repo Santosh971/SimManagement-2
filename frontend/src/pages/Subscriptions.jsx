@@ -284,7 +284,7 @@ function SubscriptionModal({ isOpen, onClose, plan, onSave }) {
       justifyContent: 'center',
       zIndex: 50,
       overflow: 'auto'
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
@@ -711,7 +711,7 @@ function CheckoutModal({ isOpen, onClose, plan, billingCycle, onSuccess }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50
-    }} onClick={onClose}>
+    }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
